@@ -3,7 +3,7 @@
              xmlns:ae="using:AvaloniaEdit"
              xmlns:conv="using:Avalonia.Data.Converters"
              x:Class="Lionear.SqlExplorer.App.Views.DocumentView">
-  <Grid x:Name="RootGrid" RowDefinitions="Auto,2*,Auto,Auto,3*,Auto">
+  <Grid x:Name="RootGrid" RowDefinitions="Auto,2*,Auto,Auto,3*,Auto,Auto">
 
     <!-- Row 0: mode-specific toolbar. Query = Run/Format; Browse = paging + filter. -->
     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8"
@@ -72,11 +72,22 @@
                 AutoGenerateColumns="False"
                 IsReadOnly="{Binding !IsResultEditable}"
                 SelectedItem="{Binding SelectedRow}"
+                SelectionMode="Extended"
                 CanUserResizeColumns="True" />
     </Border>
 
-    <!-- Row 5: cell-value viewer — appears on cell click; full value, JSON pretty-printed when parseable. -->
-    <Border Grid.Row="5" Margin="0,8,0,0" MaxHeight="200"
+    <!-- Row 5: selection aggregation strip (count + sum/avg/min/max for a numeric column). -->
+    <Border Grid.Row="5" Margin="0,4,0,0" Padding="8,3"
+            Background="{DynamicResource CatToolbarBgBrush}"
+            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1"
+            CornerRadius="{StaticResource CatControlRadius}"
+            IsVisible="{Binding AggregationSummary, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}">
+      <TextBlock Text="{Binding AggregationSummary}" FontSize="12"
+                 Foreground="{DynamicResource CatTextSecondaryBrush}" />
+    </Border>
+
+    <!-- Row 6: cell-value viewer — appears on cell click; full value, JSON pretty-printed when parseable. -->
+    <Border Grid.Row="6" Margin="0,8,0,0" MaxHeight="200"
             IsVisible="{Binding IsCellViewerVisible}"
             BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1"
             CornerRadius="{StaticResource CatControlRadius}" ClipToBounds="True">

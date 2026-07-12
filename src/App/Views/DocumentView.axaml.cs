@@ -23,6 +23,7 @@ public partial class DocumentView : UserControl
     private TextEditor? _sqlEditor;
     private DataGrid? _resultsGrid;
     private bool _syncingSql;
+    private int _currentColumnIndex;
 
     public DocumentView()
     {
@@ -40,6 +41,7 @@ public partial class DocumentView : UserControl
         {
             _resultsGrid.Sorting += OnGridSorting;
             _resultsGrid.CellPointerPressed += OnCellPointerPressed;
+            _resultsGrid.SelectionChanged += OnGridSelectionChanged;
         }
 
         DataContextChanged += OnDataContextChanged;
@@ -73,7 +75,29 @@ public partial class DocumentView : UserControl
         if (e.Row.DataContext is EditableRow row && columnIndex >= 0 && columnIndex < row.Cells.Count)
         {
             _viewModel.ShowCell(columnIndex, row.Cells[columnIndex].Value);
+            _currentColumnIndex = columnIndex;
+            RecomputeAggregation();
         }
+    }
+
+    private void OnGridSelectionChanged(object? sender, SelectionChangedEventArgs e) => RecomputeAggregation();
+
+    // Aggregate the current column's values across the selected rows.
+    private void RecomputeAggregation()
+    {
+        if (_viewModel is null || _resultsGrid is null)
+        {
+            return;
+        }
+
+        var column = _currentColumnIndex;
+        var values = _resultsGrid.SelectedItems
+            .OfType<EditableRow>()
+            .Where(row => column >= 0 && column < row.Cells.Count)
+            .Select(row => row.Cells[column].Value)
+            .ToList();
+
+        _viewModel.UpdateAggregation(values);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -204,6 +228,10 @@ public partial class DocumentView : UserControl
         }
 
         grid.ItemsSource = editable.Rows;
+
+        // Fresh result: forget the previous column/selection so the aggregation strip resets.
+        _currentColumnIndex = 0;
+        _viewModel?.UpdateAggregation([]);
     }
 
     private static IDataTemplate BuildCellTemplate(int index) =>

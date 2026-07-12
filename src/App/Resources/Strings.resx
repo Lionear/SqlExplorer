@@ -162,4 +162,19 @@
   <data name="ClearHistory" xml:space="preserve">
     <value>Clear</value>
   </data>
+  <data name="AggCount" xml:space="preserve">
+    <value>Count</value>
+  </data>
+  <data name="AggSum" xml:space="preserve">
+    <value>Sum</value>
+  </data>
+  <data name="AggAvg" xml:space="preserve">
+    <value>Avg</value>
+  </data>
+  <data name="AggMin" xml:space="preserve">
+    <value>Min</value>
+  </data>
+  <data name="AggMax" xml:space="preserve">
+    <value>Max</value>
+  </data>
 </root>

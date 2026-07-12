@@ -90,6 +90,10 @@ public partial class DocumentViewModel : ViewModelBase
     [ObservableProperty]
     private string? _selectedCellValue;
 
+    // Aggregation strip: count over the selected rows + sum/avg/min/max when the current column is numeric.
+    [ObservableProperty]
+    private string _aggregationSummary = string.Empty;
+
     public DocumentViewModel(
         IDbProviderRegistry providers,
         ConnectionService connections,
@@ -302,6 +306,48 @@ public partial class DocumentViewModel : ViewModelBase
 
     [RelayCommand]
     private void HideCellViewer() => IsCellViewerVisible = false;
+
+    /// <summary>
+    /// Recompute the selection aggregation over <paramref name="values"/> (the current column across the
+    /// selected rows): always a count, plus sum/avg/min/max when every non-null value is numeric.
+    /// </summary>
+    public void UpdateAggregation(IReadOnlyList<object?> values)
+    {
+        if (values.Count == 0)
+        {
+            AggregationSummary = string.Empty;
+            return;
+        }
+
+        var numbers = new List<decimal>();
+        var numeric = true;
+        foreach (var value in values)
+        {
+            if (value is null or DBNull)
+            {
+                continue; // nulls are ignored by the numeric aggregates, like SQL
+            }
+
+            if (decimal.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture),
+                    NumberStyles.Any, CultureInfo.InvariantCulture, out var number))
+            {
+                numbers.Add(number);
+            }
+            else
+            {
+                numeric = false;
+                break;
+            }
+        }
+
+        var count = $"{Loc["AggCount"]} {values.Count}";
+        AggregationSummary = numeric && numbers.Count > 0
+            ? $"{count}  ·  {Loc["AggSum"]} {Num(numbers.Sum())}  ·  {Loc["AggAvg"]} {Num(numbers.Average())}" +
+              $"  ·  {Loc["AggMin"]} {Num(numbers.Min())}  ·  {Loc["AggMax"]} {Num(numbers.Max())}"
+            : count;
+    }
+
+    private static string Num(decimal value) => value.ToString("0.###", CultureInfo.InvariantCulture);
 
     // Render a cell value for the viewer: NULL for null, pretty-printed JSON when the text parses as an
     // object/array, otherwise the raw string.
