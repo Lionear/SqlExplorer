@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ae="using:AvaloniaEdit"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="Lionear.SqlExplorer.App.Views.DocumentView">
+  <Grid x:Name="RootGrid" RowDefinitions="Auto,2*,Auto,Auto,3*">
+
+    <!-- Row 0: mode-specific toolbar. Query = Run/Format; Browse = paging + filter. -->
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8"
+                IsVisible="{Binding IsQueryMode}">
+      <Button Classes="Accent" Content="{Binding Loc[Run]}" Command="{Binding RunCommand}" />
+      <Button Content="{Binding Loc[Format]}" Command="{Binding FormatCommand}" />
+    </StackPanel>
+
+    <Grid Grid.Row="0" Margin="0,0,0,8" ColumnDefinitions="Auto,Auto,Auto,*,Auto"
+          IsVisible="{Binding IsBrowseMode}">
+      <Button Grid.Column="0" Margin="0,0,6,0"
+              Content="{Binding Loc[PrevPage]}" Command="{Binding PrevPageCommand}" />
+      <Button Grid.Column="1" Margin="0,0,10,0"
+              Content="{Binding Loc[NextPage]}" Command="{Binding NextPageCommand}" />
+      <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="0,0,12,0"
+                 FontSize="12" Foreground="{DynamicResource CatTextSecondaryBrush}"
+                 Text="{Binding RowRange}" />
+      <TextBox Grid.Column="3" MinWidth="160"
+               Text="{Binding FilterText}"
+               PlaceholderText="{Binding Loc[Filter]}" />
+      <Button Grid.Column="4" Margin="8,0,0,0"
+              Content="{Binding Loc[Apply]}" Command="{Binding ApplyFilterCommand}" IsDefault="True" />
+    </Grid>
+
+    <!-- Row 1: SQL editor (query mode only; the row is collapsed for browse in code-behind). -->
+    <Border Grid.Row="1" IsVisible="{Binding IsQueryMode}"
+            Background="{DynamicResource CatWindowBgBrush}"
+            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1"
+            CornerRadius="{StaticResource CatControlRadius}" ClipToBounds="True">
+      <ae:TextEditor x:Name="SqlEditor"
+                     ShowLineNumbers="True"
+                     WordWrap="False"
+                     Padding="4"
+                     FontFamily="Cascadia Code,Consolas,Menlo,monospace" />
+    </Border>
+
+    <TextBlock Grid.Row="2" Text="{Binding Status}" Margin="2,6"
+               FontSize="12" Foreground="{DynamicResource CatTextSecondaryBrush}" />
+
+    <!-- Row 3: edit toolbar + pending-changes bar (shared by both modes). -->
+    <Grid Grid.Row="3" Margin="0,0,0,8"
+          ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto"
+          IsVisible="{Binding Editable, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+      <Button Grid.Column="0" Margin="0,0,8,0"
+              Content="{Binding Loc[AddRow]}" Command="{Binding AddRowCommand}" />
+      <Button Grid.Column="1" Margin="0,0,8,0"
+              Content="{Binding Loc[DeleteRow]}" Command="{Binding DeleteRowCommand}" />
+      <Button Grid.Column="2" Margin="0,0,8,0" Classes="Accent"
+              Content="{Binding Loc[Save]}" Command="{Binding SaveCommand}" />
+      <Button Grid.Column="3" Classes="Subtle"
+              Content="{Binding Loc[Discard]}" Command="{Binding DiscardCommand}" />
+      <TextBlock Grid.Column="4" VerticalAlignment="Center" Margin="12,0,0,0"
+                 Foreground="{DynamicResource CatTextSecondaryBrush}"
+                 Text="{Binding PendingSummary}" />
+      <TextBlock Grid.Column="5" VerticalAlignment="Center"
+                 Foreground="{DynamicResource CatTextFaintBrush}"
+                 Text="{Binding ReadOnlyReason}"
+                 IsVisible="{Binding ReadOnlyReason, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+    </Grid>
+
+    <!-- Row 4: editable result grid, framed. Columns are built per result set in code-behind. -->
+    <Border Grid.Row="4"
+            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1"
+            CornerRadius="{StaticResource CatControlRadius}" ClipToBounds="True">
+      <DataGrid x:Name="ResultsGrid"
+                AutoGenerateColumns="False"
+                IsReadOnly="{Binding !IsResultEditable}"
+                SelectedItem="{Binding SelectedRow}"
+                CanUserResizeColumns="True" />
+    </Border>
+  </Grid>
+</UserControl>

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Lionear.SqlExplorer.Infrastructure</RootNamespace>
+    <!-- Contains P/Invoke into per-OS credential vaults; only the matching backend runs per platform. -->
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Lionear.SqlExplorer.Core.csproj" />
+  </ItemGroup>
+
+</Project>

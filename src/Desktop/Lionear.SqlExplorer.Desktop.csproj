@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Lionear.SqlExplorer.Desktop</RootNamespace>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\App\Lionear.SqlExplorer.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.5" />
+  </ItemGroup>
+
+  <!-- Stage each provider's self-contained output into plugins/<id>/ beside the executable,
+       so the plugin loader discovers them exactly as it would third-party plugins. The providers
+       are built ahead of this via App's ReferenceOutputAssembly=false references. -->
+  <Target Name="StageProviderPlugins" AfterTargets="Build">
+    <ItemGroup>
+      <PostgresPluginFiles Include="$(MSBuildThisFileDirectory)..\Providers.Postgres\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <SqlitePluginFiles Include="$(MSBuildThisFileDirectory)..\Providers.Sqlite\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <MySqlPluginFiles Include="$(MSBuildThisFileDirectory)..\Providers.MySql\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <MsSqlPluginFiles Include="$(MSBuildThisFileDirectory)..\Providers.MsSql\bin\$(Configuration)\$(TargetFramework)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PostgresPluginFiles)"
+          DestinationFiles="@(PostgresPluginFiles->'$(TargetDir)plugins\postgres\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(SqlitePluginFiles)"
+          DestinationFiles="@(SqlitePluginFiles->'$(TargetDir)plugins\sqlite\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(MySqlPluginFiles)"
+          DestinationFiles="@(MySqlPluginFiles->'$(TargetDir)plugins\mysql\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(MsSqlPluginFiles)"
+          DestinationFiles="@(MsSqlPluginFiles->'$(TargetDir)plugins\sqlserver\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

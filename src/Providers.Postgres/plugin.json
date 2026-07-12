@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "postgres",
+  "type": "provider",
+  "name": "PostgreSQL",
+  "version": "1.0.0",
+  "hostApiVersion": 9,
+  "entryAssembly": "Lionear.SqlExplorer.Providers.Postgres.dll"
+}

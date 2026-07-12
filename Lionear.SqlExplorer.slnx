@@ -1,0 +1,31 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/App/">
+    <Project Path="src/App/Lionear.SqlExplorer.App.csproj" />
+  </Folder>
+  <Folder Name="/src/Core/">
+    <Project Path="src/Core/Lionear.SqlExplorer.Core.csproj" />
+  </Folder>
+  <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/Lionear.SqlExplorer.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Desktop/">
+    <Project Path="src/Desktop/Lionear.SqlExplorer.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/src/Provider.Sdk/">
+    <Project Path="src/Provider.Sdk/Lionear.SqlExplorer.Provider.Sdk.csproj" />
+  </Folder>
+  <Folder Name="/src/Providers.Postgres/">
+    <File Path="src\Providers.Postgres\postgresql-database-logo-computer-icons-replication-software-developer-c58ad9bb5d3ba67754ac899f42d4bc52.png" />
+    <Project Path="src/Providers.Postgres/Lionear.SqlExplorer.Providers.Postgres.csproj" />
+  </Folder>
+  <Folder Name="/src/Providers.Sqlite/">
+    <Project Path="src/Providers.Sqlite/Lionear.SqlExplorer.Providers.Sqlite.csproj" />
+  </Folder>
+  <Folder Name="/src/Providers.MySql/">
+    <Project Path="src/Providers.MySql/Lionear.SqlExplorer.Providers.MySql.csproj" />
+  </Folder>
+  <Folder Name="/src/Providers.MsSql/">
+    <Project Path="src/Providers.MsSql/Lionear.SqlExplorer.Providers.MsSql.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Lionear.SqlExplorer.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Provider.Sdk\Lionear.SqlExplorer.Provider.Sdk.csproj" />
+  </ItemGroup>
+
+</Project>

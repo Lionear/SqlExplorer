@@ -1,0 +1,153 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             xmlns:cvt="using:Lionear.SqlExplorer.App.Converters"
+             xmlns:views="using:Lionear.SqlExplorer.App.Views"
+             x:Class="Lionear.SqlExplorer.App.Views.MainView">
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Top toolbar: new query tab + language toggle. Connection actions live in the sidebar. -->
+    <Border Grid.Row="0" Background="{DynamicResource CatToolbarBgBrush}"
+            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="8,6">
+        <Button Grid.Column="0" Classes="Accent"
+                Content="{Binding Loc[NewQueryTab]}" Command="{Binding NewQueryTabCommand}" />
+        <Button Grid.Column="2" Classes="Subtle"
+                Content="{Binding Loc[Language]}" Command="{Binding ToggleLanguageCommand}" />
+      </Grid>
+    </Border>
+
+    <!-- Body: connection sidebar | editor tabs -->
+    <Grid Grid.Row="1" x:Name="BodyGrid">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="280" MinWidth="180" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Left sidebar: one unified tree (DBeaver-style), loaded lazily on expand. -->
+      <Border Grid.Column="0" Background="{DynamicResource CatPanelBgBrush}"
+              BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,0,1,0">
+        <Grid RowDefinitions="Auto,*">
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="10,8,8,6">
+            <TextBlock Grid.Column="0" Text="{Binding Loc[Connections]}"
+                       FontWeight="SemiBold" FontSize="12"
+                       Foreground="{DynamicResource CatTextSecondaryBrush}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="Accent" Content="＋" Padding="8,2"
+                    ToolTip.Tip="{Binding Loc[NewConnection]}"
+                    Command="{Binding NewConnectionCommand}" />
+          </Grid>
+
+          <TreeView Grid.Row="1"
+                    x:Name="SchemaTree"
+                    Padding="4,0,4,4"
+                    ItemsSource="{Binding ConnectionNodes}"
+                    SelectedItem="{Binding SelectedNode}">
+            <TreeView.Styles>
+              <Style Selector="TreeViewItem">
+                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+              </Style>
+            </TreeView.Styles>
+            <TreeView.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="{Binding Loc[Connect]}" Command="{Binding ConnectCommand}"
+                          IsVisible="{Binding SelectedNode.CanConnect, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[Disconnect]}" Command="{Binding DisconnectCommand}"
+                          IsVisible="{Binding SelectedNode.CanDisconnect, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[EditConnection]}" Command="{Binding EditConnectionCommand}"
+                          IsVisible="{Binding SelectedNode.IsConnectionNode, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[DuplicateConnection]}" Command="{Binding DuplicateConnectionCommand}"
+                          IsVisible="{Binding SelectedNode.IsConnectionNode, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[Delete]}" Command="{Binding DeleteConnectionCommand}"
+                          IsVisible="{Binding SelectedNode.IsConnectionNode, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[BrowseTable]}" Command="{Binding BrowseTableCommand}"
+                          IsVisible="{Binding SelectedNode.IsTableOrView, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[SqlCommands]}"
+                          IsVisible="{Binding SelectedNode.IsTableOrView, FallbackValue=False}">
+                  <MenuItem Header="SELECT *" Command="{Binding GenerateSqlCommand}" CommandParameter="Select" />
+                  <MenuItem Header="SELECT columns" Command="{Binding GenerateSqlCommand}" CommandParameter="SelectColumns" />
+                  <MenuItem Header="INSERT" Command="{Binding GenerateSqlCommand}" CommandParameter="Insert" />
+                  <MenuItem Header="UPDATE" Command="{Binding GenerateSqlCommand}" CommandParameter="Update" />
+                  <MenuItem Header="DELETE" Command="{Binding GenerateSqlCommand}" CommandParameter="Delete" />
+                  <MenuItem Header="COUNT(*)" Command="{Binding GenerateSqlCommand}" CommandParameter="Count" />
+                </MenuItem>
+                <MenuItem Header="{Binding Loc[CopyName]}" Command="{Binding CopyNameCommand}"
+                          IsVisible="{Binding SelectedNode.IsCopyable, FallbackValue=False}" />
+              </ContextMenu>
+            </TreeView.ContextMenu>
+            <TreeView.ItemTemplate>
+              <TreeDataTemplate ItemsSource="{Binding Children}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <!-- Connection state LED (connection roots only): grey/blue/green/red. -->
+                  <Panel Width="8" Height="8" VerticalAlignment="Center" IsVisible="{Binding IsConnectionNode}">
+                    <Ellipse Width="8" Height="8"
+                             Fill="{Binding State, Converter={x:Static cvt:ConnectionStateBrushConverter.Instance}}" />
+                  </Panel>
+                  <Image Width="16" Height="16" VerticalAlignment="Center"
+                         Source="{Binding IconImage}" IsVisible="{Binding HasImageIcon}" />
+                  <Path Width="16" Height="16" VerticalAlignment="Center"
+                        Data="{Binding IconGeometry}"
+                        Stroke="{DynamicResource CatTextSecondaryBrush}" StrokeThickness="1.3"
+                        StrokeJoin="Round" StrokeLineCap="Round"
+                        IsVisible="{Binding HasVectorIcon}" />
+                  <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                </StackPanel>
+              </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+          </TreeView>
+        </Grid>
+      </Border>
+
+      <GridSplitter Grid.Column="1" Width="4" ResizeDirection="Columns"
+                    Background="Transparent" />
+
+      <!-- Right: editor tabs (query panes + table-browse panes). -->
+      <Panel Grid.Column="2" Margin="0">
+        <TabControl ItemsSource="{Binding Documents}" SelectedItem="{Binding SelectedDocument}">
+          <TabControl.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                <Button Content="×" Classes="Subtle" Padding="6,0" FontSize="15"
+                        VerticalAlignment="Center"
+                        Command="{Binding $parent[TabControl].DataContext.CloseTabCommand}"
+                        CommandParameter="{Binding}" />
+              </StackPanel>
+            </DataTemplate>
+          </TabControl.ItemTemplate>
+          <TabControl.ContentTemplate>
+            <DataTemplate>
+              <views:DocumentView Margin="10" />
+            </DataTemplate>
+          </TabControl.ContentTemplate>
+        </TabControl>
+
+        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Foreground="{DynamicResource CatTextFaintBrush}"
+                   Text="{Binding Loc[EmptyHint]}"
+                   IsVisible="{Binding SelectedDocument, Converter={x:Static conv:ObjectConverters.IsNull}}" />
+      </Panel>
+    </Grid>
+
+    <!-- Bottom status bar: connection state dot + active connection + last status message. -->
+    <Border Grid.Row="2" Background="{DynamicResource CatToolbarBgBrush}"
+            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="Auto,*" Margin="10,4">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+          <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                   Fill="{DynamicResource CatStatusConnectedBrush}"
+                   IsVisible="{Binding SelectedConnection, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+          <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                   Fill="{DynamicResource CatTextFaintBrush}"
+                   IsVisible="{Binding SelectedConnection, Converter={x:Static conv:ObjectConverters.IsNull}}" />
+          <TextBlock VerticalAlignment="Center" FontSize="12"
+                     Foreground="{DynamicResource CatTextSecondaryBrush}"
+                     Text="{Binding SelectedConnection.Name, FallbackValue={x:Null}, TargetNullValue=—}" />
+        </StackPanel>
+        <TextBlock Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center"
+                   FontSize="12" Foreground="{DynamicResource CatTextFaintBrush}"
+                   Text="{Binding Status}" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

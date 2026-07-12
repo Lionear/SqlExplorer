@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Lionear.SqlExplorer.App</RootNamespace>
+    <!-- Skeleton uses reflection bindings (dynamic result columns, string-keyed localization indexer).
+         Views get typed x:DataType + compiled bindings as they stabilise. -->
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Provider.Sdk\Lionear.SqlExplorer.Provider.Sdk.csproj" />
+    <ProjectReference Include="..\Core\Lionear.SqlExplorer.Core.csproj" />
+    <ProjectReference Include="..\Infrastructure\Lionear.SqlExplorer.Infrastructure.csproj" />
+    <!-- Providers are loaded at runtime as plugins, not linked. ReferenceOutputAssembly=false
+         keeps them out of the host's bin (no privileged access to their driver deps) while still
+         forcing them to build first so StageProviderPlugins can copy them into plugins/. -->
+    <ProjectReference Include="..\Providers.Postgres\Lionear.SqlExplorer.Providers.Postgres.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Providers.Sqlite\Lionear.SqlExplorer.Providers.Sqlite.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Providers.MySql\Lionear.SqlExplorer.Providers.MySql.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Providers.MsSql\Lionear.SqlExplorer.Providers.MsSql.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.0.5" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.0.1" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.5" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+  </ItemGroup>
+
+</Project>

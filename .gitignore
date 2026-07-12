@@ -1,0 +1,9 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+*.DotSettings.user
+
+# Local throwaway verification/probe projects
+scratchpad/

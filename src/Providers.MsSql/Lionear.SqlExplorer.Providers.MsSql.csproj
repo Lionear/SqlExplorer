@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Lionear.SqlExplorer.Providers.MsSql</RootNamespace>
+    <!-- Plugin build: emit the full private dependency closure (Microsoft.Data.SqlClient + its deps)
+         into the output folder so the plugin can be loaded from an isolated AssemblyLoadContext. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shared contract. Private=false keeps Provider.Sdk.dll OUT of the plugin folder so the
+         host's copy is used across the ALC boundary (single IDbProvider type identity). -->
+    <ProjectReference Include="..\Provider.Sdk\Lionear.SqlExplorer.Provider.Sdk.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Official ADO.NET driver. Managed SNI on Linux (no native SNI dep there). -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="icon.png" LogicalName="icon.png" Condition="Exists('icon.png')" />
+  </ItemGroup>
+
+</Project>

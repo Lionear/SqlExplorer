@@ -1,0 +1,51 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Lionear.SqlExplorer.App.Views.ConnectionDialog"
+        Title="{Binding DialogTitle}"
+        Width="460" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="16" Spacing="10">
+
+    <TextBlock Text="{Binding Loc[ConnectionName]}" />
+    <TextBox Text="{Binding Name}" />
+
+    <TextBlock Text="{Binding Loc[Provider]}" />
+    <ComboBox ItemsSource="{Binding AvailableProviders}"
+              SelectedItem="{Binding SelectedProvider}"
+              HorizontalAlignment="Stretch" />
+
+    <!-- Provider-driven fields: one control per declared ConnectionField. -->
+    <ItemsControl ItemsSource="{Binding Fields}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Spacing="2" Margin="0,4,0,0">
+            <TextBlock Text="{Binding Label}" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBox Grid.Column="0"
+                       Text="{Binding Value}"
+                       PlaceholderText="{Binding Watermark}"
+                       PasswordChar="{Binding PasswordChar}"
+                       IsVisible="{Binding !IsBool}" />
+              <CheckBox Grid.Column="0"
+                        IsChecked="{Binding BoolValue}"
+                        IsVisible="{Binding IsBool}" />
+              <Button Grid.Column="1" Margin="6,0,0,0"
+                      Content="{Binding $parent[Window].DataContext.Loc[Browse]}"
+                      IsVisible="{Binding IsFile}"
+                      Click="OnBrowseClick" />
+            </Grid>
+          </StackPanel>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <TextBlock Text="{Binding TestResult}" Foreground="{DynamicResource CatTextFaintBrush}" Margin="0,4,0,0" />
+
+    <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,8,0,0">
+      <Button Grid.Column="0" Content="{Binding Loc[Test]}" Command="{Binding TestCommand}" />
+      <Button Grid.Column="2" Classes="Subtle" Content="{Binding Loc[Cancel]}" Click="OnCancel" Margin="0,0,8,0" />
+      <Button Grid.Column="3" Classes="Accent" Content="{Binding Loc[Save]}" Click="OnSave"
+              IsEnabled="{Binding CanSave}" IsDefault="True" />
+    </Grid>
+  </StackPanel>
+</Window>

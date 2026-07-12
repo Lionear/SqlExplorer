@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Lionear.SqlExplorer.Providers.MySql</RootNamespace>
+    <!-- Plugin build: emit the full private dependency closure (MySqlConnector + its deps) into the
+         output folder so the plugin can be loaded from an isolated AssemblyLoadContext. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shared contract. Private=false keeps Provider.Sdk.dll OUT of the plugin folder so the
+         host's copy is used across the ALC boundary (single IDbProvider type identity). -->
+    <ProjectReference Include="..\Provider.Sdk\Lionear.SqlExplorer.Provider.Sdk.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Fully managed ADO.NET driver (MIT), no native deps. Supports async + column schema (PK flags). -->
+    <PackageReference Include="MySqlConnector" Version="2.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="icon.png" LogicalName="icon.png" Condition="Exists('icon.png')" />
+  </ItemGroup>
+
+</Project>

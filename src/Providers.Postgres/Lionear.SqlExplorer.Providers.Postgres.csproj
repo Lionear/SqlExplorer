@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Lionear.SqlExplorer.Providers.Postgres</RootNamespace>
+    <!-- Plugin build: emit the full private dependency closure (Npgsql + its deps) into the
+         output folder so the plugin can be loaded from an isolated AssemblyLoadContext. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shared contract. Private=false keeps Provider.Sdk.dll OUT of the plugin folder so the
+         host's copy is used across the ALC boundary (single IDbProvider type identity). -->
+    <ProjectReference Include="..\Provider.Sdk\Lionear.SqlExplorer.Provider.Sdk.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Optional brand logo. Drop a square PNG here as icon.png and it is embedded automatically
+         (LogicalName keeps the resource name stable); until then the provider falls back to a glyph. -->
+    <EmbeddedResource Include="icon.png" LogicalName="icon.png" Condition="Exists('icon.png')" />
+  </ItemGroup>
+  
+</Project>

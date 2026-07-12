@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Lionear.SqlExplorer.Sdk</RootNamespace>
+    <!-- Public extensibility contract. Third-party providers reference ONLY this
+         package (interfaces + DTOs, no host internals). Keep it small and stable —
+         once v1 is published, breaking changes are expensive (see Notes.md §4.1). -->
+    <Description>Lionear SQL Explorer — provider extensibility contract.</Description>
+  </PropertyGroup>
+
+</Project>

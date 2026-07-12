@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppTitle" xml:space="preserve">
+    <value>SQL Verkenner</value>
+  </data>
+  <data name="ConnectionString" xml:space="preserve">
+    <value>Verbindingsreeks</value>
+  </data>
+  <data name="Connect" xml:space="preserve">
+    <value>Verbinden</value>
+  </data>
+  <data name="Disconnect" xml:space="preserve">
+    <value>Verbinding verbreken</value>
+  </data>
+  <data name="Run" xml:space="preserve">
+    <value>Uitvoeren</value>
+  </data>
+  <data name="Format" xml:space="preserve">
+    <value>Opmaken</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="StatusConnected" xml:space="preserve">
+    <value>Verbonden · {0} schema('s)</value>
+  </data>
+  <data name="StatusRows" xml:space="preserve">
+    <value>{0} rijen · {1:F0} ms</value>
+  </data>
+  <data name="NewConnection" xml:space="preserve">
+    <value>Nieuwe connectie…</value>
+  </data>
+  <data name="Connections" xml:space="preserve">
+    <value>Connecties</value>
+  </data>
+  <data name="SelectRows" xml:space="preserve">
+    <value>Rijen tonen (top 100)</value>
+  </data>
+  <data name="CopyName" xml:space="preserve">
+    <value>Naam kopiëren</value>
+  </data>
+  <data name="EditConnection" xml:space="preserve">
+    <value>Connectie bewerken</value>
+  </data>
+  <data name="ConnectionName" xml:space="preserve">
+    <value>Naam</value>
+  </data>
+  <data name="Provider" xml:space="preserve">
+    <value>Aanbieder</value>
+  </data>
+  <data name="Test" xml:space="preserve">
+    <value>Testen</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Opslaan</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Annuleren</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>Verwijderen</value>
+  </data>
+  <data name="Browse" xml:space="preserve">
+    <value>Bladeren…</value>
+  </data>
+  <data name="TestOk" xml:space="preserve">
+    <value>Verbinding OK</value>
+  </data>
+  <data name="TestFailed" xml:space="preserve">
+    <value>Verbinding mislukt</value>
+  </data>
+  <data name="AddRow" xml:space="preserve">
+    <value>Rij toevoegen</value>
+  </data>
+  <data name="DeleteRow" xml:space="preserve">
+    <value>Rij verwijderen</value>
+  </data>
+  <data name="Discard" xml:space="preserve">
+    <value>Verwerpen</value>
+  </data>
+  <data name="PendingSummary" xml:space="preserve">
+    <value>{0} gewijzigd · {1} toegevoegd · {2} verwijderd</value>
+  </data>
+  <data name="SaveOk" xml:space="preserve">
+    <value>Opgeslagen · {0} rij(en) aangepast</value>
+  </data>
+  <data name="SaveNothing" xml:space="preserve">
+    <value>Niets op te slaan</value>
+  </data>
+  <data name="ReadOnlyLabel" xml:space="preserve">
+    <value>Alleen-lezen</value>
+  </data>
+  <data name="ReviewTitle" xml:space="preserve">
+    <value>Wijzigingen controleren</value>
+  </data>
+  <data name="Apply" xml:space="preserve">
+    <value>Toepassen</value>
+  </data>
+  <data name="NewQueryTab" xml:space="preserve">
+    <value>Nieuwe query</value>
+  </data>
+  <data name="QueryTab" xml:space="preserve">
+    <value>Query</value>
+  </data>
+  <data name="BrowseTable" xml:space="preserve">
+    <value>Rijen doorbladeren</value>
+  </data>
+  <data name="PrevPage" xml:space="preserve">
+    <value>‹ Vorige</value>
+  </data>
+  <data name="NextPage" xml:space="preserve">
+    <value>Volgende ›</value>
+  </data>
+  <data name="Filter" xml:space="preserve">
+    <value>Filter (WHERE)</value>
+  </data>
+  <data name="RowRange" xml:space="preserve">
+    <value>Rijen {0}–{1}</value>
+  </data>
+  <data name="RowRangeEmpty" xml:space="preserve">
+    <value>Geen rijen</value>
+  </data>
+  <data name="EmptyHint" xml:space="preserve">
+    <value>Dubbelklik een tabel om te bladeren, of start een nieuwe query.</value>
+  </data>
+  <data name="SqlCommands" xml:space="preserve">
+    <value>SQL-commando's</value>
+  </data>
+  <data name="DuplicateConnection" xml:space="preserve">
+    <value>Dupliceren</value>
+  </data>
+  <data name="CopySuffix" xml:space="preserve">
+    <value>(kopie)</value>
+  </data>
+</root>

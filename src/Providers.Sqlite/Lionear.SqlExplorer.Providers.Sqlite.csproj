@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Lionear.SqlExplorer.Providers.Sqlite</RootNamespace>
+    <!-- Plugin build: emit the full private dependency closure (Microsoft.Data.Sqlite,
+         SQLitePCLRaw + native e_sqlite3) into the output folder for ALC loading. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shared contract. Private=false keeps Provider.Sdk.dll OUT of the plugin folder so the
+         host's copy is used across the ALC boundary (single IDbProvider type identity). -->
+    <ProjectReference Include="..\Provider.Sdk\Lionear.SqlExplorer.Provider.Sdk.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
+    <!-- Override the native SQLite bundled transitively by Microsoft.Data.Sqlite (2.1.11 ships
+         SQLite < 3.50.2, vulnerable to CVE-2025-6965). 3.x brings a patched engine. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Optional brand logo. Drop a square PNG here as icon.png and it is embedded automatically
+         (LogicalName keeps the resource name stable); until then the provider falls back to a glyph. -->
+    <EmbeddedResource Include="icon.png" LogicalName="icon.png" Condition="Exists('icon.png')" />
+  </ItemGroup>
+
+</Project>
