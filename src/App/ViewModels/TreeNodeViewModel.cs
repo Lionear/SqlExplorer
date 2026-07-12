@@ -154,6 +154,9 @@ public partial class TreeNodeViewModel : ViewModelBase
 
     public bool CanRenameColumn => CanDropColumn;
 
+    /// <summary>"Import CSV…" — any table the provider can also ALTER (i.e. a real writable table).</summary>
+    public bool CanImportCsv => CanAddColumn;
+
     /// <summary>Owning schema, if this node sits under one (null for schema-less engines like SQLite).</summary>
     public string? SchemaName => _pathToChildren.FirstOrDefault(r => r.Kind == DbNodeKind.Schema)?.Name;
 

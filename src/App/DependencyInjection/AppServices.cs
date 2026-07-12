@@ -74,6 +74,10 @@ public static class AppServices
         services.AddTransient<AlterObjectDialogViewModel>();
         services.AddSingleton<Func<AlterObjectDialogViewModel>>(sp => sp.GetRequiredService<AlterObjectDialogViewModel>);
 
+        // CSV-import column-mapping dialog — same factory-delegate pattern as the other dialogs.
+        services.AddTransient<ImportCsvDialogViewModel>();
+        services.AddSingleton<Func<ImportCsvDialogViewModel>>(sp => sp.GetRequiredService<ImportCsvDialogViewModel>);
+
         services.AddTransient<MainViewModel>();
 
         return services.BuildServiceProvider();

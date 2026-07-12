@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Lionear.SqlExplorer.App.Views.ImportCsvDialog"
+        Title="{Binding Loc[ImportCsvTitle]}"
+        Width="520" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="16" Spacing="10">
+
+    <TextBlock Text="{Binding Loc[ImportPreview]}" FontSize="11" Foreground="{DynamicResource CatTextFaintBrush}" />
+    <TextBox Text="{Binding PreviewText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+             FontFamily="Cascadia Code,Consolas,Menlo,monospace" FontSize="12"
+             Height="90" ScrollViewer.HorizontalScrollBarVisibility="Auto" />
+
+    <TextBlock Text="{Binding Loc[ImportMapColumn]}" FontSize="11" Foreground="{DynamicResource CatTextFaintBrush}" Margin="0,4,0,0" />
+    <ItemsControl ItemsSource="{Binding Mappings}" MaxHeight="220" ScrollViewer.VerticalScrollBarVisibility="Auto">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <Grid ColumnDefinitions="*,Auto,*" Margin="0,2">
+            <TextBlock Grid.Column="0" Text="{Binding CsvColumn}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="→" Margin="8,0" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="2" HorizontalAlignment="Stretch"
+                      ItemsSource="{Binding TargetOptions}" SelectedItem="{Binding SelectedTarget}" />
+          </Grid>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <TextBlock Text="{Binding RowCountText}" FontSize="12"
+               Foreground="{DynamicResource CatTextSecondaryBrush}" Margin="0,4,0,0" />
+
+    <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
+      <Button Grid.Column="1" Classes="Subtle" Content="{Binding Loc[Cancel]}" Click="OnCancel" Margin="0,0,8,0" />
+      <Button Grid.Column="2" Classes="Accent" Content="{Binding Loc[Import]}" Click="OnImport" IsDefault="True" />
+    </Grid>
+  </StackPanel>
+</Window>

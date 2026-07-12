@@ -4,7 +4,9 @@ using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Data;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.Platform.Storage;
 using AvaloniaEdit;
 using AvaloniaEdit.CodeCompletion;
 using AvaloniaEdit.Highlighting;
@@ -147,6 +149,64 @@ public partial class DocumentView : UserControl
 
         var dialog = new SaveReviewDialog(_viewModel.Loc, sql);
         return await dialog.ShowDialog<bool>(owner);
+    }
+
+    // Exports the grid's current selection, or the whole active result set when nothing is selected —
+    // same selection source as RecomputeAggregation. Format dialog first, then a save-file picker.
+    private async void OnExportClick(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner || _viewModel is null || _resultsGrid is null)
+        {
+            return;
+        }
+
+        var selected = _resultsGrid.SelectedItems.OfType<EditableRow>().ToList();
+        var isSelection = selected.Count > 0;
+        var rowCount = isSelection ? selected.Count : _viewModel.Editable?.Rows.Count ?? 0;
+        if (rowCount == 0)
+        {
+            return;
+        }
+
+        var formatDialog = new ExportDialog(_viewModel.Loc, rowCount, isSelection);
+        var format = await formatDialog.ShowDialog<ExportFormat?>(owner);
+        if (format is not { } chosenFormat)
+        {
+            return;
+        }
+
+        var text = _viewModel.BuildExportText(chosenFormat, isSelection ? selected : null);
+        var (extension, typeName) = chosenFormat switch
+        {
+            ExportFormat.Csv => ("csv", "CSV"),
+            ExportFormat.Json => ("json", "JSON"),
+            _ => ("sql", "SQL")
+        };
+
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            SuggestedFileName = $"export.{extension}",
+            FileTypeChoices = [new FilePickerFileType(typeName) { Patterns = [$"*.{extension}"] }]
+        });
+
+        if (file is null)
+        {
+            return;
+        }
+
+        await using var stream = await file.OpenWriteAsync();
+        await using var writer = new StreamWriter(stream);
+        await writer.WriteAsync(text);
+    }
+
+    // Enter in a per-column filter box applies immediately, same as the free-text WHERE box's Apply
+    // button being the editor's IsDefault — no separate auto-apply/debounce logic needed.
+    private void OnColumnFilterKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            _viewModel?.ApplyFilterCommand.Execute(null);
+        }
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)

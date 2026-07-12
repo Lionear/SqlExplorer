@@ -49,21 +49,39 @@
                 IsVisible="{Binding HasDatabasePicker}" />
     </StackPanel>
 
-    <Grid Grid.Row="0" Margin="0,0,0,8" ColumnDefinitions="Auto,Auto,Auto,*,Auto"
-          IsVisible="{Binding IsBrowseMode}">
-      <Button Grid.Column="0" Margin="0,0,6,0"
-              Content="{Binding Loc[PrevPage]}" Command="{Binding PrevPageCommand}" />
-      <Button Grid.Column="1" Margin="0,0,10,0"
-              Content="{Binding Loc[NextPage]}" Command="{Binding NextPageCommand}" />
-      <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="0,0,12,0"
-                 FontSize="12" Foreground="{DynamicResource CatTextSecondaryBrush}"
-                 Text="{Binding RowRange}" />
-      <TextBox Grid.Column="3" MinWidth="160"
-               Text="{Binding FilterText}"
-               PlaceholderText="{Binding Loc[Filter]}" />
-      <Button Grid.Column="4" Margin="8,0,0,0"
-              Content="{Binding Loc[Apply]}" Command="{Binding ApplyFilterCommand}" IsDefault="True" />
-    </Grid>
+    <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,8" IsVisible="{Binding IsBrowseMode}">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+        <Button Grid.Column="0" Margin="0,0,6,0"
+                Content="{Binding Loc[PrevPage]}" Command="{Binding PrevPageCommand}" />
+        <Button Grid.Column="1" Margin="0,0,10,0"
+                Content="{Binding Loc[NextPage]}" Command="{Binding NextPageCommand}" />
+        <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="0,0,12,0"
+                   FontSize="12" Foreground="{DynamicResource CatTextSecondaryBrush}"
+                   Text="{Binding RowRange}" />
+        <TextBox Grid.Column="3" MinWidth="160"
+                 Text="{Binding FilterText}"
+                 PlaceholderText="{Binding Loc[Filter]}" />
+        <Button Grid.Column="4" Margin="8,0,0,0"
+                Content="{Binding Loc[Apply]}" Command="{Binding ApplyFilterCommand}" IsDefault="True" />
+      </Grid>
+
+      <!-- Per-column inline filter: one small box per browse-grid column, combined with the free-text
+           WHERE box above (AND) on the same Apply command — no separate auto-apply logic needed. -->
+      <ItemsControl ItemsSource="{Binding ColumnFilters}"
+                    IsVisible="{Binding ColumnFilters.Count}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <TextBox Width="110" Margin="0,0,6,4" Text="{Binding Value}" PlaceholderText="{Binding ColumnName}"
+                     KeyDown="OnColumnFilterKeyDown" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
 
     <!-- Row 1: SQL editor (query mode only; the row is collapsed for browse in code-behind). -->
     <Border Grid.Row="1" IsVisible="{Binding IsQueryMode}"
@@ -82,7 +100,7 @@
 
     <!-- Row 3: edit toolbar + pending-changes bar (shared by both modes). -->
     <Grid Grid.Row="3" Margin="0,0,0,8"
-          ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto"
+          ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto"
           IsVisible="{Binding Editable, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
       <Button Grid.Column="0" Margin="0,0,8,0"
               Content="{Binding Loc[AddRow]}" Command="{Binding AddRowCommand}" />
@@ -90,12 +108,14 @@
               Content="{Binding Loc[DeleteRow]}" Command="{Binding DeleteRowCommand}" />
       <Button Grid.Column="2" Margin="0,0,8,0" Classes="Accent"
               Content="{Binding Loc[Save]}" Command="{Binding SaveCommand}" />
-      <Button Grid.Column="3" Classes="Subtle"
+      <Button Grid.Column="3" Classes="Subtle" Margin="0,0,8,0"
               Content="{Binding Loc[Discard]}" Command="{Binding DiscardCommand}" />
-      <TextBlock Grid.Column="4" VerticalAlignment="Center" Margin="12,0,0,0"
+      <Button Grid.Column="4" Classes="Subtle" x:Name="ExportButton" Click="OnExportClick"
+              Content="{Binding Loc[Export]}" />
+      <TextBlock Grid.Column="5" VerticalAlignment="Center" Margin="12,0,0,0"
                  Foreground="{DynamicResource CatTextSecondaryBrush}"
                  Text="{Binding PendingSummary}" />
-      <TextBlock Grid.Column="5" VerticalAlignment="Center"
+      <TextBlock Grid.Column="6" VerticalAlignment="Center"
                  Foreground="{DynamicResource CatTextFaintBrush}"
                  Text="{Binding ReadOnlyReason}"
                  IsVisible="{Binding ReadOnlyReason, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />

@@ -75,7 +75,11 @@
                           IsVisible="{Binding SelectedNode.CanCreateTable, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[AddColumnMenu]}" Command="{Binding AddColumnCommand}"
                           IsVisible="{Binding SelectedNode.CanAddColumn, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[ImportCsv]}" Command="{Binding ImportCsvCommand}"
+                          IsVisible="{Binding SelectedNode.CanImportCsv, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[BrowseTable]}" Command="{Binding BrowseTableCommand}"
+                          IsVisible="{Binding SelectedNode.IsTableOrView, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[Export]}" Command="{Binding ExportTableCommand}"
                           IsVisible="{Binding SelectedNode.IsTableOrView, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[SqlCommands]}"
                           IsVisible="{Binding SelectedNode.IsTableOrView, FallbackValue=False}">

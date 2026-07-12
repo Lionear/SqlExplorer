@@ -1,13 +1,16 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Lionear.SqlExplorer.Core.Connections;
 using Lionear.SqlExplorer.Core.Editing;
+using Lionear.SqlExplorer.Core.Export;
 using Lionear.SqlExplorer.Core.Formatting;
 using Lionear.SqlExplorer.Core.History;
+using Lionear.SqlExplorer.Core.Import;
 using Lionear.SqlExplorer.Core.Localization;
 using Lionear.SqlExplorer.Core.Providers;
 using Lionear.SqlExplorer.Core.Schema;
@@ -32,6 +35,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly Func<ConnectionDialogViewModel> _dialogFactory;
     private readonly Func<CreateObjectDialogViewModel> _createDialogFactory;
     private readonly Func<AlterObjectDialogViewModel> _alterDialogFactory;
+    private readonly Func<ImportCsvDialogViewModel> _importCsvDialogFactory;
 
     // Selected tree node drives the active connection: any node knows its owning connection.
     [ObservableProperty]
@@ -67,6 +71,7 @@ public partial class MainViewModel : ViewModelBase
         Func<ConnectionDialogViewModel> dialogFactory,
         Func<CreateObjectDialogViewModel> createDialogFactory,
         Func<AlterObjectDialogViewModel> alterDialogFactory,
+        Func<ImportCsvDialogViewModel> importCsvDialogFactory,
         ILocalizer localizer)
     {
         _providers = providers;
@@ -77,6 +82,7 @@ public partial class MainViewModel : ViewModelBase
         _dialogFactory = dialogFactory;
         _createDialogFactory = createDialogFactory;
         _alterDialogFactory = alterDialogFactory;
+        _importCsvDialogFactory = importCsvDialogFactory;
         Loc = localizer;
 
         _history.Changed += OnHistoryChanged;
@@ -253,6 +259,19 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>Set by the view so the VM can copy text to the OS clipboard.</summary>
     public Func<string, Task>? ClipboardRequested { get; set; }
+
+    /// <summary>Set by the view so the VM can prompt for a CSV file; returns the local path, or null on cancel.</summary>
+    public Func<Task<string?>>? ImportCsvFileRequested { get; set; }
+
+    /// <summary>Set by the view so the VM can show the CSV column-mapping dialog; true if the user confirmed.</summary>
+    public Func<ImportCsvDialogViewModel, Task<bool>>? ImportCsvDialogRequested { get; set; }
+
+    /// <summary>Set by the view so the VM can ask which format to export a whole table as (given its row
+    /// count); null on cancel. Same dialog "Export…" on a document tab uses, just not tied to a grid.</summary>
+    public Func<int, Task<ExportFormat?>>? ExportFormatRequested { get; set; }
+
+    /// <summary>Set by the view so the VM can hand off exported text to a save-file dialog + write it.</summary>
+    public Func<string, ExportFormat, Task>? ExportFileRequested { get; set; }
 
     partial void OnSelectedNodeChanged(TreeNodeViewModel? value) =>
         SelectedConnection = value?.Connection;
@@ -630,6 +649,112 @@ public partial class MainViewModel : ViewModelBase
             await provider.ExecuteDdlAsync(profile, sql, CancellationToken.None);
 
             var root = ConnectionNodes.FirstOrDefault(n => n.Connection.Id == node.Connection.Id);
+            if (root is not null)
+            {
+                await root.RefreshAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Status = ex.Message;
+        }
+    }
+
+    // Tree-level "Export…": the document-tab Export button needs an open, populated grid, but exporting
+    // a whole table shouldn't require browsing it first — this reads the table directly (no LIMIT/paging,
+    // unlike browse) and reuses the same ExportDialog + ResultExporter the grid button uses.
+    [RelayCommand]
+    private async Task ExportTableAsync()
+    {
+        if (SelectedNode is not { IsTableOrView: true } node || ExportFormatRequested is null || ExportFileRequested is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var connection = node.Connection;
+            var provider = _providers.Get(connection.ProviderId);
+            var dialect = provider.Dialect;
+            var qualified = dialect.QualifyName(node.DatabaseName, node.SchemaName, node.Name);
+            var profile = _connections.Resolve(connection, node.DatabaseName);
+            var result = await provider.ExecuteQueryAsync(profile, $"SELECT * FROM {qualified}", CancellationToken.None);
+
+            var format = await ExportFormatRequested(result.Rows.Count);
+            if (format is not { } chosenFormat)
+            {
+                return;
+            }
+
+            var text = chosenFormat switch
+            {
+                ExportFormat.Csv => ResultExporter.ToCsv(result.Columns, result.Rows),
+                ExportFormat.Json => ResultExporter.ToJson(result.Columns, result.Rows),
+                ExportFormat.Sql => ResultExporter.ToSqlInserts(result.Columns, result.Rows, dialect, connection.ProviderId, QuotedTarget(dialect, node)),
+                _ => string.Empty
+            };
+
+            await ExportFileRequested(text, chosenFormat);
+        }
+        catch (Exception ex)
+        {
+            Status = ex.Message;
+        }
+    }
+
+    private static string QuotedTarget(ISqlDialect dialect, TreeNodeViewModel node) =>
+        node.SchemaName is { Length: > 0 } schema
+            ? $"{dialect.QuoteIdentifier(schema)}.{dialect.QuoteIdentifier(node.Name)}"
+            : dialect.QuoteIdentifier(node.Name);
+
+    // File pick -> parse -> column-mapping dialog -> parameterised INSERT batch, same shape as the
+    // editable-grid save-flow (Notes §8) but for a whole external file instead of pending row edits.
+    [RelayCommand]
+    private async Task ImportCsvAsync()
+    {
+        if (SelectedNode is not { CanImportCsv: true } node || ImportCsvFileRequested is null || ImportCsvDialogRequested is null)
+        {
+            return;
+        }
+
+        var path = await ImportCsvFileRequested();
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        try
+        {
+            var csv = CsvParser.Parse(await File.ReadAllTextAsync(path));
+            if (csv.Rows.Count == 0)
+            {
+                return;
+            }
+
+            var connection = node.Connection;
+            var provider = _providers.Get(connection.ProviderId);
+            var qualified = provider.Dialect.QualifyName(node.DatabaseName, node.SchemaName, node.Name);
+            var targetColumns = await FetchColumnsAsync(connection, node.DatabaseName, qualified);
+
+            var dialog = _importCsvDialogFactory();
+            dialog.Configure(csv, targetColumns);
+
+            if (!await ImportCsvDialogRequested(dialog))
+            {
+                return;
+            }
+
+            var statements = dialog.BuildInsertStatements(provider.Dialect, qualified);
+            if (statements.Count == 0)
+            {
+                return;
+            }
+
+            var profile = _connections.Resolve(connection, node.DatabaseName);
+            var affected = await provider.ExecuteBatchAsync(profile, statements, CancellationToken.None);
+            Status = Loc.Get("ImportOk", affected);
+
+            var root = ConnectionNodes.FirstOrDefault(n => n.Connection.Id == connection.Id);
             if (root is not null)
             {
                 await root.RefreshAsync();

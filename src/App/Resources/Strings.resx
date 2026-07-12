@@ -261,4 +261,40 @@
   <data name="Explain" xml:space="preserve">
     <value>Explain</value>
   </data>
+  <data name="Export" xml:space="preserve">
+    <value>Export…</value>
+  </data>
+  <data name="ExportFormat" xml:space="preserve">
+    <value>Export format</value>
+  </data>
+  <data name="ExportRowsSelected" xml:space="preserve">
+    <value>{0} row(s) selected</value>
+  </data>
+  <data name="ExportRowsAll" xml:space="preserve">
+    <value>{0} row(s), whole result</value>
+  </data>
+  <data name="ImportCsv" xml:space="preserve">
+    <value>Import CSV…</value>
+  </data>
+  <data name="ImportCsvTitle" xml:space="preserve">
+    <value>Import CSV</value>
+  </data>
+  <data name="ImportPreview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="ImportMapColumn" xml:space="preserve">
+    <value>Column mapping</value>
+  </data>
+  <data name="ImportSkip" xml:space="preserve">
+    <value>— skip —</value>
+  </data>
+  <data name="ImportRowCount" xml:space="preserve">
+    <value>{0} row(s) to import</value>
+  </data>
+  <data name="Import" xml:space="preserve">
+    <value>Import</value>
+  </data>
+  <data name="ImportOk" xml:space="preserve">
+    <value>Imported {0} row(s)</value>
+  </data>
 </root>

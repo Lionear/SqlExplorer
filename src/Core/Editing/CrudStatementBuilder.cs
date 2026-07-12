@@ -173,7 +173,8 @@ public static class CrudStatementBuilder
     // Grid edits arrive as strings; coerce them back to the column's CLR type so drivers
     // that type-check parameters (Postgres) accept them. SQLite is loosely typed and tolerates
     // either way. On a failed parse we pass the value through and let the driver report it.
-    private static object? Coerce(object? value, Type target)
+    // Public: CSV import needs the exact same string->CLR coercion for its own parameterised INSERTs.
+    public static object? Coerce(object? value, Type target)
     {
         if (value is null || target.IsInstanceOfType(value))
         {

@@ -8,6 +8,7 @@ using System.Text.Json;
 using Lionear.SqlExplorer.Core.Completion;
 using Lionear.SqlExplorer.Core.Connections;
 using Lionear.SqlExplorer.Core.Editing;
+using Lionear.SqlExplorer.Core.Export;
 using Lionear.SqlExplorer.Core.Formatting;
 using Lionear.SqlExplorer.Core.History;
 using Lionear.SqlExplorer.Core.Localization;
@@ -24,6 +25,23 @@ public enum DocumentMode
 {
     Query,
     Browse
+}
+
+/// <summary>Export text format — mirrors the three <see cref="ResultExporter"/> methods.</summary>
+public enum ExportFormat
+{
+    Csv,
+    Json,
+    Sql
+}
+
+/// <summary>One column's inline browse-filter box; empty <see cref="Value"/> means "no filter".</summary>
+public sealed partial class ColumnFilterEntry(string columnName) : ObservableObject
+{
+    public string ColumnName { get; } = columnName;
+
+    [ObservableProperty]
+    private string _value = string.Empty;
 }
 
 /// <summary>One tab in the multi-resultset strip: a display label ("Result 1 · 42 rows", "EXPLAIN")
@@ -107,6 +125,11 @@ public partial class DocumentViewModel : ViewModelBase
     // Browse-mode paging + filtering.
     [ObservableProperty]
     private string _filterText = string.Empty;
+
+    /// <summary>One inline filter box per browse-grid column (rebuilt only when the column set itself
+    /// changes, so typed values survive a page/sort reload). Combined with <see cref="FilterText"/> in
+    /// <see cref="LoadPageAsync"/>'s WHERE clause.</summary>
+    public ObservableCollection<ColumnFilterEntry> ColumnFilters { get; } = [];
 
     [ObservableProperty]
     private int _page;
@@ -197,6 +220,51 @@ public partial class DocumentViewModel : ViewModelBase
     public bool CanPrevPage => IsBrowseMode && Page > 0;
 
     public bool CanNextPage => IsBrowseMode && _lastRowCount == PageSize && PageSize > 0;
+
+    /// <summary>
+    /// Render the active result set as text. <paramref name="rows"/> exports just those rows
+    /// (the view passes the grid's current selection); null exports every row.
+    /// </summary>
+    public string BuildExportText(ExportFormat format, IReadOnlyList<EditableRow>? rows = null)
+    {
+        if (Editable is not { } editable)
+        {
+            return string.Empty;
+        }
+
+        var source = rows ?? editable.Rows;
+        var raw = source.Select(r => Enumerable.Range(0, editable.Columns.Count).Select(r.CurrentAt).ToArray());
+
+        return format switch
+        {
+            ExportFormat.Csv => ResultExporter.ToCsv(editable.Columns, raw),
+            ExportFormat.Json => ResultExporter.ToJson(editable.Columns, raw),
+            ExportFormat.Sql => ResultExporter.ToSqlInserts(editable.Columns, raw, _providers.Get(Connection.ProviderId).Dialect, Connection.ProviderId, ExportTableName(editable)),
+            _ => string.Empty
+        };
+    }
+
+    // A join/computed result has no single target table; fall back to a generic placeholder name
+    // rather than guessing wrong — same "known limitation" spirit as CrudStatementBuilder.IsWritable.
+    private string ExportTableName(EditableResultSet editable)
+    {
+        var dialect = _providers.Get(Connection.ProviderId).Dialect;
+        var bases = editable.Columns
+            .Where(c => c.BaseTable is not null)
+            .Select(c => (c.BaseSchema, c.BaseTable))
+            .Distinct()
+            .ToList();
+
+        if (bases.Count != 1)
+        {
+            return dialect.QuoteIdentifier("export");
+        }
+
+        var (schema, table) = bases[0];
+        return schema is { Length: > 0 }
+            ? $"{dialect.QuoteIdentifier(schema)}.{dialect.QuoteIdentifier(table!)}"
+            : dialect.QuoteIdentifier(table!);
+    }
 
     /// <summary>Set by the view so the document can show the generated SQL for review before saving.</summary>
     public Func<string, Task<bool>>? SaveReviewRequested { get; set; }
@@ -324,12 +392,30 @@ public partial class DocumentViewModel : ViewModelBase
             ? $"{dialect.QuoteIdentifier(schema)}.{dialect.QuoteIdentifier(_table)}"
             : dialect.QuoteIdentifier(_table);
 
-        var where = string.IsNullOrWhiteSpace(FilterText) ? string.Empty : $" WHERE {FilterText}";
+        var conditions = new List<string>();
+        if (!string.IsNullOrWhiteSpace(FilterText))
+        {
+            conditions.Add(FilterText);
+        }
+
+        foreach (var filter in ColumnFilters)
+        {
+            if (!string.IsNullOrWhiteSpace(filter.Value))
+            {
+                // Cast to text first: LIKE against a non-text column (uuid, int, bit, timestamp, …)
+                // fails outright on strict-typed engines like Postgres ("operator does not exist").
+                var column = TextCast(Connection.ProviderId, dialect.QuoteIdentifier(filter.ColumnName));
+                conditions.Add($"{column} LIKE '%{SqlLiteralFormatter.EscapeString(filter.Value)}%'");
+            }
+        }
+
+        var where = conditions.Count == 0 ? string.Empty : $" WHERE {string.Join(" AND ", conditions)}";
         var orderBy = _sortColumn is null
             ? null
             : $"{dialect.QuoteIdentifier(_sortColumn)} {(_sortDescending ? "DESC" : "ASC")}";
         var paged = dialect.Paginate($"SELECT * FROM {qualified}{where}", PageSize, Page * PageSize, orderBy);
         await ExecuteAsync(paged, ct);
+        SyncColumnFilters();
 
         var offset = Page * PageSize;
         RowRange = _lastRowCount == 0
@@ -337,6 +423,39 @@ public partial class DocumentViewModel : ViewModelBase
             : Loc.Get("RowRange", offset + 1, offset + _lastRowCount);
         PrevPageCommand.NotifyCanExecuteChanged();
         NextPageCommand.NotifyCanExecuteChanged();
+    }
+
+    // Universal-ish text cast for the per-column filter's LIKE — CAST target names aren't portable:
+    // MySQL's CAST has no VARCHAR target (only CHAR), and SQL Server's CAST(x AS VARCHAR) silently
+    // truncates to 30 chars without an explicit length. Postgres/SQLite both accept VARCHAR fine
+    // (SQLite infers TEXT affinity from any type name containing "CHAR").
+    private static string TextCast(string providerId, string quotedColumn) => providerId switch
+    {
+        "sqlserver" => $"CAST({quotedColumn} AS NVARCHAR(MAX))",
+        "mysql" => $"CAST({quotedColumn} AS CHAR)",
+        _ => $"CAST({quotedColumn} AS VARCHAR)"
+    };
+
+    // Rebuild the per-column filter boxes only when the column set actually changed (a different
+    // table) — reloading the same table (page nav, sort, Apply) must not wipe what the user typed.
+    private void SyncColumnFilters()
+    {
+        if (Editable is not { } editable)
+        {
+            return;
+        }
+
+        var baseColumns = editable.Columns.Where(c => c.BaseColumn is not null).Select(c => c.BaseColumn!).Distinct().ToList();
+        if (ColumnFilters.Select(f => f.ColumnName).SequenceEqual(baseColumns))
+        {
+            return;
+        }
+
+        ColumnFilters.Clear();
+        foreach (var column in baseColumns)
+        {
+            ColumnFilters.Add(new ColumnFilterEntry(column));
+        }
     }
 
     [RelayCommand]
