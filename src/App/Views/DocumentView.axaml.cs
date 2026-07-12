@@ -39,6 +39,7 @@ public partial class DocumentView : UserControl
         if (_resultsGrid is not null)
         {
             _resultsGrid.Sorting += OnGridSorting;
+            _resultsGrid.CellPointerPressed += OnCellPointerPressed;
         }
 
         DataContextChanged += OnDataContextChanged;
@@ -57,6 +58,21 @@ public partial class DocumentView : UserControl
         if (e.Column.Tag is string baseColumn)
         {
             await vm.SortByAsync(baseColumn);
+        }
+    }
+
+    // Clicking a cell shows its full value in the viewer panel (long text / JSON read comfortably).
+    private void OnCellPointerPressed(object? sender, DataGridCellPointerPressedEventArgs e)
+    {
+        if (_viewModel is null || sender is not DataGrid grid)
+        {
+            return;
+        }
+
+        var columnIndex = grid.Columns.IndexOf(e.Column);
+        if (e.Row.DataContext is EditableRow row && columnIndex >= 0 && columnIndex < row.Cells.Count)
+        {
+            _viewModel.ShowCell(columnIndex, row.Cells[columnIndex].Value);
         }
     }
 

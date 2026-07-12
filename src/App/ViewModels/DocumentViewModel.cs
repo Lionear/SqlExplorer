@@ -1,7 +1,9 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using Lionear.SqlExplorer.Core.Connections;
 using Lionear.SqlExplorer.Core.Editing;
 using Lionear.SqlExplorer.Core.Formatting;
@@ -77,6 +79,16 @@ public partial class DocumentViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _rowRange = string.Empty;
+
+    // Cell-viewer panel: full value of the last-clicked cell (JSON pretty-printed when parseable).
+    [ObservableProperty]
+    private bool _isCellViewerVisible;
+
+    [ObservableProperty]
+    private string? _selectedCellColumn;
+
+    [ObservableProperty]
+    private string? _selectedCellValue;
 
     public DocumentViewModel(
         IDbProviderRegistry providers,
@@ -277,6 +289,48 @@ public partial class DocumentViewModel : ViewModelBase
             Success = success,
             Error = error
         });
+
+    /// <summary>Show a clicked cell's full value in the viewer panel, resolving the column name by index.</summary>
+    public void ShowCell(int columnIndex, object? value)
+    {
+        SelectedCellColumn = Editable is { } editable && columnIndex >= 0 && columnIndex < editable.Columns.Count
+            ? editable.Columns[columnIndex].Name
+            : null;
+        SelectedCellValue = FormatCellValue(value);
+        IsCellViewerVisible = true;
+    }
+
+    [RelayCommand]
+    private void HideCellViewer() => IsCellViewerVisible = false;
+
+    // Render a cell value for the viewer: NULL for null, pretty-printed JSON when the text parses as an
+    // object/array, otherwise the raw string.
+    private static string FormatCellValue(object? value)
+    {
+        if (value is null or DBNull)
+        {
+            return "NULL";
+        }
+
+        var text = Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
+        var trimmed = text.TrimStart();
+        if (trimmed.StartsWith('{') || trimmed.StartsWith('['))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(text);
+                return JsonSerializer.Serialize(doc.RootElement, PrettyJson);
+            }
+            catch (JsonException)
+            {
+                // not actually JSON — fall through to raw text
+            }
+        }
+
+        return text;
+    }
+
+    private static readonly JsonSerializerOptions PrettyJson = new() { WriteIndented = true };
 
     private void SetResult(EditableResultSet editable)
     {
