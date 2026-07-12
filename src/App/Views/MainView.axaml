@@ -78,6 +78,10 @@
             <TreeView.ItemTemplate>
               <TreeDataTemplate ItemsSource="{Binding Children}">
                 <StackPanel Orientation="Horizontal" Spacing="6">
+                  <!-- Connection colour flag (prod = red): a coloured bar on the root when set. -->
+                  <Border Width="3" Height="14" CornerRadius="1.5" VerticalAlignment="Center"
+                          Background="{Binding ConnectionColorBrush}"
+                          IsVisible="{Binding HasConnectionColor}" />
                   <!-- Connection state LED (connection roots only): grey/blue/green/red. -->
                   <Panel Width="8" Height="8" VerticalAlignment="Center" IsVisible="{Binding IsConnectionNode}">
                     <Ellipse Width="8" Height="8"

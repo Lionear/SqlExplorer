@@ -104,6 +104,8 @@ public sealed class JsonConnectionStore : IConnectionStore
         Id = dto.Id,
         Name = dto.Name,
         ProviderId = dto.ProviderId ?? MigrateLegacyKind(dto.Kind),
+        Color = dto.Color,
+        ReadOnly = dto.ReadOnly,
         Values = dto.Values ?? new Dictionary<string, string?>()
     };
 
@@ -127,6 +129,8 @@ public sealed class JsonConnectionStore : IConnectionStore
         public string Name { get; init; } = string.Empty;
         public string? ProviderId { get; init; }
         public string? Kind { get; init; }
+        public string? Color { get; init; }
+        public bool ReadOnly { get; init; }
         public Dictionary<string, string?>? Values { get; init; }
     }
 }

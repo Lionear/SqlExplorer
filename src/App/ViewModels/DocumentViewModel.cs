@@ -97,9 +97,14 @@ public partial class DocumentViewModel : ViewModelBase
 
     public bool IsBrowseMode => Mode == DocumentMode.Browse;
 
-    public bool IsResultEditable => Editable?.IsEditable == true;
+    // A connection flagged read-only (safe mode) blocks the editable-grid save-flow entirely, even when
+    // the result would otherwise map back to a single keyed table — this guards against accidental writes
+    // (e.g. on production). Free DML typed in a query tab is out of scope for the MVP.
+    public bool IsResultEditable => Connection is not { ReadOnly: true } && Editable?.IsEditable == true;
 
-    public string? ReadOnlyReason => Editable?.ReadOnlyReason;
+    public string? ReadOnlyReason => Connection is { ReadOnly: true }
+        ? Loc["ReadOnlyConnection"]
+        : Editable?.ReadOnlyReason;
 
     public bool CanPrevPage => IsBrowseMode && Page > 0;
 

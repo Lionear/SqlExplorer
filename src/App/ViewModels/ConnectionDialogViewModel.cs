@@ -33,6 +33,18 @@ public partial class ConnectionDialogViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(DialogTitle))]
     private bool _isEditing;
 
+    /// <summary>Selected accent for this connection (hex, or null for none). Drives the tree flag.</summary>
+    [ObservableProperty]
+    private string? _color;
+
+    /// <summary>Safe mode: block the editable-grid save-flow for this connection.</summary>
+    [ObservableProperty]
+    private bool _readOnly;
+
+    // A small fixed palette + "none"; enough to flag prod/staging without a full colour picker.
+    private static readonly string?[] Palette =
+        [null, "#E5484D", "#F76B15", "#FFB224", "#30A46C", "#3574F0", "#8E4EC6"];
+
     public ConnectionDialogViewModel(ConnectionService connections, IDbProviderRegistry providers, ILocalizer localizer)
     {
         _connections = connections;
@@ -44,8 +56,25 @@ public partial class ConnectionDialogViewModel : ViewModelBase
             .OrderBy(o => o.DisplayName)
             .ToList();
         _selectedProvider = AvailableProviders.FirstOrDefault();
+        ColorOptions = Palette.Select(c => new ColorSwatch(c)).ToList();
+        OnColorChanged(_color);
         RebuildFields();
     }
+
+    /// <summary>The selectable colour swatches (first is "none").</summary>
+    public IReadOnlyList<ColorSwatch> ColorOptions { get; }
+
+    // Keep the swatch selection ring in sync with the chosen colour.
+    partial void OnColorChanged(string? value)
+    {
+        foreach (var swatch in ColorOptions)
+        {
+            swatch.IsSelected = string.Equals(swatch.Value, value, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [RelayCommand]
+    private void SelectColor(ColorSwatch? swatch) => Color = swatch?.Value;
 
     public ILocalizer Loc { get; }
 
@@ -67,6 +96,8 @@ public partial class ConnectionDialogViewModel : ViewModelBase
         _id = connection.Id;
         IsEditing = true;
         Name = connection.Name;
+        Color = connection.Color;
+        ReadOnly = connection.ReadOnly;
         SelectedProvider = AvailableProviders.FirstOrDefault(o => o.Id == connection.ProviderId) ?? SelectedProvider;
 
         // Ensure fields match the provider even if SelectedProvider didn't change, then overlay stored values
@@ -142,11 +173,20 @@ public partial class ConnectionDialogViewModel : ViewModelBase
     }
 
     /// <summary>Persist and return the saved connection (secrets go to the keychain).</summary>
-    public SavedConnection Save() => _connections.Save(_id, Name, SelectedProvider!.Id, Values());
+    public SavedConnection Save() => _connections.Save(_id, Name, SelectedProvider!.Id, Values(), Color, ReadOnly);
 }
 
 /// <summary>A selectable provider in the connection dialog: the manifest id plus its friendly label.</summary>
 public sealed record ProviderOption(string Id, string DisplayName)
 {
     public override string ToString() => DisplayName;
+}
+
+/// <summary>One colour choice in the connection dialog's swatch row (<see cref="Value"/> null = none).</summary>
+public sealed partial class ColorSwatch(string? value) : ObservableObject
+{
+    public string? Value { get; } = value;
+
+    [ObservableProperty]
+    private bool _isSelected;
 }

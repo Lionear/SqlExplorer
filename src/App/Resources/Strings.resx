@@ -144,4 +144,13 @@
   <data name="CopySuffix" xml:space="preserve">
     <value>(copy)</value>
   </data>
+  <data name="ConnectionColor" xml:space="preserve">
+    <value>Colour</value>
+  </data>
+  <data name="ReadOnlyMode" xml:space="preserve">
+    <value>Read-only (safe mode)</value>
+  </data>
+  <data name="ReadOnlyConnection" xml:space="preserve">
+    <value>This connection is read-only (safe mode).</value>
+  </data>
 </root>

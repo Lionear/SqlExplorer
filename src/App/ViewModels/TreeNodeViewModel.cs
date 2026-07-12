@@ -91,6 +91,14 @@ public partial class TreeNodeViewModel : ViewModelBase
 
     public bool IsConnectionNode => NodeKind is null && !IsPlaceholder;
 
+    /// <summary>Accent brush for a colour-flagged connection root (prod = red); null when unset/invalid.</summary>
+    public IBrush? ConnectionColorBrush =>
+        IsConnectionNode && Connection.Color is { } hex && Color.TryParse(hex, out var color)
+            ? new SolidColorBrush(color)
+            : null;
+
+    public bool HasConnectionColor => ConnectionColorBrush is not null;
+
     /// <summary>Connect is offered on a connection root that isn't currently connected.</summary>
     public bool CanConnect => IsConnectionNode && State != ConnectionState.Connected;
 

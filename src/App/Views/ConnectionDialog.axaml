@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="using:Lionear.SqlExplorer.App.Converters"
         x:Class="Lionear.SqlExplorer.App.Views.ConnectionDialog"
         Title="{Binding DialogTitle}"
         Width="460" SizeToContent="Height"
@@ -38,6 +39,34 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
+
+    <!-- Colour flag (prod = red) + safe read-only mode. -->
+    <TextBlock Text="{Binding Loc[ConnectionColor]}" Margin="0,4,0,0" />
+    <ItemsControl ItemsSource="{Binding ColorOptions}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <StackPanel Orientation="Horizontal" Spacing="6" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <Button Padding="0" Background="Transparent" BorderThickness="0"
+                  Command="{Binding $parent[ItemsControl].DataContext.SelectColorCommand}"
+                  CommandParameter="{Binding}">
+            <Panel Width="24" Height="24">
+              <Ellipse Width="20" Height="20"
+                       Fill="{Binding Value, Converter={x:Static conv:HexBrushConverter.Instance}}"
+                       Stroke="{DynamicResource CatHairlineBrush}" StrokeThickness="1" />
+              <Ellipse Width="24" Height="24" StrokeThickness="2"
+                       Stroke="{DynamicResource CatAccentBrush}"
+                       IsVisible="{Binding IsSelected}" />
+            </Panel>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <CheckBox IsChecked="{Binding ReadOnly}" Content="{Binding Loc[ReadOnlyMode]}" Margin="0,4,0,0" />
 
     <TextBlock Text="{Binding TestResult}" Foreground="{DynamicResource CatTextFaintBrush}" Margin="0,4,0,0" />
 

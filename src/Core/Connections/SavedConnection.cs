@@ -13,5 +13,13 @@ public sealed record SavedConnection
     /// <summary>Which provider this connection uses — the plugin manifest's <c>id</c> (e.g. "postgres").</summary>
     public required string ProviderId { get; init; }
 
+    /// <summary>Optional hex accent (e.g. <c>#E5484D</c>) to flag this connection in the tree (prod = red).
+    /// Null/absent = no colour. Purely cosmetic; back-compat with configs that predate it.</summary>
+    public string? Color { get; init; }
+
+    /// <summary>Safe mode: when true the editable-grid save-flow is blocked to prevent accidental writes
+    /// (e.g. on a production connection). Absent = false.</summary>
+    public bool ReadOnly { get; init; }
+
     public required IReadOnlyDictionary<string, string?> Values { get; init; }
 }
