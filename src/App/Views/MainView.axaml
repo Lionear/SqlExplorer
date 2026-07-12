@@ -200,7 +200,8 @@
     </Grid>
 
     <!-- Quick-open overlay (Ctrl+K / toolbar button): fuzzy search tables/views/columns across every
-         connected connection's cached schema snapshot (1.1). Enter/double-click opens a browse tab,
+         connected connection's cached schema snapshot, mixed with global app commands (New Query,
+         Export, …) on the same ranked list. Enter/double-click opens a browse tab or runs the command,
          Escape closes. -->
     <Border Grid.Row="1" IsVisible="{Binding IsSearchVisible}"
             Background="#80000000">

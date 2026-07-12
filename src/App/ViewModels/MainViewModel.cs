@@ -154,8 +154,30 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Quick-open ("go to table") hits for <see cref="SearchText"/>, newest ranked first.</summary>
-    public ObservableCollection<SchemaSearchResult> SearchResults { get; } = [];
+    /// <summary>Quick-open ("go to table" / run a command) hits for <see cref="SearchText"/>, best match first.</summary>
+    public ObservableCollection<IQuickOpenItem> SearchResults { get; } = [];
+
+    // Global, context-free actions surfaced in the same Ctrl+K overlay as schema objects. Destructive
+    // or tree-selection-dependent commands (Drop*, AddColumn, …) stay off this list — they already have
+    // their own confirm-dialog path from the tree, and blind-executing them from a text box invites
+    // mistakes. Rebuilt per search (cheap, a dozen items) rather than cached, so labels follow
+    // ToggleLanguage immediately instead of freezing at construction time.
+    private IEnumerable<CommandQuickOpenItem> QuickOpenCommands()
+    {
+        yield return new CommandQuickOpenItem(Loc["NewQueryTab"], "Command", () => NewQueryTabCommand.Execute(null));
+        yield return new CommandQuickOpenItem(Loc["History"], "Command", () => ToggleHistoryCommand.Execute(null));
+        yield return new CommandQuickOpenItem(Loc["ClearHistory"], "Command", () => ClearHistoryCommand.Execute(null));
+        yield return new CommandQuickOpenItem(Loc["Language"], "Command", () => ToggleLanguageCommand.Execute(null));
+        yield return new CommandQuickOpenItem(Loc["NewConnection"], "Command", () => NewConnectionCommand.Execute(null));
+        yield return new CommandQuickOpenItem(Loc["Connect"], "Command", () => ConnectCommand.Execute(null));
+        yield return new CommandQuickOpenItem(Loc["Disconnect"], "Command", () => DisconnectCommand.Execute(null));
+        yield return new CommandQuickOpenItem(Loc["Run"], "Command", () => RunActiveDocumentCommand.Execute(null));
+        yield return new CommandQuickOpenItem(Loc["RunAtCursor"], "Command", () => RunActiveDocumentAtCursorCommand.Execute(null));
+        yield return new CommandQuickOpenItem(Loc["Browse"], "Command", () => BrowseTableCommand.Execute(null));
+        yield return new CommandQuickOpenItem(Loc["Export"], "Command", () => ExportTableCommand.Execute(null));
+        yield return new CommandQuickOpenItem(Loc["ImportCsv"], "Command", () => ImportCsvCommand.Execute(null));
+        yield return new CommandQuickOpenItem(Loc["CopyName"], "Command", () => CopyNameCommand.Execute(null));
+    }
 
     [RelayCommand]
     private void ToggleSearch()
@@ -191,7 +213,7 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        var hits = new List<(int Rank, SchemaSearchResult Result)>();
+        var hits = new List<(int Rank, IQuickOpenItem Result)>();
         foreach (var connection in _connections.List())
         {
             var snapshot = _schemaCache.Get(connection.Id);
@@ -217,16 +239,27 @@ public partial class MainViewModel : ViewModelBase
             }
         }
 
+        // Commands rank alongside schema objects on the same fuzzy score, so typing "export" surfaces
+        // the Export command ahead of any table that merely contains "export" in its name.
+        foreach (var command in QuickOpenCommands())
+        {
+            if (SchemaSearch.TryRank(command.Display, query, out var rank))
+            {
+                hits.Add((rank, command));
+            }
+        }
+
         foreach (var hit in hits.OrderBy(h => h.Rank).ThenBy(h => h.Result.Display, StringComparer.OrdinalIgnoreCase).Take(50))
         {
             SearchResults.Add(hit.Result);
         }
     }
 
-    // Quick-open result picked: jump straight to a browse tab (no tree-reveal — the tree is lazily
-    // loaded per-node, so re-walking ancestors to select a node deep in it isn't worth it for MVP).
+    // Quick-open result picked: a schema object jumps straight to a browse tab (no tree-reveal — the
+    // tree is lazily loaded per-node, so re-walking ancestors to select a node deep in it isn't worth
+    // it for MVP); a command runs directly.
     [RelayCommand]
-    private async Task OpenSearchResultAsync(SchemaSearchResult? result, CancellationToken ct)
+    private async Task OpenSearchResultAsync(IQuickOpenItem? result, CancellationToken ct)
     {
         if (result is null)
         {
@@ -235,7 +268,16 @@ public partial class MainViewModel : ViewModelBase
 
         IsSearchVisible = false;
         SearchText = string.Empty;
-        await OpenBrowseTabAsync(result.Connection, result.Database, result.Schema, result.Name, ct);
+
+        switch (result)
+        {
+            case SchemaSearchResult schemaResult:
+                await OpenBrowseTabAsync(schemaResult.Connection, schemaResult.Database, schemaResult.Schema, schemaResult.Name, ct);
+                break;
+            case CommandQuickOpenItem command:
+                command.Execute();
+                break;
+        }
     }
 
     public ILocalizer Loc { get; }

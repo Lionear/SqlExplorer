@@ -160,7 +160,7 @@
     <value>Ga naar…</value>
   </data>
   <data name="SearchObjects" xml:space="preserve">
-    <value>Zoek tabellen, views, kolommen…</value>
+    <value>Zoek tabellen, views, kolommen of voer een commando uit…</value>
   </data>
   <data name="SearchHistory" xml:space="preserve">
     <value>Zoek in historie…</value>

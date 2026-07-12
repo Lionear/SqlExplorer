@@ -160,7 +160,7 @@
     <value>Go to…</value>
   </data>
   <data name="SearchObjects" xml:space="preserve">
-    <value>Search tables, views, columns…</value>
+    <value>Search tables, views, columns, or run a command…</value>
   </data>
   <data name="SearchHistory" xml:space="preserve">
     <value>Search history…</value>

@@ -90,7 +90,7 @@ public partial class MainView : UserControl
     // Double-click a quick-open hit: open its browse tab.
     private void OnSearchResultDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is ListBox { SelectedItem: SchemaSearchResult result }
+        if (sender is ListBox { SelectedItem: IQuickOpenItem result }
             && _viewModel?.OpenSearchResultCommand.CanExecute(result) == true)
         {
             _viewModel.OpenSearchResultCommand.Execute(result);
@@ -113,7 +113,7 @@ public partial class MainView : UserControl
         else if (e.Key == Key.Enter)
         {
             var searchResultsList = this.FindControl<ListBox>("SearchResultsList");
-            var result = searchResultsList?.SelectedItem as SchemaSearchResult ?? _viewModel.SearchResults.FirstOrDefault();
+            var result = searchResultsList?.SelectedItem as IQuickOpenItem ?? _viewModel.SearchResults.FirstOrDefault();
             if (result is not null && _viewModel.OpenSearchResultCommand.CanExecute(result))
             {
                 _viewModel.OpenSearchResultCommand.Execute(result);
