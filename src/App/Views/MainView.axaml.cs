@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Lionear.SqlExplorer.App.ViewModels;
 using Lionear.SqlExplorer.Core.Connections;
+using Lionear.SqlExplorer.Core.History;
 
 namespace Lionear.SqlExplorer.App.Views;
 
@@ -18,6 +19,12 @@ public partial class MainView : UserControl
         if (schemaTree is not null)
         {
             schemaTree.DoubleTapped += OnTreeDoubleTapped;
+        }
+
+        var historyList = this.FindControl<ListBox>("HistoryList");
+        if (historyList is not null)
+        {
+            historyList.DoubleTapped += OnHistoryDoubleTapped;
         }
 
         DataContextChanged += OnDataContextChanged;
@@ -50,6 +57,16 @@ public partial class MainView : UserControl
         else if (node.IsTableOrView && _viewModel.BrowseTableCommand.CanExecute(null))
         {
             _viewModel.BrowseTableCommand.Execute(null);
+        }
+    }
+
+    // Double-click a history row: re-run its SQL in a new query tab.
+    private void OnHistoryDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is ListBox { SelectedItem: QueryHistoryEntry entry }
+            && _viewModel?.OpenHistoryEntryCommand.CanExecute(entry) == true)
+        {
+            _viewModel.OpenHistoryEntryCommand.Execute(entry);
         }
     }
 

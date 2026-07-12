@@ -3,9 +3,11 @@ using System.Globalization;
 using System.IO;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using Lionear.SqlExplorer.Core.Connections;
 using Lionear.SqlExplorer.Core.Editing;
 using Lionear.SqlExplorer.Core.Formatting;
+using Lionear.SqlExplorer.Core.History;
 using Lionear.SqlExplorer.Core.Localization;
 using Lionear.SqlExplorer.Core.Providers;
 using Lionear.SqlExplorer.Sdk;
@@ -24,6 +26,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly IDbProviderRegistry _providers;
     private readonly ISqlFormatter _formatter;
     private readonly ConnectionService _connections;
+    private readonly IQueryHistoryStore _history;
     private readonly Func<ConnectionDialogViewModel> _dialogFactory;
 
     // Selected tree node drives the active connection: any node knows its owning connection.
@@ -39,20 +42,94 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private string _status = string.Empty;
 
+    [ObservableProperty]
+    private bool _isHistoryVisible;
+
+    [ObservableProperty]
+    private string _historySearch = string.Empty;
+
     public MainViewModel(
         IDbProviderRegistry providers,
         ISqlFormatter formatter,
         ConnectionService connections,
+        IQueryHistoryStore history,
         Func<ConnectionDialogViewModel> dialogFactory,
         ILocalizer localizer)
     {
         _providers = providers;
         _formatter = formatter;
         _connections = connections;
+        _history = history;
         _dialogFactory = dialogFactory;
         Loc = localizer;
 
+        _history.Changed += OnHistoryChanged;
         RefreshConnections();
+    }
+
+    /// <summary>Query-history rows shown in the (toggleable) history panel, newest first.</summary>
+    public ObservableCollection<QueryHistoryEntry> HistoryEntries { get; } = [];
+
+    [RelayCommand]
+    private void ToggleHistory()
+    {
+        IsHistoryVisible = !IsHistoryVisible;
+        if (IsHistoryVisible)
+        {
+            RefreshHistory();
+        }
+    }
+
+    [RelayCommand]
+    private void ClearHistory() => _history.Clear();
+
+    // Re-run a history entry: drop its SQL into a fresh query tab on its own connection (or the current
+    // one if that connection is gone).
+    [RelayCommand]
+    private void OpenHistoryEntry(QueryHistoryEntry? entry)
+    {
+        if (entry is null)
+        {
+            return;
+        }
+
+        var connection = _connections.List().FirstOrDefault(c => c.Id == entry.ConnectionId)
+            ?? SelectedConnection
+            ?? _connections.List().FirstOrDefault();
+        if (connection is null)
+        {
+            return;
+        }
+
+        var document = NewDocument();
+        document.InitQuery(connection);
+        document.Sql = entry.Sql;
+        AddDocument(document);
+    }
+
+    partial void OnHistorySearchChanged(string value)
+    {
+        if (IsHistoryVisible)
+        {
+            RefreshHistory();
+        }
+    }
+
+    private void OnHistoryChanged()
+    {
+        if (IsHistoryVisible)
+        {
+            Dispatcher.UIThread.Post(RefreshHistory);
+        }
+    }
+
+    private void RefreshHistory()
+    {
+        HistoryEntries.Clear();
+        foreach (var entry in _history.Search(HistorySearch).Take(200))
+        {
+            HistoryEntries.Add(entry);
+        }
     }
 
     public ILocalizer Loc { get; }
@@ -406,7 +483,7 @@ public partial class MainViewModel : ViewModelBase
         Loc.SetCulture(next);
     }
 
-    private DocumentViewModel NewDocument() => new(_providers, _connections, _formatter, Loc);
+    private DocumentViewModel NewDocument() => new(_providers, _connections, _formatter, _history, Loc);
 
     private void AddDocument(DocumentViewModel document)
     {

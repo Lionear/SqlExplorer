@@ -1,9 +1,11 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Text;
 using Lionear.SqlExplorer.Core.Connections;
 using Lionear.SqlExplorer.Core.Editing;
 using Lionear.SqlExplorer.Core.Formatting;
+using Lionear.SqlExplorer.Core.History;
 using Lionear.SqlExplorer.Core.Localization;
 using Lionear.SqlExplorer.Core.Providers;
 using Lionear.SqlExplorer.Sdk;
@@ -29,6 +31,7 @@ public partial class DocumentViewModel : ViewModelBase
     private readonly IDbProviderRegistry _providers;
     private readonly ConnectionService _connections;
     private readonly ISqlFormatter _formatter;
+    private readonly IQueryHistoryStore _history;
 
     private string? _database;
     private string? _schema;
@@ -79,11 +82,13 @@ public partial class DocumentViewModel : ViewModelBase
         IDbProviderRegistry providers,
         ConnectionService connections,
         ISqlFormatter formatter,
+        IQueryHistoryStore history,
         ILocalizer localizer)
     {
         _providers = providers;
         _connections = connections;
         _formatter = formatter;
+        _history = history;
         Loc = localizer;
     }
 
@@ -229,22 +234,49 @@ public partial class DocumentViewModel : ViewModelBase
         Sql = _formatter.Format(Sql, dialect, SqlFormatOptions.Default);
     }
 
-    // Shared execution path for both a typed query and a browse page.
+    // Shared execution path for both a typed query and a browse page. Only typed queries are logged to
+    // history — browse paging (same path, IsBrowseMode) would just clutter it.
     private async Task ExecuteAsync(string sql, CancellationToken ct)
     {
+        var stopwatch = Stopwatch.StartNew();
         try
         {
             var profile = _connections.Resolve(Connection, _database);
             var result = await _providers.Get(Connection.ProviderId).ExecuteQueryAsync(profile, sql, ct);
+            stopwatch.Stop();
             _lastRowCount = result.Rows.Count;
             SetResult(EditableResultSet.From(result));
             Status = Loc.Get("StatusRows", result.Rows.Count, result.Elapsed.TotalMilliseconds);
+            if (IsQueryMode)
+            {
+                AppendHistory(sql, QueryHistoryKind.Query, stopwatch.ElapsedMilliseconds, result.Rows.Count, success: true, error: null);
+            }
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
             Status = ex.Message;
+            if (IsQueryMode)
+            {
+                AppendHistory(sql, QueryHistoryKind.Query, stopwatch.ElapsedMilliseconds, 0, success: false, error: ex.Message);
+            }
         }
     }
+
+    private void AppendHistory(string sql, QueryHistoryKind kind, long durationMs, int rowCount, bool success, string? error) =>
+        _history.Append(new QueryHistoryEntry
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            TimestampUtc = DateTime.UtcNow,
+            ConnectionId = Connection.Id,
+            ConnectionName = Connection.Name,
+            Kind = kind,
+            Sql = sql,
+            DurationMs = durationMs,
+            RowCount = rowCount,
+            Success = success,
+            Error = error
+        });
 
     private void SetResult(EditableResultSet editable)
     {
@@ -338,22 +370,28 @@ public partial class DocumentViewModel : ViewModelBase
             return;
         }
 
-        if (!await SaveReviewRequested(BuildPreview(statements)))
+        var preview = BuildPreview(statements);
+        if (!await SaveReviewRequested(preview))
         {
             return;
         }
 
+        var stopwatch = Stopwatch.StartNew();
         try
         {
             var profile = _connections.Resolve(Connection, _database);
             var affected = await _providers.Get(Connection.ProviderId).ExecuteBatchAsync(profile, statements, ct);
+            stopwatch.Stop();
             // Re-read so DB-assigned values (auto-increment ids, defaults) and a clean baseline show up.
             await ReloadAsync(ct);
             Status = Loc.Get("SaveOk", affected);
+            AppendHistory(preview, QueryHistoryKind.Save, stopwatch.ElapsedMilliseconds, affected, success: true, error: null);
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
             Status = ex.Message;
+            AppendHistory(preview, QueryHistoryKind.Save, stopwatch.ElapsedMilliseconds, 0, success: false, error: ex.Message);
         }
     }
 

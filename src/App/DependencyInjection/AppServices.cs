@@ -2,6 +2,7 @@ using Lionear.SqlExplorer.App.Localization;
 using Lionear.SqlExplorer.App.ViewModels;
 using Lionear.SqlExplorer.Core.Connections;
 using Lionear.SqlExplorer.Core.Formatting;
+using Lionear.SqlExplorer.Core.History;
 using Lionear.SqlExplorer.Core.Localization;
 using Lionear.SqlExplorer.Core.Plugins;
 using Lionear.SqlExplorer.Core.Providers;
@@ -50,6 +51,9 @@ public static class AppServices
 
         // UI preferences (window geometry, sidebar width) alongside connections.json.
         services.AddSingleton<IAppSettingsStore>(new JsonAppSettingsStore());
+
+        // Query history (searchable, re-runnable) beside connections.json.
+        services.AddSingleton<IQueryHistoryStore>(new JsonQueryHistoryStore());
         services.AddSingleton<ConnectionService>();
 
         services.AddTransient<ConnectionDialogViewModel>();

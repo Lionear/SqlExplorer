@@ -10,19 +10,24 @@
     <Border Grid.Row="0" Background="{DynamicResource CatToolbarBgBrush}"
             BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="Auto,*,Auto" Margin="8,6">
-        <Button Grid.Column="0" Classes="Accent"
-                Content="{Binding Loc[NewQueryTab]}" Command="{Binding NewQueryTabCommand}" />
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+          <Button Classes="Accent"
+                  Content="{Binding Loc[NewQueryTab]}" Command="{Binding NewQueryTabCommand}" />
+          <Button Classes="Subtle"
+                  Content="{Binding Loc[History]}" Command="{Binding ToggleHistoryCommand}" />
+        </StackPanel>
         <Button Grid.Column="2" Classes="Subtle"
                 Content="{Binding Loc[Language]}" Command="{Binding ToggleLanguageCommand}" />
       </Grid>
     </Border>
 
-    <!-- Body: connection sidebar | editor tabs -->
+    <!-- Body: connection sidebar | editor tabs | (optional) history panel -->
     <Grid Grid.Row="1" x:Name="BodyGrid">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="280" MinWidth="180" />
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
 
       <!-- Left sidebar: one unified tree (DBeaver-style), loaded lazily on expand. -->
@@ -131,6 +136,43 @@
                    Text="{Binding Loc[EmptyHint]}"
                    IsVisible="{Binding SelectedDocument, Converter={x:Static conv:ObjectConverters.IsNull}}" />
       </Panel>
+
+      <!-- History panel (toggled from the toolbar): search + list, double-click re-runs into a query tab. -->
+      <Border Grid.Column="3" Width="300" IsVisible="{Binding IsHistoryVisible}"
+              Background="{DynamicResource CatPanelBgBrush}"
+              BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1,0,0,0">
+        <Grid RowDefinitions="Auto,Auto,*">
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="10,8,8,6">
+            <TextBlock Grid.Column="0" Text="{Binding Loc[History]}" FontWeight="SemiBold" FontSize="12"
+                       Foreground="{DynamicResource CatTextSecondaryBrush}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="Subtle" Padding="8,2"
+                    Content="{Binding Loc[ClearHistory]}" Command="{Binding ClearHistoryCommand}" />
+          </Grid>
+          <TextBox Grid.Row="1" Margin="10,0,10,6" Text="{Binding HistorySearch}"
+                   PlaceholderText="{Binding Loc[SearchHistory]}" />
+          <ListBox Grid.Row="2" x:Name="HistoryList" Background="Transparent"
+                   ItemsSource="{Binding HistoryEntries}">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Spacing="1" Margin="0,2">
+                  <TextBlock Text="{Binding Sql}" TextWrapping="Wrap" MaxLines="2"
+                             TextTrimming="CharacterEllipsis" FontSize="12"
+                             FontFamily="Cascadia Code,Consolas,Menlo,monospace" />
+                  <TextBlock FontSize="10" Foreground="{DynamicResource CatTextFaintBrush}">
+                    <TextBlock.Text>
+                      <MultiBinding StringFormat="{}{0} · {1} rows · {2} ms">
+                        <Binding Path="ConnectionName" />
+                        <Binding Path="RowCount" />
+                        <Binding Path="DurationMs" />
+                      </MultiBinding>
+                    </TextBlock.Text>
+                  </TextBlock>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
     </Grid>
 
     <!-- Bottom status bar: connection state dot + active connection + last status message. -->

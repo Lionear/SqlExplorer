@@ -153,4 +153,13 @@
   <data name="ReadOnlyConnection" xml:space="preserve">
     <value>This connection is read-only (safe mode).</value>
   </data>
+  <data name="History" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="SearchHistory" xml:space="preserve">
+    <value>Search history…</value>
+  </data>
+  <data name="ClearHistory" xml:space="preserve">
+    <value>Clear</value>
+  </data>
 </root>
