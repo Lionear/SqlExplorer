@@ -3,9 +3,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Data;
+using Avalonia.Input;
 using Avalonia.Layout;
 using AvaloniaEdit;
+using AvaloniaEdit.CodeCompletion;
 using AvaloniaEdit.Highlighting;
+using Lionear.SqlExplorer.App.Completion;
 using Lionear.SqlExplorer.App.Converters;
 using Lionear.SqlExplorer.App.ViewModels;
 using Lionear.SqlExplorer.Core.Editing;
@@ -24,6 +27,7 @@ public partial class DocumentView : UserControl
     private DataGrid? _resultsGrid;
     private bool _syncingSql;
     private int _currentColumnIndex;
+    private CompletionWindow? _completionWindow;
 
     public DocumentView()
     {
@@ -34,6 +38,8 @@ public partial class DocumentView : UserControl
         {
             _sqlEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("TSQL");
             _sqlEditor.TextChanged += OnEditorTextChanged;
+            _sqlEditor.TextArea.TextEntered += OnSqlTextEntered;
+            _sqlEditor.KeyDown += OnSqlEditorKeyDown;
         }
 
         _resultsGrid = this.FindControl<DataGrid>("ResultsGrid");
@@ -175,6 +181,51 @@ public partial class DocumentView : UserControl
         _syncingSql = true;
         _viewModel.Sql = _sqlEditor.Text;
         _syncingSql = false;
+    }
+
+    // Auto-trigger completion right after typing "." — the common alias.column moment.
+    private void OnSqlTextEntered(object? sender, TextInputEventArgs e)
+    {
+        if (e.Text == ".")
+        {
+            OpenCompletion();
+        }
+    }
+
+    // Ctrl+Space explicitly requests completion anywhere in the query.
+    private void OnSqlEditorKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.Control)
+        {
+            OpenCompletion();
+            e.Handled = true;
+        }
+    }
+
+    // Schema-aware completion (1.3): the VM ranks tables/columns/keywords for the current caret
+    // context (Core/Completion/SqlCompletionProvider), this just renders them in AvaloniaEdit's
+    // built-in popup and lets it handle the replacement on accept.
+    private void OpenCompletion()
+    {
+        if (_viewModel is not { IsQueryMode: true } || _sqlEditor is null)
+        {
+            return;
+        }
+
+        var result = _viewModel.GetCompletions(_sqlEditor.Text, _sqlEditor.CaretOffset);
+        if (result.Items.Count == 0)
+        {
+            return;
+        }
+
+        _completionWindow = new CompletionWindow(_sqlEditor.TextArea) { StartOffset = result.ReplaceStart };
+        foreach (var item in result.Items)
+        {
+            _completionWindow.CompletionList.CompletionData.Add(new SqlCompletionData(item));
+        }
+
+        _completionWindow.Show();
+        _completionWindow.Closed += (_, _) => _completionWindow = null;
     }
 
     // Arbitrary result sets need dynamic columns; each cell binds two-way to its EditableCell.Value,

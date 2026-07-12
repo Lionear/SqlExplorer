@@ -614,7 +614,7 @@ public partial class MainViewModel : ViewModelBase
         Loc.SetCulture(next);
     }
 
-    private DocumentViewModel NewDocument() => new(_providers, _connections, _formatter, _history, Loc);
+    private DocumentViewModel NewDocument() => new(_providers, _connections, _formatter, _history, _schemaCache, Loc);
 
     private void AddDocument(DocumentViewModel document)
     {

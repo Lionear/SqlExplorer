@@ -4,12 +4,14 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Lionear.SqlExplorer.Core.Completion;
 using Lionear.SqlExplorer.Core.Connections;
 using Lionear.SqlExplorer.Core.Editing;
 using Lionear.SqlExplorer.Core.Formatting;
 using Lionear.SqlExplorer.Core.History;
 using Lionear.SqlExplorer.Core.Localization;
 using Lionear.SqlExplorer.Core.Providers;
+using Lionear.SqlExplorer.Core.Schema;
 using Lionear.SqlExplorer.Sdk;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -34,6 +36,7 @@ public partial class DocumentViewModel : ViewModelBase
     private readonly ConnectionService _connections;
     private readonly ISqlFormatter _formatter;
     private readonly IQueryHistoryStore _history;
+    private readonly ISchemaCache _schemaCache;
 
     private string? _database;
     private string? _schema;
@@ -99,13 +102,24 @@ public partial class DocumentViewModel : ViewModelBase
         ConnectionService connections,
         ISqlFormatter formatter,
         IQueryHistoryStore history,
+        ISchemaCache schemaCache,
         ILocalizer localizer)
     {
         _providers = providers;
         _connections = connections;
         _formatter = formatter;
         _history = history;
+        _schemaCache = schemaCache;
         Loc = localizer;
+    }
+
+    /// <summary>Quick-open-ranked completions (1.3) for the SQL text at <paramref name="caret"/>: alias
+    /// columns after "alias.", tables after FROM/JOIN, a broad table+column+keyword mix elsewhere.</summary>
+    public CompletionResult GetCompletions(string sql, int caret)
+    {
+        var dialect = _providers.Get(Connection.ProviderId).Dialect;
+        var snapshot = _schemaCache.Get(Connection.Id) ?? SchemaSnapshot.Empty;
+        return SqlCompletionProvider.Suggest(sql, caret, snapshot, dialect.Keywords);
     }
 
     public ILocalizer Loc { get; }
