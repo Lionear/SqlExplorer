@@ -156,6 +156,12 @@
   <data name="History" xml:space="preserve">
     <value>Historie</value>
   </data>
+  <data name="GoToObject" xml:space="preserve">
+    <value>Ga naar…</value>
+  </data>
+  <data name="SearchObjects" xml:space="preserve">
+    <value>Zoek tabellen, views, kolommen…</value>
+  </data>
   <data name="SearchHistory" xml:space="preserve">
     <value>Zoek in historie…</value>
   </data>

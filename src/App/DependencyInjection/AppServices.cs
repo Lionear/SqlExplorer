@@ -6,6 +6,7 @@ using Lionear.SqlExplorer.Core.History;
 using Lionear.SqlExplorer.Core.Localization;
 using Lionear.SqlExplorer.Core.Plugins;
 using Lionear.SqlExplorer.Core.Providers;
+using Lionear.SqlExplorer.Core.Schema;
 using Lionear.SqlExplorer.Core.Settings;
 using Lionear.SqlExplorer.Infrastructure.Persistence;
 using Lionear.SqlExplorer.Infrastructure.Secrets;
@@ -55,6 +56,10 @@ public static class AppServices
         // Query history (searchable, re-runnable) beside connections.json.
         services.AddSingleton<IQueryHistoryStore>(new JsonQueryHistoryStore());
         services.AddSingleton<ConnectionService>();
+
+        // Per-connection schema snapshot (tables/views/columns), built by walking the lazy tree at
+        // connect. Powers object-search and schema-aware completion.
+        services.AddSingleton<ISchemaCache, SchemaCache>();
 
         services.AddTransient<ConnectionDialogViewModel>();
         services.AddSingleton<Func<ConnectionDialogViewModel>>(sp => sp.GetRequiredService<ConnectionDialogViewModel>);

@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
-using System.IO;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -10,6 +10,7 @@ using Lionear.SqlExplorer.Core.Formatting;
 using Lionear.SqlExplorer.Core.History;
 using Lionear.SqlExplorer.Core.Localization;
 using Lionear.SqlExplorer.Core.Providers;
+using Lionear.SqlExplorer.Core.Schema;
 using Lionear.SqlExplorer.Sdk;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -27,6 +28,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly ISqlFormatter _formatter;
     private readonly ConnectionService _connections;
     private readonly IQueryHistoryStore _history;
+    private readonly ISchemaCache _schemaCache;
     private readonly Func<ConnectionDialogViewModel> _dialogFactory;
 
     // Selected tree node drives the active connection: any node knows its owning connection.
@@ -48,11 +50,18 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private string _historySearch = string.Empty;
 
+    [ObservableProperty]
+    private bool _isSearchVisible;
+
+    [ObservableProperty]
+    private string _searchText = string.Empty;
+
     public MainViewModel(
         IDbProviderRegistry providers,
         ISqlFormatter formatter,
         ConnectionService connections,
         IQueryHistoryStore history,
+        ISchemaCache schemaCache,
         Func<ConnectionDialogViewModel> dialogFactory,
         ILocalizer localizer)
     {
@@ -60,6 +69,7 @@ public partial class MainViewModel : ViewModelBase
         _formatter = formatter;
         _connections = connections;
         _history = history;
+        _schemaCache = schemaCache;
         _dialogFactory = dialogFactory;
         Loc = localizer;
 
@@ -132,6 +142,81 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Quick-open ("go to table") hits for <see cref="SearchText"/>, newest ranked first.</summary>
+    public ObservableCollection<SchemaSearchResult> SearchResults { get; } = [];
+
+    [RelayCommand]
+    private void ToggleSearch()
+    {
+        IsSearchVisible = !IsSearchVisible;
+        if (!IsSearchVisible)
+        {
+            SearchText = string.Empty;
+        }
+    }
+
+    partial void OnSearchTextChanged(string value) => RefreshSearchResults();
+
+    // Fuzzy quick-open across every connection's cached snapshot (1.1): a table/view whose qualified
+    // name or one of its columns matches. Connections without a snapshot yet (never connected, or
+    // still walking) simply contribute nothing rather than blocking the search.
+    private void RefreshSearchResults()
+    {
+        SearchResults.Clear();
+
+        var query = SearchText.Trim();
+        if (query.Length == 0)
+        {
+            return;
+        }
+
+        var hits = new List<(int Rank, SchemaSearchResult Result)>();
+        foreach (var connection in _connections.List())
+        {
+            var snapshot = _schemaCache.Get(connection.Id);
+            if (snapshot is null)
+            {
+                continue;
+            }
+
+            foreach (var obj in snapshot.Objects)
+            {
+                if (SchemaSearch.TryRank(obj.QualifiedName, query, out var rank))
+                {
+                    hits.Add((rank, new SchemaSearchResult(connection, obj, null)));
+                    continue;
+                }
+
+                var column = obj.Columns.FirstOrDefault(c => SchemaSearch.TryRank(c.Name, query, out _));
+                if (column is not null)
+                {
+                    SchemaSearch.TryRank(column.Name, query, out var columnRank);
+                    hits.Add((columnRank + 10, new SchemaSearchResult(connection, obj, column.Name)));
+                }
+            }
+        }
+
+        foreach (var hit in hits.OrderBy(h => h.Rank).ThenBy(h => h.Result.Display, StringComparer.OrdinalIgnoreCase).Take(50))
+        {
+            SearchResults.Add(hit.Result);
+        }
+    }
+
+    // Quick-open result picked: jump straight to a browse tab (no tree-reveal — the tree is lazily
+    // loaded per-node, so re-walking ancestors to select a node deep in it isn't worth it for MVP).
+    [RelayCommand]
+    private async Task OpenSearchResultAsync(SchemaSearchResult? result, CancellationToken ct)
+    {
+        if (result is null)
+        {
+            return;
+        }
+
+        IsSearchVisible = false;
+        SearchText = string.Empty;
+        await OpenBrowseTabAsync(result.Connection, result.Database, result.Schema, result.Name, ct);
+    }
+
     public ILocalizer Loc { get; }
 
     /// <summary>The sidebar tree: one root node per saved connection, children loaded lazily.</summary>
@@ -161,8 +246,46 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    private TreeNodeViewModel BuildConnectionNode(SavedConnection connection) =>
-        TreeNodeViewModel.ForConnection(connection, ResolveIconImage(connection.ProviderId), LoadNodeChildrenAsync);
+    private TreeNodeViewModel BuildConnectionNode(SavedConnection connection)
+    {
+        var node = TreeNodeViewModel.ForConnection(connection, ResolveIconImage(connection.ProviderId), LoadNodeChildrenAsync);
+        // Drive the schema cache off the root's connection state: build once it reaches Connected
+        // (via the Connect command or a manual expand), drop it again on disconnect/error.
+        node.PropertyChanged += OnConnectionNodeStateChanged;
+        return node;
+    }
+
+    private void OnConnectionNodeStateChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(TreeNodeViewModel.State) || sender is not TreeNodeViewModel node)
+        {
+            return;
+        }
+
+        switch (node.State)
+        {
+            case ConnectionState.Connected:
+                RebuildSchemaCache(node.Connection);
+                break;
+            case ConnectionState.Disconnected or ConnectionState.Error:
+                _schemaCache.Invalidate(node.Connection.Id);
+                break;
+        }
+    }
+
+    // Fire-and-forget background walk; best-effort, so a failed build just leaves search/completion
+    // without this connection rather than surfacing an error.
+    private async void RebuildSchemaCache(SavedConnection connection)
+    {
+        try
+        {
+            await _schemaCache.BuildAsync(connection);
+        }
+        catch
+        {
+            // ignored — snapshot stays absent for this connection
+        }
+    }
 
     // Add a new connection node, or replace an edited one in place, leaving every OTHER node's
     // expand/loaded state untouched. A replaced (edited) node resets its own subtree, since its
@@ -306,6 +429,7 @@ public partial class MainViewModel : ViewModelBase
 
         var id = SelectedConnection.Id;
         _connections.Delete(id);
+        _schemaCache.Invalidate(id);
         RemoveConnectionNode(id);
     }
 
@@ -375,7 +499,14 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        var existing = Documents.FirstOrDefault(d => d.MatchesBrowse(node.Connection.Id, node.DatabaseName, node.SchemaName, node.Name));
+        await OpenBrowseTabAsync(node.Connection, node.DatabaseName, node.SchemaName, node.Name, ct);
+    }
+
+    // Shared by the tree's browse action and quick-open (1.2): focus the existing tab for this
+    // table/view if one is already open, otherwise open and load a fresh one.
+    private async Task OpenBrowseTabAsync(SavedConnection connection, string? database, string? schema, string table, CancellationToken ct)
+    {
+        var existing = Documents.FirstOrDefault(d => d.MatchesBrowse(connection.Id, database, schema, table));
         if (existing is not null)
         {
             SelectedDocument = existing;
@@ -383,7 +514,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         var document = NewDocument();
-        document.InitBrowse(node.Connection, node.DatabaseName, node.SchemaName, node.Name);
+        document.InitBrowse(connection, database, schema, table);
         AddDocument(document);
         await document.LoadPageAsync(ct);
     }

@@ -5,5 +5,10 @@
         Title="Lionear SQL Explorer"
         Icon="/Assets/icon.png"
         Width="1150" Height="740">
+  <!-- Quick-open shortcut lives on the window (not MainView): with nothing focused yet, a keypress
+       is delivered to the TopLevel itself, so a UserControl-level KeyBinding would never see it. -->
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+K" Command="{Binding ToggleSearchCommand}" />
+  </Window.KeyBindings>
   <views:MainView x:Name="Body" />
 </Window>

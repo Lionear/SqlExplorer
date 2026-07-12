@@ -14,6 +14,8 @@
           <Button Classes="Accent"
                   Content="{Binding Loc[NewQueryTab]}" Command="{Binding NewQueryTabCommand}" />
           <Button Classes="Subtle"
+                  Content="{Binding Loc[GoToObject]}" ToolTip.Tip="Ctrl+K" Command="{Binding ToggleSearchCommand}" />
+          <Button Classes="Subtle"
                   Content="{Binding Loc[History]}" Command="{Binding ToggleHistoryCommand}" />
         </StackPanel>
         <Button Grid.Column="2" Classes="Subtle"
@@ -174,6 +176,34 @@
         </Grid>
       </Border>
     </Grid>
+
+    <!-- Quick-open overlay (Ctrl+K / toolbar button): fuzzy search tables/views/columns across every
+         connected connection's cached schema snapshot (1.1). Enter/double-click opens a browse tab,
+         Escape closes. -->
+    <Border Grid.Row="1" IsVisible="{Binding IsSearchVisible}"
+            Background="#80000000">
+      <Border Width="480" MaxHeight="420" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,50,0,0"
+              Background="{DynamicResource CatPanelBgBrush}"
+              BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1" CornerRadius="6">
+        <Grid RowDefinitions="Auto,*" Margin="10">
+          <TextBox Grid.Row="0" x:Name="SearchBox" Text="{Binding SearchText}"
+                    PlaceholderText="{Binding Loc[SearchObjects]}" />
+          <ListBox Grid.Row="1" x:Name="SearchResultsList" Margin="0,6,0,0" MaxHeight="360"
+                    Background="Transparent"
+                    ItemsSource="{Binding SearchResults}">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Spacing="1" Margin="0,2">
+                  <TextBlock Text="{Binding Display}" FontSize="13" />
+                  <TextBlock Text="{Binding Subtitle}" FontSize="10"
+                             Foreground="{DynamicResource CatTextFaintBrush}" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+    </Border>
 
     <!-- Bottom status bar: connection state dot + active connection + last status message. -->
     <Border Grid.Row="2" Background="{DynamicResource CatToolbarBgBrush}"
