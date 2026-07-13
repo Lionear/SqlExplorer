@@ -147,6 +147,9 @@
   <data name="AdvancedSettings" xml:space="preserve">
     <value>Advanced</value>
   </data>
+  <data name="ConnectionFailed" xml:space="preserve">
+    <value>Could not connect to the server.</value>
+  </data>
   <data name="ImportConnectionString" xml:space="preserve">
     <value>Import from connection string</value>
   </data>

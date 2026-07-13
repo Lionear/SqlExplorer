@@ -464,7 +464,17 @@ public partial class MainViewModel : ViewModelBase
         try
         {
             var profile = _connections.Resolve(connection);
-            var nodes = await _providers.Get(connection.ProviderId).GetChildNodesAsync(profile, ancestors, CancellationToken.None);
+            var provider = _providers.Get(connection.ProviderId);
+
+            // Expanding the root = actually connect, so the status dot tells the truth. Some providers
+            // list their top-level folders statically (SQL Server's Databases/Security/Administration)
+            // without touching the server, which would otherwise show green for an unreachable host.
+            if (ancestors.Count == 0 && !await provider.TestConnectionAsync(profile, CancellationToken.None))
+            {
+                throw new InvalidOperationException(Loc["ConnectionFailed"]);
+            }
+
+            var nodes = await provider.GetChildNodesAsync(profile, ancestors, CancellationToken.None);
             if (ancestors.Count == 0)
             {
                 Status = Loc.Get("StatusConnected", nodes.Count);
