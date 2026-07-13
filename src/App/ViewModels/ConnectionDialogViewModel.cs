@@ -80,7 +80,19 @@ public partial class ConnectionDialogViewModel : ViewModelBase
 
     public IReadOnlyList<ProviderOption> AvailableProviders { get; }
 
+    // Fields holds every input (source of truth for Values/CanSave/prefill); the two views below
+    // partition it for rendering so the common fields stay uncluttered and the rest tuck into an
+    // "Advanced" expander.
     public ObservableCollection<ConnectionFieldInput> Fields { get; } = [];
+
+    /// <summary>Always-visible fields (host/port/credentials).</summary>
+    public ObservableCollection<ConnectionFieldInput> BasicFields { get; } = [];
+
+    /// <summary>Fields hidden behind the collapsible "Advanced" section.</summary>
+    public ObservableCollection<ConnectionFieldInput> AdvancedFields { get; } = [];
+
+    [ObservableProperty]
+    private bool _hasAdvancedFields;
 
     public string DialogTitle => IsEditing ? Loc["EditConnection"] : Loc["NewConnection"];
 
@@ -127,8 +139,11 @@ public partial class ConnectionDialogViewModel : ViewModelBase
         }
 
         Fields.Clear();
+        BasicFields.Clear();
+        AdvancedFields.Clear();
         if (SelectedProvider is null)
         {
+            HasAdvancedFields = false;
             return;
         }
 
@@ -137,7 +152,10 @@ public partial class ConnectionDialogViewModel : ViewModelBase
             var input = new ConnectionFieldInput(field);
             input.PropertyChanged += OnFieldChanged;
             Fields.Add(input);
+            (field.Advanced ? AdvancedFields : BasicFields).Add(input);
         }
+
+        HasAdvancedFields = AdvancedFields.Count > 0;
     }
 
     // A field's value changed -> the required-fields check may flip, so re-evaluate the Save gate.

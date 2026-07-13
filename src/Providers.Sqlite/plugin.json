@@ -4,6 +4,6 @@
   "type": "provider",
   "name": "SQLite",
   "version": "1.0.0",
-  "hostApiVersion": 14,
+  "hostApiVersion": 15,
   "entryAssembly": "Lionear.SqlExplorer.Providers.Sqlite.dll"
 }

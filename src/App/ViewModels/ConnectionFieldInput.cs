@@ -21,6 +21,14 @@ public partial class ConnectionFieldInput : ObservableObject
     public string? Watermark => Field.Placeholder;
     public bool IsFile => Field.Type == ConnectionFieldType.File;
     public bool IsBool => Field.Type == ConnectionFieldType.Bool;
+    public bool IsChoice => Field.Type == ConnectionFieldType.Choice;
+
+    /// <summary>Options for a <see cref="ConnectionFieldType.Choice"/> field; empty otherwise.</summary>
+    public IReadOnlyList<string> Choices => Field.Choices ?? [];
+
+    // A plain text/number/password field: the only kind that shows the free-text TextBox.
+    public bool IsText => Field.Type is ConnectionFieldType.Text or ConnectionFieldType.Password
+        or ConnectionFieldType.Number or ConnectionFieldType.File;
 
     // (char)0 tells the TextBox to show plaintext; a bullet masks secrets.
     public char PasswordChar => Field.Type == ConnectionFieldType.Password ? '•' : '\0';

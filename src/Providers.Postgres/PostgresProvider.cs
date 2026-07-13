@@ -21,7 +21,12 @@ public sealed class PostgresProvider : IDbProvider
         new("port", "Port", ConnectionFieldType.Number, Default: "5432"),
         new("database", "Database", ConnectionFieldType.Text, Required: true, Default: "postgres"),
         new("username", "Username", ConnectionFieldType.Text, Required: true, Default: "postgres"),
-        new("password", "Password", ConnectionFieldType.Password)
+        new("password", "Password", ConnectionFieldType.Password),
+
+        // Advanced — SSL. Mirrors Npgsql's SslMode enum; Prefer keeps a plain local server working.
+        new("sslMode", "SSL mode", ConnectionFieldType.Choice, Default: "Prefer",
+            Group: "Security", Advanced: true,
+            Choices: ["Disable", "Allow", "Prefer", "Require", "VerifyCA", "VerifyFull"])
     ];
 
     public string BuildConnectionString(IReadOnlyDictionary<string, string?> values)
@@ -37,6 +42,11 @@ public sealed class PostgresProvider : IDbProvider
         if (int.TryParse(Value(values, "port"), out var port))
         {
             builder.Port = port;
+        }
+
+        if (Value(values, "sslMode") is { } sslMode && Enum.TryParse<SslMode>(sslMode, out var mode))
+        {
+            builder.SslMode = mode;
         }
 
         return builder.ConnectionString;

@@ -144,6 +144,9 @@
   <data name="CopySuffix" xml:space="preserve">
     <value>(copy)</value>
   </data>
+  <data name="AdvancedSettings" xml:space="preserve">
+    <value>Advanced</value>
+  </data>
   <data name="ConnectionColor" xml:space="preserve">
     <value>Colour</value>
   </data>

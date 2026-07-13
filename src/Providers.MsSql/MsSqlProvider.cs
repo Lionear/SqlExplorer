@@ -23,7 +23,23 @@ public sealed class MsSqlProvider : IDbProvider
         // tree — per-database queries repoint the catalog at execute time (see OpenAsync).
         new("database", "Database", ConnectionFieldType.Text, Default: "master"),
         new("username", "Username", ConnectionFieldType.Text, Required: true, Default: "sa"),
-        new("password", "Password", ConnectionFieldType.Password)
+        new("password", "Password", ConnectionFieldType.Password),
+
+        // Advanced — SSL/TLS. Encrypt defaults to Optional and TrustServerCertificate to true so a
+        // fresh local SQL Server (self-signed cert) still connects; both are visible and overridable
+        // now instead of the old hardcoded TrustServerCertificate=true (FR-3).
+        new("encrypt", "Encrypt", ConnectionFieldType.Choice, Default: "Optional",
+            Group: "Security", Advanced: true, Choices: ["Optional", "Mandatory", "Strict"]),
+        new("trustServerCertificate", "Trust server certificate", ConnectionFieldType.Bool,
+            Default: "true", Group: "Security", Advanced: true),
+
+        // Advanced — connection tuning.
+        new("applicationName", "Application name", ConnectionFieldType.Text,
+            Default: "Lionear SQL Explorer", Group: "Connection", Advanced: true),
+        new("connectTimeout", "Connect timeout (s)", ConnectionFieldType.Number,
+            Placeholder: "15", Group: "Connection", Advanced: true),
+        new("multipleActiveResultSets", "Multiple active result sets (MARS)", ConnectionFieldType.Bool,
+            Default: "false", Group: "Connection", Advanced: true)
     ];
 
     public string BuildConnectionString(IReadOnlyDictionary<string, string?> values)
@@ -37,15 +53,40 @@ public sealed class MsSqlProvider : IDbProvider
             InitialCatalog = Value(values, "database") ?? "master",
             UserID = Value(values, "username") ?? string.Empty,
             Password = Value(values, "password") ?? string.Empty,
-            // Dev-friendly: SQL Server images use a self-signed cert; trust it rather than fail the handshake.
-            TrustServerCertificate = true
+            Encrypt = Value(values, "encrypt") switch
+            {
+                "Mandatory" => SqlConnectionEncryptOption.Mandatory,
+                "Strict" => SqlConnectionEncryptOption.Strict,
+                _ => SqlConnectionEncryptOption.Optional
+            },
+            // Default true (missing field) keeps local dev working; now user-controllable.
+            TrustServerCertificate = Bool(values, "trustServerCertificate", fallback: true)
         };
+
+        if (Value(values, "applicationName") is { } appName)
+        {
+            builder.ApplicationName = appName;
+        }
+
+        if (Value(values, "connectTimeout") is { } timeout && int.TryParse(timeout, out var seconds))
+        {
+            builder.ConnectTimeout = seconds;
+        }
+
+        if (Bool(values, "multipleActiveResultSets", fallback: false))
+        {
+            builder.MultipleActiveResultSets = true;
+        }
 
         return builder.ConnectionString;
     }
 
     private static string? Value(IReadOnlyDictionary<string, string?> values, string key) =>
         values.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : null;
+
+    // Bool fields are stored as "true"/"false"; an absent/blank value falls back to the field's own default.
+    private static bool Bool(IReadOnlyDictionary<string, string?> values, string key, bool fallback) =>
+        Value(values, key) is { } v ? bool.TryParse(v, out var b) ? b : fallback : fallback;
 
     public async Task<bool> TestConnectionAsync(ConnectionProfile profile, CancellationToken ct)
     {

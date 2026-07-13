@@ -5,6 +5,33 @@
         Title="{Binding DialogTitle}"
         Width="460" SizeToContent="Height"
         WindowStartupLocation="CenterOwner">
+  <Window.Resources>
+    <!-- One row per ConnectionField, shared between the basic list and the Advanced expander.
+         Exactly one input control shows per field, keyed off the field type. -->
+    <DataTemplate x:Key="FieldTemplate">
+      <StackPanel Spacing="2" Margin="0,4,0,0">
+        <TextBlock Text="{Binding Label}" />
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBox Grid.Column="0"
+                   Text="{Binding Value}"
+                   PlaceholderText="{Binding Watermark}"
+                   PasswordChar="{Binding PasswordChar}"
+                   IsVisible="{Binding IsText}" />
+          <CheckBox Grid.Column="0"
+                    IsChecked="{Binding BoolValue}"
+                    IsVisible="{Binding IsBool}" />
+          <ComboBox Grid.Column="0" HorizontalAlignment="Stretch"
+                    ItemsSource="{Binding Choices}"
+                    SelectedItem="{Binding Value}"
+                    IsVisible="{Binding IsChoice}" />
+          <Button Grid.Column="1" Margin="6,0,0,0"
+                  Content="{Binding $parent[Window].DataContext.Loc[Browse]}"
+                  IsVisible="{Binding IsFile}"
+                  Click="OnBrowseClick" />
+        </Grid>
+      </StackPanel>
+    </DataTemplate>
+  </Window.Resources>
   <StackPanel Margin="16" Spacing="10">
 
     <TextBlock Text="{Binding Loc[ConnectionName]}" />
@@ -15,30 +42,13 @@
               SelectedItem="{Binding SelectedProvider}"
               HorizontalAlignment="Stretch" />
 
-    <!-- Provider-driven fields: one control per declared ConnectionField. -->
-    <ItemsControl ItemsSource="{Binding Fields}">
-      <ItemsControl.ItemTemplate>
-        <DataTemplate>
-          <StackPanel Spacing="2" Margin="0,4,0,0">
-            <TextBlock Text="{Binding Label}" />
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBox Grid.Column="0"
-                       Text="{Binding Value}"
-                       PlaceholderText="{Binding Watermark}"
-                       PasswordChar="{Binding PasswordChar}"
-                       IsVisible="{Binding !IsBool}" />
-              <CheckBox Grid.Column="0"
-                        IsChecked="{Binding BoolValue}"
-                        IsVisible="{Binding IsBool}" />
-              <Button Grid.Column="1" Margin="6,0,0,0"
-                      Content="{Binding $parent[Window].DataContext.Loc[Browse]}"
-                      IsVisible="{Binding IsFile}"
-                      Click="OnBrowseClick" />
-            </Grid>
-          </StackPanel>
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+    <!-- Provider-driven fields: basics always visible, one control per declared ConnectionField. -->
+    <ItemsControl ItemsSource="{Binding BasicFields}" ItemTemplate="{StaticResource FieldTemplate}" />
+
+    <!-- Advanced/driver-specific settings tuck away until asked for; only shown if the provider has any. -->
+    <Expander Header="{Binding Loc[AdvancedSettings]}" IsVisible="{Binding HasAdvancedFields}" Margin="0,4,0,0">
+      <ItemsControl ItemsSource="{Binding AdvancedFields}" ItemTemplate="{StaticResource FieldTemplate}" />
+    </Expander>
 
     <!-- Colour flag (prod = red) + safe read-only mode. -->
     <TextBlock Text="{Binding Loc[ConnectionColor]}" Margin="0,4,0,0" />

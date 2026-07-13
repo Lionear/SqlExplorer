@@ -39,7 +39,11 @@ public static class ProviderHostApi
     //                   an enabler for a future ER-diagram) and IDbProvider.ExecuteScriptAsync
     //                   (raw SQL text -> every result set via NextResult, powers "Run"/"Run at cursor"
     //                   and multi-resultset scripts) + ExplainAsync (per-engine EXPLAIN as a QueryResult).
-    public const int Version = 14;
+    // v15 (2026-07-13): ConnectionField gained Group/Advanced metadata + ConnectionFieldType.Choice
+    //                   (dropdown, values in ConnectionField.Choices) so providers can declare a rich,
+    //                   grouped "Advanced" connection section the host renders (Notes §4.4, FR-2/4/4b).
+    //                   MSSQL no longer hardcodes TrustServerCertificate — it is a field now (FR-3).
+    public const int Version = 15;
 
     /// <summary>True when this host can load a plugin built for <paramref name="pluginVersion"/>.</summary>
     public static bool IsCompatible(int pluginVersion) => pluginVersion == Version;
