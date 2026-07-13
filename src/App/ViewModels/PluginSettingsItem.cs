@@ -20,19 +20,26 @@ public sealed class PluginSettingsItem : IPluginSettingsContext
     // Route B backing store, seeded from the settings file and mutated by the plugin's own view.
     private readonly Dictionary<string, string?> _customValues;
 
-    public PluginSettingsItem(string pluginId, IDbProvider provider, IReadOnlyDictionary<string, string?> stored)
+    public PluginSettingsItem(
+        string pluginId,
+        string displayName,
+        ProviderIcon? icon,
+        IReadOnlyDictionary<string, string?> stored,
+        IPluginSettings? declared,
+        ICustomPluginSettingsUi? customUi)
     {
         PluginId = pluginId;
-        DisplayName = provider.DisplayName;
-        Icon = ResolveIcon(provider.Icon);
+        DisplayName = displayName;
+        Icon = ResolveIcon(icon);
         _customValues = new Dictionary<string, string?>(stored);
 
-        if (provider is ICustomPluginSettingsUi customUi)
+        // Route B wins when present; otherwise render the declared fields (Route A).
+        if (customUi is not null)
         {
             HasCustomView = true;
             CustomView = customUi.CreateSettingsView(this);
         }
-        else if (provider is IPluginSettings declared)
+        else if (declared is not null)
         {
             foreach (var field in declared.SettingsFields)
             {

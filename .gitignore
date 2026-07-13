@@ -7,3 +7,6 @@ obj/
 
 # Local throwaway verification/probe projects
 scratchpad/
+
+# macOS
+.DS_Store

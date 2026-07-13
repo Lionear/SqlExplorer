@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "universal-backup",
+  "type": "tool",
+  "name": "Universal Backup & Restore",
+  "version": "1.0.0",
+  "hostApiVersion": 1,
+  "entryAssembly": "Lionear.SqlExplorer.Tools.UniversalBackup.dll"
+}

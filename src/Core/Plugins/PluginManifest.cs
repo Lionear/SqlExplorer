@@ -54,5 +54,6 @@ public sealed record PluginManifest
     public static class Types
     {
         public const string Provider = "provider";
+        public const string Tool = "tool";
     }
 }

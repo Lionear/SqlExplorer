@@ -142,6 +142,7 @@ public partial class MainView : UserControl
             _viewModel.ExportFormatRequested = ShowExportFormatDialogAsync;
             _viewModel.ExportFileRequested = WriteExportFileAsync;
             _viewModel.SettingsDialogRequested = ShowSettingsDialogAsync;
+            _viewModel.ToolDialogRequested = ShowToolDialogAsync;
             _viewModel.ConfirmRequested = ShowConfirmAsync;
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         }
@@ -280,6 +281,17 @@ public partial class MainView : UserControl
         }
 
         var dialog = new SettingsWindow { DataContext = dialogViewModel };
+        await dialog.ShowDialog(owner);
+    }
+
+    private async Task ShowToolDialogAsync(ToolDialogViewModel dialogViewModel)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+
+        var dialog = new ToolDialog { DataContext = dialogViewModel };
         await dialog.ShowDialog(owner);
     }
 

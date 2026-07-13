@@ -13,7 +13,11 @@ public enum PluginSettingFieldType
 
     /// <summary>A filesystem path with a Browse… button (e.g. a path to an external binary like
     /// <c>mysqldump</c>) — the exact use case the plugin-settings pane was designed for.</summary>
-    File
+    File,
+
+    /// <summary>A directory path with a Browse… button that opens a folder picker (e.g. a default
+    /// output folder).</summary>
+    Folder
 }
 
 /// <summary>

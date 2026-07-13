@@ -1,0 +1,75 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Lionear.SqlExplorer.App.Views.ToolDialog"
+        Title="{Binding Title}"
+        Width="520" Height="560" MinWidth="420" MinHeight="400"
+        WindowStartupLocation="CenterOwner">
+  <Window.Resources>
+    <!-- One row per ToolField (Route A) — same look as the connection dialog fields. -->
+    <DataTemplate x:Key="ToolFieldTemplate">
+      <StackPanel Spacing="2" Margin="0,4,0,0">
+        <TextBlock Text="{Binding Label}" Foreground="{DynamicResource CatTextSecondaryBrush}" FontSize="11.5" />
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBox Grid.Column="0" Text="{Binding Value}"
+                   PlaceholderText="{Binding Watermark}"
+                   PasswordChar="{Binding PasswordChar}"
+                   IsVisible="{Binding IsText}" />
+          <CheckBox Grid.Column="0" IsChecked="{Binding BoolValue}" IsVisible="{Binding IsBool}" />
+          <ComboBox Grid.Column="0" HorizontalAlignment="Stretch" ItemsSource="{Binding Choices}"
+                    SelectedItem="{Binding Value}" IsVisible="{Binding IsChoice}" />
+          <!-- Password reveal toggle (👁). -->
+          <ToggleButton Grid.Column="1" Margin="6,0,0,0" Content="👁"
+                        IsChecked="{Binding RevealPassword}" IsVisible="{Binding IsPassword}" />
+          <!-- File browse (save or open per the field). -->
+          <Button Grid.Column="1" Margin="6,0,0,0"
+                  Content="{Binding $parent[Window].DataContext.Loc[Browse]}"
+                  IsVisible="{Binding IsFile}" Click="OnBrowseClick" />
+        </Grid>
+      </StackPanel>
+    </DataTemplate>
+  </Window.Resources>
+
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Inputs (Route A fields / Route B view) + optional preview -->
+    <ScrollViewer Grid.Row="0" MaxHeight="240">
+      <StackPanel Margin="18,16" Spacing="8">
+        <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource ToolFieldTemplate}"
+                      IsVisible="{Binding HasFields}" />
+        <ContentControl Content="{Binding CustomView}" IsVisible="{Binding HasCustomView}" />
+
+        <Border IsVisible="{Binding HasPreview}" Margin="0,6,0,0" Padding="10,8"
+                Background="{DynamicResource CatPanelBgBrush}"
+                BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1" CornerRadius="4">
+          <TextBlock Text="{Binding Preview}" TextWrapping="Wrap" FontSize="11.5"
+                     FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                     Foreground="{DynamicResource CatTextSecondaryBrush}" />
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- Progress / log -->
+    <Border Grid.Row="1" Margin="18,0" BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1"
+            CornerRadius="4" Background="{DynamicResource CatPanelBgBrush}">
+      <ListBox Background="Transparent" ItemsSource="{Binding Log}">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding}" FontSize="11.5" TextWrapping="Wrap"
+                       FontFamily="Cascadia Code,Consolas,Menlo,monospace" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Border>
+
+    <!-- Action bar -->
+    <Grid Grid.Row="2" Margin="18,12" ColumnDefinitions="Auto,*,Auto,Auto">
+      <TextBlock Grid.Column="0" Text="{Binding Loc[ToolRunning]}" VerticalAlignment="Center"
+                 FontSize="11.5" Foreground="{DynamicResource CatTextFaintBrush}"
+                 IsVisible="{Binding IsRunning}" />
+      <Button Grid.Column="2" Classes="Subtle" Content="{Binding Loc[Cancel]}"
+              Command="{Binding CancelCommand}" Margin="0,0,8,0" />
+      <Button Grid.Column="3" Classes="Accent" Content="{Binding Title}"
+              Command="{Binding ExecuteCommand}" IsEnabled="{Binding CanExecute}" IsDefault="True" />
+    </Grid>
+  </Grid>
+</Window>

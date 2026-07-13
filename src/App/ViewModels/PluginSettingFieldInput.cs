@@ -20,14 +20,18 @@ public partial class PluginSettingFieldInput : ObservableObject
     public string Label => Field.Label;
     public string? Watermark => Field.Placeholder;
     public bool IsFile => Field.Type == PluginSettingFieldType.File;
+    public bool IsFolder => Field.Type == PluginSettingFieldType.Folder;
     public bool IsBool => Field.Type == PluginSettingFieldType.Bool;
     public bool IsChoice => Field.Type == PluginSettingFieldType.Choice;
+
+    /// <summary>File and Folder fields both show a Browse button beside the text box.</summary>
+    public bool HasBrowse => IsFile || IsFolder;
 
     /// <summary>Options for a <see cref="PluginSettingFieldType.Choice"/> field; empty otherwise.</summary>
     public IReadOnlyList<string> Choices => Field.Choices ?? [];
 
-    // Text and File both show the free-text TextBox (File adds a Browse button beside it).
-    public bool IsText => Field.Type is PluginSettingFieldType.Text or PluginSettingFieldType.File;
+    // Text/File/Folder all show the free-text TextBox (File/Folder add a Browse button beside it).
+    public bool IsText => Field.Type is PluginSettingFieldType.Text or PluginSettingFieldType.File or PluginSettingFieldType.Folder;
 
     public bool BoolValue
     {

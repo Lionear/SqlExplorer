@@ -474,4 +474,19 @@
   <data name="PluginsNoneHint" xml:space="preserve">
     <value>No installed plugin declares settings yet. Plugins expose their own settings through the SDK.</value>
   </data>
+  <data name="Tools" xml:space="preserve">
+    <value>Tools</value>
+  </data>
+  <data name="ToolDone" xml:space="preserve">
+    <value>Done.</value>
+  </data>
+  <data name="ToolCancelled" xml:space="preserve">
+    <value>Cancelled.</value>
+  </data>
+  <data name="ToolRunning" xml:space="preserve">
+    <value>Running…</value>
+  </data>
+  <data name="ToolDestructiveConfirm" xml:space="preserve">
+    <value>This action modifies the database and cannot be undone. Continue?</value>
+  </data>
 </root>

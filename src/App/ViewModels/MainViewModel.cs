@@ -17,7 +17,9 @@ using Lionear.SqlExplorer.Core.Localization;
 using Lionear.SqlExplorer.Core.Providers;
 using Lionear.SqlExplorer.Core.Schema;
 using Lionear.SqlExplorer.Core.Settings;
+using Lionear.SqlExplorer.Core.Tools;
 using Lionear.SqlExplorer.Sdk;
+using Lionear.SqlExplorer.Sdk.Tools;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -40,6 +42,8 @@ public partial class MainViewModel : ViewModelBase
     private readonly Func<AlterObjectDialogViewModel> _alterDialogFactory;
     private readonly Func<ImportCsvDialogViewModel> _importCsvDialogFactory;
     private readonly Func<SettingsViewModel> _settingsDialogFactory;
+    private readonly IToolRegistry _tools;
+    private readonly Func<ToolDialogViewModel> _toolDialogFactory;
     private readonly IAppSettingsStore _settingsStore;
 
     // Selected tree node drives the active connection: any node knows its owning connection.
@@ -88,6 +92,8 @@ public partial class MainViewModel : ViewModelBase
         Func<AlterObjectDialogViewModel> alterDialogFactory,
         Func<ImportCsvDialogViewModel> importCsvDialogFactory,
         Func<SettingsViewModel> settingsDialogFactory,
+        IToolRegistry tools,
+        Func<ToolDialogViewModel> toolDialogFactory,
         IAppSettingsStore settingsStore,
         ILocalizer localizer)
     {
@@ -101,6 +107,8 @@ public partial class MainViewModel : ViewModelBase
         _alterDialogFactory = alterDialogFactory;
         _importCsvDialogFactory = importCsvDialogFactory;
         _settingsDialogFactory = settingsDialogFactory;
+        _tools = tools;
+        _toolDialogFactory = toolDialogFactory;
         _settingsStore = settingsStore;
         Loc = localizer;
 
@@ -381,8 +389,54 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Set by the view so the VM can ask a yes/no question (title, message); false if unavailable.</summary>
     public Func<string, string, Task<bool>>? ConfirmRequested { get; set; }
 
-    partial void OnSelectedNodeChanged(TreeNodeViewModel? value) =>
+    partial void OnSelectedNodeChanged(TreeNodeViewModel? value)
+    {
         SelectedConnection = value?.Connection;
+        RefreshApplicableTools(value);
+    }
+
+    /// <summary>Tool-plugin actions applicable to the selected node, shown in the sidebar context menu.</summary>
+    public ObservableCollection<ToolMenuEntry> ApplicableTools { get; } = [];
+
+    public bool HasApplicableTools => ApplicableTools.Count > 0;
+
+    // A tool applies to a connection node or a schema-object node; recompute whenever selection changes.
+    private void RefreshApplicableTools(TreeNodeViewModel? node)
+    {
+        ApplicableTools.Clear();
+
+        if (node is not null && (node.IsConnectionNode || node.NodeKind is not null) && node.Connection is { } connection)
+        {
+            foreach (var tool in _tools.Applicable(connection.ProviderId, node.NodeKind))
+            {
+                var captured = tool;
+                ApplicableTools.Add(new ToolMenuEntry(tool.Title, new RelayCommand(() => RunToolCommand.Execute(captured))));
+            }
+        }
+
+        OnPropertyChanged(nameof(HasApplicableTools));
+    }
+
+    // Run a tool: resolve the profile/provider/node for the selection, open the generic tool dialog.
+    [RelayCommand]
+    private async Task RunToolAsync(IToolPlugin? tool)
+    {
+        if (tool is null || SelectedNode is not { } node || node.Connection is not { } connection || ToolDialogRequested is null)
+        {
+            return;
+        }
+
+        var provider = _providers.Get(connection.ProviderId);
+        var profile = _connections.Resolve(connection, node.DatabaseName);
+        DbNodeRef? nodeRef = node.NodeKind is { } kind ? new DbNodeRef(kind, node.Name) : null;
+
+        var dialog = _toolDialogFactory();
+        dialog.Configure(tool, profile, nodeRef, provider, connection.ProviderId);
+        await ToolDialogRequested(dialog);
+    }
+
+    /// <summary>Set by the view so the VM can show the generic tool dialog.</summary>
+    public Func<ToolDialogViewModel, Task>? ToolDialogRequested { get; set; }
 
     // Full rebuild — used only at startup. Add/edit/delete go through the targeted helpers below so
     // that touching one connection never collapses the whole tree (loses every other node's expand +

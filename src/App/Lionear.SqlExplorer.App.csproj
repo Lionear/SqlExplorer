@@ -31,6 +31,7 @@
          they aren't part of the core product. Debug-only: they build + get staged during development but
          never ship in a Release/MVP build. The template demonstrates IPluginSettings (Route A) live. -->
     <ProjectReference Include="..\..\plugins\Providers.Template\Lionear.SqlExplorer.Providers.Template.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
+    <ProjectReference Include="..\..\plugins\Tools.UniversalBackup\Lionear.SqlExplorer.Tools.UniversalBackup.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
 
   <ItemGroup>
@@ -51,6 +52,7 @@
     <Using Include="Lionear.SqlExplorer.Sdk.Query" />
     <Using Include="Lionear.SqlExplorer.Sdk.Ddl" />
     <Using Include="Lionear.SqlExplorer.Sdk.Branding" />
+    <Using Include="Lionear.SqlExplorer.Sdk.Tools" />
     <Using Include="Lionear.SqlExplorer.Sdk.Ui" />
   </ItemGroup>
 

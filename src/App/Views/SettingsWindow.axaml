@@ -19,7 +19,7 @@
                     SelectedItem="{Binding Value}" IsVisible="{Binding IsChoice}" />
           <Button Grid.Column="1" Margin="6,0,0,0"
                   Content="{Binding $parent[Window].DataContext.Loc[Browse]}"
-                  IsVisible="{Binding IsFile}" Click="OnBrowseClick" />
+                  IsVisible="{Binding HasBrowse}" Click="OnBrowseClick" />
         </Grid>
       </StackPanel>
     </DataTemplate>

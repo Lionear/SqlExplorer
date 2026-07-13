@@ -474,4 +474,19 @@
   <data name="PluginsNoneHint" xml:space="preserve">
     <value>Nog geen geïnstalleerde plug-in biedt instellingen aan. Plug-ins declareren hun eigen instellingen via de SDK.</value>
   </data>
+  <data name="Tools" xml:space="preserve">
+    <value>Tools</value>
+  </data>
+  <data name="ToolDone" xml:space="preserve">
+    <value>Klaar.</value>
+  </data>
+  <data name="ToolCancelled" xml:space="preserve">
+    <value>Geannuleerd.</value>
+  </data>
+  <data name="ToolRunning" xml:space="preserve">
+    <value>Bezig…</value>
+  </data>
+  <data name="ToolDestructiveConfirm" xml:space="preserve">
+    <value>Deze actie wijzigt de database en kan niet ongedaan worden gemaakt. Doorgaan?</value>
+  </data>
 </root>

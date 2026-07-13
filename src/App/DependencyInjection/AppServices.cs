@@ -8,6 +8,8 @@ using Lionear.SqlExplorer.Core.Plugins;
 using Lionear.SqlExplorer.Core.Providers;
 using Lionear.SqlExplorer.Core.Schema;
 using Lionear.SqlExplorer.Core.Settings;
+using Lionear.SqlExplorer.Core.Tools;
+using Lionear.SqlExplorer.Sdk.Tools;
 using Lionear.SqlExplorer.Infrastructure.Persistence;
 using Lionear.SqlExplorer.Infrastructure.Secrets;
 using Lionear.SqlExplorer.Sdk;
@@ -42,6 +44,22 @@ public static class AppServices
         }
 
         services.AddSingleton<IDbProviderRegistry>(new DbProviderRegistry(registrations));
+
+        // Tool plugins (type: "tool") load from the same folder; one assembly may ship several tools.
+        var tools = new List<IToolPlugin>();
+        foreach (var result in new ToolPluginLoader().Load(pluginsDir))
+        {
+            if (result.Succeeded)
+            {
+                tools.AddRange(result.Tools);
+            }
+            else
+            {
+                Console.Error.WriteLine($"[plugin] skipped tool '{result.PluginDirectory}': {result.Error}");
+            }
+        }
+
+        services.AddSingleton<IToolRegistry>(new ToolRegistry(tools));
 
         // Connections: metadata in a JSON file, secrets in the OS-native keychain.
         // Migrate pre-v10 configs (legacy "Kind" enum) to the manifest "ProviderId" once at startup.
@@ -92,6 +110,10 @@ public static class AppServices
         // Preferences window — same factory-delegate pattern as the other dialogs.
         services.AddTransient<SettingsViewModel>();
         services.AddSingleton<Func<SettingsViewModel>>(sp => sp.GetRequiredService<SettingsViewModel>);
+
+        // Generic tool dialog — reconfigured per tool run, same factory-delegate pattern.
+        services.AddTransient<ToolDialogViewModel>();
+        services.AddSingleton<Func<ToolDialogViewModel>>(sp => sp.GetRequiredService<ToolDialogViewModel>);
 
         services.AddTransient<MainViewModel>();
 

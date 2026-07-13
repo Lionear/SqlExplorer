@@ -68,6 +68,16 @@
                           IsVisible="{Binding SelectedNode.IsConnectionNode, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[Delete]}" Command="{Binding DeleteConnectionCommand}"
                           IsVisible="{Binding SelectedNode.IsConnectionNode, FallbackValue=False}" />
+                <!-- Tool plugins applicable to the selected node (universal backup, dumps, …). -->
+                <MenuItem Header="{Binding Loc[Tools]}" ItemsSource="{Binding ApplicableTools}"
+                          IsVisible="{Binding HasApplicableTools}">
+                  <MenuItem.ItemContainerTheme>
+                    <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                      <Setter Property="Header" Value="{Binding Title}" />
+                      <Setter Property="Command" Value="{Binding Run}" />
+                    </ControlTheme>
+                  </MenuItem.ItemContainerTheme>
+                </MenuItem>
                 <MenuItem Header="{Binding Loc[NewDatabase]}" Command="{Binding NewDatabaseCommand}"
                           IsVisible="{Binding SelectedNode.CanCreateDatabase, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[NewSchema]}" Command="{Binding NewSchemaCommand}"

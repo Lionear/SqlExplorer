@@ -19,11 +19,22 @@ public partial class SettingsWindow : Window
         };
     }
 
-    // A File-type plugin setting: pick a path (e.g. a binary like mysqldump).
+    // A File/Folder plugin setting: pick a path (a binary like mysqldump, or a default folder).
     private async void OnBrowseClick(object? sender, RoutedEventArgs e)
     {
         if (sender is not Button { DataContext: PluginSettingFieldInput input })
         {
+            return;
+        }
+
+        if (input.IsFolder)
+        {
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { AllowMultiple = false });
+            if (folders.Count > 0)
+            {
+                input.Value = folders[0].TryGetLocalPath() ?? folders[0].Path.ToString();
+            }
+
             return;
         }
 

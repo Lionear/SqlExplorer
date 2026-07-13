@@ -5,7 +5,10 @@ using Lionear.SqlExplorer.App.Theming;
 using Lionear.SqlExplorer.Core.Localization;
 using Lionear.SqlExplorer.Core.Providers;
 using Lionear.SqlExplorer.Core.Settings;
+using Lionear.SqlExplorer.Core.Tools;
 using Lionear.SqlExplorer.Sdk;
+using Lionear.SqlExplorer.Sdk.Settings;
+using Lionear.SqlExplorer.Sdk.Tools;
 using Lionear.SqlExplorer.Sdk.Ui;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -27,6 +30,7 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly IAppSettingsStore _store;
     private readonly IPluginSettingsStore _pluginStore;
     private readonly IDbProviderRegistry _providers;
+    private readonly IToolRegistry _tools;
 
     [ObservableProperty]
     private SettingsCategory? _selectedCategory;
@@ -53,11 +57,13 @@ public partial class SettingsViewModel : ViewModelBase
         IAppSettingsStore store,
         IPluginSettingsStore pluginStore,
         IDbProviderRegistry providers,
+        IToolRegistry tools,
         ILocalizer localizer)
     {
         _store = store;
         _pluginStore = pluginStore;
         _providers = providers;
+        _tools = tools;
         Loc = localizer;
 
         Categories =
@@ -98,25 +104,34 @@ public partial class SettingsViewModel : ViewModelBase
         ConfirmBeforeSave = settings.ConfirmBeforeSave;
     }
 
-    // A plugin gets a tree entry only if it declares fields (Route A) or a custom view (Route B).
-    // Today only providers load, so the list is providers-only; grouping by type comes when tools exist.
+    // A plugin (provider or tool) gets a tree entry only if it declares fields (Route A) or a custom
+    // view (Route B). Both plugin kinds contribute, keyed by their id.
     private void BuildPluginCatalog()
     {
         foreach (var registration in _providers.All)
         {
-            var provider = registration.Provider;
-            var hasCustom = provider is ICustomPluginSettingsUi;
-            var hasFields = provider is IPluginSettings { SettingsFields.Count: > 0 };
-            if (!hasCustom && !hasFields)
-            {
-                continue;
-            }
+            TryAddPlugin(registration.Id, registration.Provider.DisplayName, registration.Provider.Icon, registration.Provider);
+        }
 
-            Plugins.Add(new PluginSettingsItem(registration.Id, provider, _pluginStore.Get(registration.Id)));
+        foreach (var tool in _tools.All)
+        {
+            TryAddPlugin(tool.Id, tool.Title, tool.Icon, tool);
         }
 
         SelectedPlugin = Plugins.FirstOrDefault();
         OnPropertyChanged(nameof(HasPlugins));
+    }
+
+    private void TryAddPlugin(string id, string displayName, ProviderIcon? icon, object plugin)
+    {
+        var declared = plugin as IPluginSettings;
+        var customUi = plugin as ICustomPluginSettingsUi;
+        if (declared is not { SettingsFields.Count: > 0 } && customUi is null)
+        {
+            return;
+        }
+
+        Plugins.Add(new PluginSettingsItem(id, displayName, icon, _pluginStore.Get(id), declared, customUi));
     }
 
     [RelayCommand]

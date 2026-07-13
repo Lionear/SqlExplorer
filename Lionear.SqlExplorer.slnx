@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/Plugins/">
     <Project Path="plugins/Providers.Template/Lionear.SqlExplorer.Providers.Template.csproj" />
+    <Project Path="plugins/Tools.UniversalBackup/Lionear.SqlExplorer.Tools.UniversalBackup.csproj" />
     <Project Path="src/Providers.MsSql/Lionear.SqlExplorer.Providers.MsSql.csproj" />
     <Project Path="src/Providers.MySql/Lionear.SqlExplorer.Providers.MySql.csproj" />
     <Project Path="src/Providers.Postgres/Lionear.SqlExplorer.Providers.Postgres.csproj" />
