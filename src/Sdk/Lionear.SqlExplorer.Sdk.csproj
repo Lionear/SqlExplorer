@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Lionear.SqlExplorer.Sdk</RootNamespace>
+    <!-- The single public extensibility contract for plugins (providers now, tools later). Third-party
+         plugins reference ONLY this package. Kept interface-only + small; once v1 is published, breaking
+         changes are expensive (Notes.md §4.1). Folders group the surface (Connections/, Schema/, Query/,
+         Ddl/, Ui/); the base contract stays UI-neutral. -->
+    <Description>Lionear SQL Explorer — plugin extensibility contract.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The Ui/ contract (ICustomConnectionUi) returns an Avalonia Control, so the SDK compiles against
+         Avalonia. PrivateAssets="all" keeps it OUT of consumers' transitive closure: a plain provider
+         (Postgres/SQLite/MySQL) that only implements IDbProvider never pulls Avalonia; a provider that
+         implements a UI capability adds its own Avalonia reference (ExcludeAssets=runtime), sharing the
+         host's copy across the ALC boundary. -->
+    <PackageReference Include="Avalonia" Version="12.0.5" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

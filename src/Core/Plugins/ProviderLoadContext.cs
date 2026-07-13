@@ -10,33 +10,28 @@ namespace Lionear.SqlExplorer.Core.Plugins;
 /// plugin's own <c>.deps.json</c>, so two plugins can pin different driver versions.
 /// </summary>
 /// <remarks>
-/// The shared contract assemblies (<c>Provider.Sdk</c>, and for Route B <c>Provider.Sdk.Ui</c> +
-/// Avalonia) are intentionally NOT resolved here: <see cref="Load"/> returns <c>null</c> for them so
-/// the default context provides the host's single copy, keeping one type identity across the boundary
-/// — without that, the cast to <c>IDbProvider</c> (or an <c>ICustomConnectionUi</c> returning an
-/// Avalonia <c>Control</c>) would fail at runtime. Everything else (Npgsql, the driver, …) still loads
-/// privately from the plugin folder so two plugins can pin different versions.
-/// Non-collectible: providers load once at startup and live for the process (matches the
+/// The shared contract assembly (<c>Lionear.SqlExplorer.Sdk</c>, whose Ui/ capabilities carry the
+/// Route-B <c>ICustomConnectionUi</c>) and Avalonia are intentionally NOT resolved here: <see cref="Load"/>
+/// returns <c>null</c> for them so the default context provides the host's single copy, keeping one type
+/// identity across the boundary — without that, the cast to <c>IDbProvider</c> (or an
+/// <c>ICustomConnectionUi</c> returning an Avalonia <c>Control</c>) would fail at runtime. Everything else
+/// (Npgsql, the driver, …) still loads privately from the plugin folder so two plugins can pin different
+/// versions. Non-collectible: providers load once at startup and live for the process (matches the
 /// Notes §4.2 assumption — "no real unload", desktop-only, not a security boundary).
 /// </remarks>
 public sealed class ProviderLoadContext : AssemblyLoadContext
 {
-    // Provider.Sdk — derived from the type so it can't drift from the real assembly name.
-    private static readonly string ProviderSdkAssembly = typeof(IDbProvider).Assembly.GetName().Name!;
-
-    // Provider.Sdk.Ui is referenced by name (a constant) so Core stays Avalonia-free — it must not
-    // depend on the UI contract assembly just to share it across the boundary.
-    private const string ProviderSdkUiAssembly = "Lionear.SqlExplorer.Provider.Sdk.Ui";
+    // The one SDK assembly — derived from the type so it can't drift from the real assembly name.
+    private static readonly string SdkAssembly = typeof(IDbProvider).Assembly.GetName().Name!;
 
     /// <summary>
     /// Whether an assembly must resolve to the host's copy (single type identity) rather than load
-    /// privately in the plugin's context: the SDK contracts and all of Avalonia. A Route-B provider's
+    /// privately in the plugin's context: the SDK contract and all of Avalonia. A Route-B provider's
     /// custom view is an Avalonia <c>Control</c>, so host and plugin must share those exact types.
     /// </summary>
     public static bool ShouldShareWithHost(string? assemblyName) =>
         assemblyName is not null
-        && (assemblyName == ProviderSdkAssembly
-            || assemblyName == ProviderSdkUiAssembly
+        && (assemblyName == SdkAssembly
             || assemblyName.StartsWith("Avalonia", StringComparison.Ordinal));
 
     private readonly AssemblyDependencyResolver _resolver;

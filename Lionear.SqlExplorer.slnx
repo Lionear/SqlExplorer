@@ -12,11 +12,8 @@
   <Folder Name="/src/Desktop/">
     <Project Path="src/Desktop/Lionear.SqlExplorer.Desktop.csproj" />
   </Folder>
-  <Folder Name="/src/Provider.Sdk/">
-    <Project Path="src/Provider.Sdk/Lionear.SqlExplorer.Provider.Sdk.csproj" />
-  </Folder>
-  <Folder Name="/src/Provider.Sdk.Ui/">
-    <Project Path="src/Provider.Sdk.Ui/Lionear.SqlExplorer.Provider.Sdk.Ui.csproj" />
+  <Folder Name="/src/Sdk/">
+    <Project Path="src/Sdk/Lionear.SqlExplorer.Sdk.csproj" />
   </Folder>
   <Folder Name="/src/Providers.Postgres/">
     <File Path="src\Providers.Postgres\postgresql-database-logo-computer-icons-replication-software-developer-c58ad9bb5d3ba67754ac899f42d4bc52.png" />

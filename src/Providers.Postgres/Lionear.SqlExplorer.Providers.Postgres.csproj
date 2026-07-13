@@ -10,7 +10,7 @@
   <ItemGroup>
     <!-- Shared contract. Private=false keeps Provider.Sdk.dll OUT of the plugin folder so the
          host's copy is used across the ALC boundary (single IDbProvider type identity). -->
-    <ProjectReference Include="..\Provider.Sdk\Lionear.SqlExplorer.Provider.Sdk.csproj" Private="false" />
+    <ProjectReference Include="..\Sdk\Lionear.SqlExplorer.Sdk.csproj" Private="false" />
   </ItemGroup>
 
   <ItemGroup>

@@ -8,13 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Shared contract. Private=false keeps Provider.Sdk.dll OUT of the plugin folder so the
+    <!-- Shared contract. Private=false keeps Lionear.SqlExplorer.Sdk.dll OUT of the plugin folder so the
          host's copy is used across the ALC boundary (single IDbProvider type identity). -->
-    <ProjectReference Include="..\Provider.Sdk\Lionear.SqlExplorer.Provider.Sdk.csproj" Private="false" />
-    <!-- Route B UI contract. Same sharing story as Provider.Sdk (Private=false → host's copy over the
-         ALC boundary). Avalonia is referenced for compile only (ExcludeAssets=runtime): the host owns
-         it and ProviderLoadContext shares it, so the plugin must not ship its own copy. -->
-    <ProjectReference Include="..\Provider.Sdk.Ui\Lionear.SqlExplorer.Provider.Sdk.Ui.csproj" Private="false" />
+    <ProjectReference Include="..\Sdk\Lionear.SqlExplorer.Sdk.csproj" Private="false" />
+    <!-- Route B: this provider implements the SDK's ICustomConnectionUi (returns an Avalonia Control), so
+         it needs Avalonia at compile time. ExcludeAssets=runtime: the host owns Avalonia and
+         ProviderLoadContext shares it, so the plugin must not ship its own copy. (The SDK's own Avalonia
+         reference is PrivateAssets=all, hence not transitive — a UI provider opts in here explicitly.) -->
     <PackageReference Include="Avalonia" Version="12.0.5" ExcludeAssets="runtime" />
   </ItemGroup>
 

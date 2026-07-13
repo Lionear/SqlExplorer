@@ -12,10 +12,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Provider.Sdk\Lionear.SqlExplorer.Provider.Sdk.csproj" />
-    <!-- Route B (Notes §4.4): host renders a provider's own advanced-connection view when it implements
-         ICustomConnectionUi. Shared with plugins across the ALC boundary (see ProviderLoadContext). -->
-    <ProjectReference Include="..\Provider.Sdk.Ui\Lionear.SqlExplorer.Provider.Sdk.Ui.csproj" />
+    <!-- The one plugin SDK. Its Ui/ capabilities (ICustomConnectionUi, Route B) live here too now; the
+         host references Avalonia itself, and shares the SDK + Avalonia across the plugin ALC boundary. -->
+    <ProjectReference Include="..\Sdk\Lionear.SqlExplorer.Sdk.csproj" />
     <ProjectReference Include="..\Core\Lionear.SqlExplorer.Core.csproj" />
     <ProjectReference Include="..\Infrastructure\Lionear.SqlExplorer.Infrastructure.csproj" />
     <!-- Providers are loaded at runtime as plugins, not linked. ReferenceOutputAssembly=false

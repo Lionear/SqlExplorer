@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Provider.Sdk\Lionear.SqlExplorer.Provider.Sdk.csproj" />
+    <ProjectReference Include="..\Sdk\Lionear.SqlExplorer.Sdk.csproj" />
   </ItemGroup>
 
 </Project>
