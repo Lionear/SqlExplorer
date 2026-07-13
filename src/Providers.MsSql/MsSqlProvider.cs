@@ -1,13 +1,20 @@
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using Avalonia.Controls;
 using Lionear.SqlExplorer.Sdk;
+using Lionear.SqlExplorer.Sdk.Ui;
 using Microsoft.Data.SqlClient;
 
 namespace Lionear.SqlExplorer.Providers.MsSql;
 
-public sealed class MsSqlProvider : IDbProvider
+public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
 {
+    // Route B (Notes §4.4): render the Advanced section with a provider-owned view instead of the
+    // host-generated form. The declared Advanced ConnectionFields still define the data — the view
+    // just reads/writes them through the context.
+    public Control CreateAdvancedView(IConnectionUiContext context) => new MsSqlAdvancedView(context);
+
     public string DisplayName => "Microsoft SQL Server";
 
     // Uses the embedded brand PNG (icon.png) when present; falls back to a glyph otherwise.
