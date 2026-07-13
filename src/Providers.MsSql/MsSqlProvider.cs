@@ -463,7 +463,8 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
             """;
 
         const string colSql = """
-            SELECT column_name, data_type, is_nullable
+            SELECT column_name, data_type, is_nullable,
+                   character_maximum_length, numeric_precision, numeric_scale
             FROM information_schema.columns
             WHERE table_schema = @schema AND table_name = @table
             ORDER BY ordinal_position
@@ -493,13 +494,37 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
             while (await colReader.ReadAsync(ct))
             {
                 var name = colReader.GetString(0);
-                var dataType = colReader.GetString(1);
                 var pk = primaryKeys.Contains(name) ? " (PK)" : string.Empty;
-                nodes.Add(new DbTreeNode { Kind = DbNodeKind.Column, Name = name, Detail = $"{dataType}{pk}" });
+                // Full DDL type incl. length/precision (data_type alone is just "nvarchar", which SQL
+                // Server treats as nvarchar(1) — losing the size and truncating data on a DDL round-trip).
+                var fullType = FormatColumnType(
+                    colReader.GetString(1),
+                    Nullable(colReader, 3),
+                    Nullable(colReader, 4),
+                    Nullable(colReader, 5));
+                nodes.Add(new DbTreeNode { Kind = DbNodeKind.Column, Name = name, Detail = $"{fullType}{pk}" });
             }
         }
 
         return nodes;
+    }
+
+    private static int? Nullable(SqlDataReader reader, int ordinal) =>
+        reader.IsDBNull(ordinal) ? null : Convert.ToInt32(reader.GetValue(ordinal));
+
+    // Rebuild the full SQL Server type string from information_schema parts: (max)/(length) for the
+    // string/binary types, (precision, scale) for decimal/numeric, bare name otherwise.
+    private static string FormatColumnType(string dataType, int? maxLength, int? precision, int? scale)
+    {
+        switch (dataType)
+        {
+            case "char" or "varchar" or "nchar" or "nvarchar" or "binary" or "varbinary" when maxLength is { } length:
+                return length == -1 ? $"{dataType}(max)" : $"{dataType}({length})";
+            case "decimal" or "numeric" when precision is { } p:
+                return scale is { } s and > 0 ? $"{dataType}({p},{s})" : $"{dataType}({p})";
+            default:
+                return dataType;
+        }
     }
 
     private static async Task<IReadOnlyList<DbTreeNode>> LoadSequencesAsync(
