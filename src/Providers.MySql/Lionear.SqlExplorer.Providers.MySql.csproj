@@ -23,4 +23,14 @@
     <EmbeddedResource Include="icon.png" LogicalName="icon.png" Condition="Exists('icon.png')" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- SDK namespaces mirror its folders; import the sub-namespaces project-wide so consumer
+         files keep a single `using Lionear.SqlExplorer.Sdk` at the top. -->
+    <Using Include="Lionear.SqlExplorer.Sdk.Connections" />
+    <Using Include="Lionear.SqlExplorer.Sdk.Schema" />
+    <Using Include="Lionear.SqlExplorer.Sdk.Query" />
+    <Using Include="Lionear.SqlExplorer.Sdk.Ddl" />
+    <Using Include="Lionear.SqlExplorer.Sdk.Branding" />
+  </ItemGroup>
+
 </Project>

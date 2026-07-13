@@ -1,4 +1,4 @@
-namespace Lionear.SqlExplorer.Sdk;
+namespace Lionear.SqlExplorer.Sdk.Query;
 
 /// <summary>
 /// One parameterised SQL statement in a save batch. <see cref="Text"/> uses named

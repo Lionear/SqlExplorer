@@ -1,4 +1,4 @@
-namespace Lionear.SqlExplorer.Sdk;
+namespace Lionear.SqlExplorer.Sdk.Branding;
 
 /// <summary>
 /// A provider's icon, shown on its connection nodes in the tree. A provider may supply a

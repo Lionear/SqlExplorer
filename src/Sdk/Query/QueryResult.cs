@@ -1,4 +1,4 @@
-namespace Lionear.SqlExplorer.Sdk;
+namespace Lionear.SqlExplorer.Sdk.Query;
 
 /// <summary>
 /// One column of a result set. Beyond the display name and CLR type, the optional

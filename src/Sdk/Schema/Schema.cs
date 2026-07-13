@@ -1,4 +1,4 @@
-namespace Lionear.SqlExplorer.Sdk;
+namespace Lionear.SqlExplorer.Sdk.Schema;
 
 /// <summary>
 /// The kind of object a schema-tree node represents. A provider chooses which levels it

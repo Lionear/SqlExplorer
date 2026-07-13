@@ -1,4 +1,6 @@
-namespace Lionear.SqlExplorer.Sdk;
+using Lionear.SqlExplorer.Sdk.Schema;
+
+namespace Lionear.SqlExplorer.Sdk.Ddl;
 
 /// <summary>The kind of object DDL Create can build — a narrower, purpose-built set than
 /// <see cref="DbNodeKind"/> (which describes tree shape, not what's creatable).</summary>

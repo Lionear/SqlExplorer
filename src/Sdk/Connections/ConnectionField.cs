@@ -1,4 +1,4 @@
-namespace Lionear.SqlExplorer.Sdk;
+namespace Lionear.SqlExplorer.Sdk.Connections;
 
 /// <summary>How a <see cref="ConnectionField"/> is captured — the host renders one control per type.</summary>
 public enum ConnectionFieldType

@@ -1,4 +1,4 @@
-namespace Lionear.SqlExplorer.Sdk;
+namespace Lionear.SqlExplorer.Sdk.Connections;
 
 /// <summary>
 /// A saved connection handed to a provider. In the skeleton the connection string

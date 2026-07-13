@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace Lionear.SqlExplorer.Sdk;
+namespace Lionear.SqlExplorer.Sdk.Branding;
 
 /// <summary>
 /// Loads a provider's brand icon from an <c>icon.png</c> embedded in the provider assembly, falling
