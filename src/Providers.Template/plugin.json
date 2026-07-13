@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "template",
+  "type": "provider",
+  "name": "Template (example)",
+  "version": "1.0.0",
+  "hostApiVersion": 15,
+  "entryAssembly": "Lionear.SqlExplorer.Providers.Template.dll"
+}

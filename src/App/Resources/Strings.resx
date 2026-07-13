@@ -459,4 +459,19 @@
   <data name="DeleteFolderConfirm" xml:space="preserve">
     <value>Move {0} connection(s) to ungrouped and delete this folder?</value>
   </data>
+  <data name="SettingsGeneralCat" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="SettingsPlugins" xml:space="preserve">
+    <value>Plugins</value>
+  </data>
+  <data name="AppearanceDesc" xml:space="preserve">
+    <value>Theme applies live — no restart needed.</value>
+  </data>
+  <data name="PluginsDesc" xml:space="preserve">
+    <value>Only plugins that declare their own settings appear here. Installing or enabling plugins happens in the Plugin Store.</value>
+  </data>
+  <data name="PluginsNoneHint" xml:space="preserve">
+    <value>No installed plugin declares settings yet. Plugins expose their own settings through the SDK.</value>
+  </data>
 </root>

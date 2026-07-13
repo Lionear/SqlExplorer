@@ -53,6 +53,10 @@ public static class AppServices
         // UI preferences (window geometry, sidebar width) alongside connections.json.
         services.AddSingleton<IAppSettingsStore>(new JsonAppSettingsStore());
 
+        // Plugin-declared settings (keyed by plugin id) in their own file, so they never race the
+        // app-settings save above.
+        services.AddSingleton<IPluginSettingsStore>(new JsonPluginSettingsStore());
+
         // Query history (searchable, re-runnable) beside connections.json.
         services.AddSingleton<IQueryHistoryStore>(new JsonQueryHistoryStore());
         services.AddSingleton<ConnectionService>();

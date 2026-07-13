@@ -38,6 +38,11 @@
       <ProviderPluginFile Include="$(MSBuildThisFileDirectory)..\Providers.MsSql\bin\$(Configuration)\$(TargetFramework)\**\*">
         <PluginId>sqlserver</PluginId>
       </ProviderPluginFile>
+      <!-- Debug-only reference/example provider (see App.csproj). Absent from Release/publish staging. -->
+      <ProviderPluginFile Include="$(MSBuildThisFileDirectory)..\Providers.Template\bin\$(Configuration)\$(TargetFramework)\**\*"
+                          Condition="'$(Configuration)' == 'Debug'">
+        <PluginId>template</PluginId>
+      </ProviderPluginFile>
     </ItemGroup>
   </Target>
 

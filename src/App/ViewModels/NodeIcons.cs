@@ -73,6 +73,28 @@ public static class NodeIcons
         Parse("M3.5,4.7 H12.5 M6.2,4.7 V3.3 H9.8 V4.7 M4.8,4.7 L5.4,12.8 H10.6 L11.2,4.7 " +
               "M6.9,6.7 V10.8 M9.1,6.7 V10.8");
 
+    // --- Settings category-rail glyphs. Stroked 16x16, same style as the rest. ---
+
+    // Two rails with knobs → general/sliders.
+    public static readonly Geometry SettingsGeneral =
+        Parse("M2.5,5.5 H13.5 M2.5,10.5 H13.5 M6,4 V7 M10,9 V12");
+
+    // Half-shaded circle → appearance/theme (light vs dark).
+    public static readonly Geometry SettingsAppearance =
+        Parse("M8,2.5 A5.5,5.5 0 1 0 8,13.5 A5.5,5.5 0 1 0 8,2.5 M8,2.5 V13.5");
+
+    // Pencil → editor.
+    public static readonly Geometry SettingsEditor =
+        Parse("M3.2,12.8 L2.7,13.3 L3.4,10.6 L10.4,3.6 L12.4,5.6 L5.4,12.6 Z M9.4,4.6 L11.4,6.6");
+
+    // Play triangle → query.
+    public static readonly Geometry SettingsQuery =
+        Parse("M5.5,3.5 L12.5,8 L5.5,12.5 Z");
+
+    // Four blocks → plugins/extensions.
+    public static readonly Geometry SettingsPlugins =
+        Parse("M3,3 H6.5 V6.5 H3 Z M9.5,3 H13 V6.5 H9.5 Z M3,9.5 H6.5 V13 H3 Z M9.5,9.5 H13 V13 H9.5 Z");
+
     public static Geometry For(DbNodeKind kind) => kind switch
     {
         DbNodeKind.Database => Database,
