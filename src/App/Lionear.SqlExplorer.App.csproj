@@ -27,9 +27,10 @@
     <ProjectReference Include="..\Providers.Sqlite\Lionear.SqlExplorer.Providers.Sqlite.csproj" ReferenceOutputAssembly="false" Private="false" />
     <ProjectReference Include="..\Providers.MySql\Lionear.SqlExplorer.Providers.MySql.csproj" ReferenceOutputAssembly="false" Private="false" />
     <ProjectReference Include="..\Providers.MsSql\Lionear.SqlExplorer.Providers.MsSql.csproj" ReferenceOutputAssembly="false" Private="false" />
-    <!-- Reference/example provider: Debug-only, so it builds (and gets staged) during development but
-         never ships in a Release/MVP build. Demonstrates IPluginSettings (Route A) live in Settings. -->
-    <ProjectReference Include="..\Providers.Template\Lionear.SqlExplorer.Providers.Template.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
+    <!-- Optional/non-shipped plugins live under the repo-root plugins/ folder (not src/), so it's clear
+         they aren't part of the core product. Debug-only: they build + get staged during development but
+         never ship in a Release/MVP build. The template demonstrates IPluginSettings (Route A) live. -->
+    <ProjectReference Include="..\..\plugins\Providers.Template\Lionear.SqlExplorer.Providers.Template.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
 
   <ItemGroup>
