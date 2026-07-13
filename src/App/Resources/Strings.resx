@@ -150,6 +150,12 @@
   <data name="ConnectionFailed" xml:space="preserve">
     <value>Could not connect to the server.</value>
   </data>
+  <data name="Stop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="QueryCancelled" xml:space="preserve">
+    <value>Query cancelled.</value>
+  </data>
   <data name="Yes" xml:space="preserve">
     <value>Yes</value>
   </data>

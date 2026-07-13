@@ -475,6 +475,34 @@ public partial class DocumentViewModel : ViewModelBase
         }
     }
 
+    // True while a query/script/browse load is in flight; drives the Stop button and its guard.
+    [ObservableProperty]
+    private bool _isRunning;
+
+    // The active run's cancellation source, so the Stop button can cancel it (null when idle).
+    private CancellationTokenSource? _runCts;
+
+    [RelayCommand]
+    private void Stop() => _runCts?.Cancel();
+
+    // Wrap a run with cancellation + the IsRunning flag: a linked source lets Stop cancel it, and the
+    // token is threaded down to the provider (ADO.NET honours it), so long queries can be aborted.
+    private async Task RunTracked(CancellationToken outerCt, Func<CancellationToken, Task> body)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
+        _runCts = cts;
+        IsRunning = true;
+        try
+        {
+            await body(cts.Token);
+        }
+        finally
+        {
+            IsRunning = false;
+            _runCts = null;
+        }
+    }
+
     [RelayCommand]
     private async Task RunAsync(CancellationToken ct) =>
         await RunScriptAsync(SelectionText.Length > 0 ? SelectionText : Sql, ct);
@@ -500,24 +528,31 @@ public partial class DocumentViewModel : ViewModelBase
             return;
         }
 
-        try
+        await RunTracked(ct, async token =>
         {
-            var profile = _connections.Resolve(Connection, _database);
-            var result = await _providers.Get(Connection.ProviderId).ExplainAsync(profile, text, ct);
-            SetResultSets([new ResultSetTab("EXPLAIN", EditableResultSet.From(result))]);
-            Status = Loc.Get("StatusRows", result.Rows.Count, result.Elapsed.TotalMilliseconds);
-        }
-        catch (Exception ex)
-        {
-            Status = ex.Message;
-        }
+            try
+            {
+                var profile = _connections.Resolve(Connection, _database);
+                var result = await _providers.Get(Connection.ProviderId).ExplainAsync(profile, text, token);
+                SetResultSets([new ResultSetTab("EXPLAIN", EditableResultSet.From(result))]);
+                Status = Loc.Get("StatusRows", result.Rows.Count, result.Elapsed.TotalMilliseconds);
+            }
+            catch (OperationCanceledException)
+            {
+                Status = Loc["QueryCancelled"];
+            }
+            catch (Exception ex)
+            {
+                Status = ex.Message;
+            }
+        });
     }
 
     // Query-mode "Run"/"Run at cursor": the text may be one statement or a whole script, and the driver
     // may return zero, one, or several result sets — the host never needs to know which up front.
     // GO is not real T-SQL (a client-side batch separator only), so on SQL Server the text is split into
     // GO-batches first and each is executed separately; every other engine sends the text through as-is.
-    private async Task RunScriptAsync(string sql, CancellationToken ct)
+    private Task RunScriptAsync(string sql, CancellationToken ct) => RunTracked(ct, async token =>
     {
         var stopwatch = Stopwatch.StartNew();
         try
@@ -532,7 +567,7 @@ public partial class DocumentViewModel : ViewModelBase
             var results = new List<QueryResult>();
             foreach (var batch in batches)
             {
-                results.AddRange(await provider.ExecuteScriptAsync(profile, batch, ct));
+                results.AddRange(await provider.ExecuteScriptAsync(profile, batch, token));
             }
 
             stopwatch.Stop();
@@ -544,6 +579,11 @@ public partial class DocumentViewModel : ViewModelBase
                 AppendHistory(sql, QueryHistoryKind.Query, stopwatch.ElapsedMilliseconds, totalRows, success: true, error: null);
             }
         }
+        catch (OperationCanceledException)
+        {
+            stopwatch.Stop();
+            Status = Loc["QueryCancelled"];
+        }
         catch (Exception ex)
         {
             stopwatch.Stop();
@@ -553,7 +593,7 @@ public partial class DocumentViewModel : ViewModelBase
                 AppendHistory(sql, QueryHistoryKind.Query, stopwatch.ElapsedMilliseconds, 0, success: false, error: ex.Message);
             }
         }
-    }
+    });
 
     private static List<ResultSetTab> BuildResultTabs(IReadOnlyList<QueryResult> results) =>
         results.Count <= 1
@@ -597,13 +637,13 @@ public partial class DocumentViewModel : ViewModelBase
 
     // Shared execution path for both a typed query and a browse page. Only typed queries are logged to
     // history — browse paging (same path, IsBrowseMode) would just clutter it.
-    private async Task ExecuteAsync(string sql, CancellationToken ct)
+    private Task ExecuteAsync(string sql, CancellationToken ct) => RunTracked(ct, async token =>
     {
         var stopwatch = Stopwatch.StartNew();
         try
         {
             var profile = _connections.Resolve(Connection, _database);
-            var result = await _providers.Get(Connection.ProviderId).ExecuteQueryAsync(profile, sql, ct);
+            var result = await _providers.Get(Connection.ProviderId).ExecuteQueryAsync(profile, sql, token);
             stopwatch.Stop();
             _lastRowCount = result.Rows.Count;
             SetResultSets([new ResultSetTab("Result", EditableResultSet.From(result))]);
@@ -612,6 +652,11 @@ public partial class DocumentViewModel : ViewModelBase
             {
                 AppendHistory(sql, QueryHistoryKind.Query, stopwatch.ElapsedMilliseconds, result.Rows.Count, success: true, error: null);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            stopwatch.Stop();
+            Status = Loc["QueryCancelled"];
         }
         catch (Exception ex)
         {
@@ -622,7 +667,7 @@ public partial class DocumentViewModel : ViewModelBase
                 AppendHistory(sql, QueryHistoryKind.Query, stopwatch.ElapsedMilliseconds, 0, success: false, error: ex.Message);
             }
         }
-    }
+    });
 
     private void AppendHistory(string sql, QueryHistoryKind kind, long durationMs, int rowCount, bool success, string? error) =>
         _history.Append(new QueryHistoryEntry

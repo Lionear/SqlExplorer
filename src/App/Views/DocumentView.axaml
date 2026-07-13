@@ -29,7 +29,11 @@
     <!-- Row 0: mode-specific toolbar. Query = connection/database switcher + Run/Format; Browse = paging + filter. -->
     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8"
                 IsVisible="{Binding IsQueryMode}">
-      <Button Classes="Accent" Content="{Binding Loc[Run]}" Command="{Binding RunCommand}" />
+      <Button Classes="Accent" Content="{Binding Loc[Run]}" Command="{Binding RunCommand}"
+              IsVisible="{Binding !IsRunning}" />
+      <!-- Swaps in while a query runs: cancels the in-flight command via its CancellationToken. -->
+      <Button Classes="Accent" Content="{Binding Loc[Stop]}" Command="{Binding StopCommand}"
+              IsVisible="{Binding IsRunning}" />
       <Button Content="{Binding Loc[RunAtCursor]}" Command="{Binding RunAtCursorCommand}" />
       <Button Content="{Binding Loc[Explain]}" Command="{Binding ExplainCommand}" />
       <Button Content="{Binding Loc[Format]}" Command="{Binding FormatCommand}" />
