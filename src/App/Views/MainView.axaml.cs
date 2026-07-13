@@ -142,6 +142,7 @@ public partial class MainView : UserControl
             _viewModel.ExportFormatRequested = ShowExportFormatDialogAsync;
             _viewModel.ExportFileRequested = WriteExportFileAsync;
             _viewModel.SettingsDialogRequested = ShowSettingsDialogAsync;
+            _viewModel.ConfirmRequested = ShowConfirmAsync;
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         }
     }
@@ -167,6 +168,18 @@ public partial class MainView : UserControl
 
         var dialog = new ConnectionDialog { DataContext = dialogViewModel };
         return await dialog.ShowDialog<SavedConnection?>(owner);
+    }
+
+    // Yes/no confirmation (e.g. "reconnect now?"). Yes → true, No/closed → false.
+    private async Task<bool> ShowConfirmAsync(string title, string message)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner || _viewModel is null)
+        {
+            return false;
+        }
+
+        var dialog = new ConfirmDialog(title, message, _viewModel.Loc["Yes"], _viewModel.Loc["No"]);
+        return await dialog.ShowDialog<bool>(owner);
     }
 
     private async Task<string?> ShowCreateObjectDialogAsync(CreateObjectDialogViewModel dialogViewModel)

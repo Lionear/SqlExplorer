@@ -73,15 +73,15 @@ public partial class TreeNodeViewModel : ViewModelBase
     }
 
     /// <summary>The saved connection this node belongs to (inherited down the whole subtree).</summary>
-    public SavedConnection Connection { get; }
+    public SavedConnection Connection { get; private set; }
 
     /// <summary>Null for the connection root; otherwise the kind of database object.</summary>
     public DbNodeKind? NodeKind { get; }
 
     /// <summary>The object's own name (unqualified, without the display detail).</summary>
-    public string Name { get; }
+    public string Name { get; private set; }
 
-    public string Title { get; }
+    public string Title { get; private set; }
 
     /// <summary>A vector line-icon drawn when there is no <see cref="IconImage"/>.</summary>
     public Geometry? IconGeometry { get; }
@@ -178,6 +178,22 @@ public partial class TreeNodeViewModel : ViewModelBase
         Func<SavedConnection, IReadOnlyList<DbNodeRef>, Task<IReadOnlyList<DbTreeNode>>> load) =>
         new(connection, provider, kind: null, connection.Name, connection.Name, hasChildren: true,
             NodeIcons.Connection, iconImage, pathToChildren: [], load);
+
+    /// <summary>
+    /// Update a connection root's saved data in place (after editing) WITHOUT tearing down its loaded
+    /// subtree, so an open connection stays open. Future (re)loads use the new parameters; the live
+    /// subtree keeps the old ones until the next reconnect. Only valid on a connection root whose
+    /// provider is unchanged.
+    /// </summary>
+    public void UpdateConnection(SavedConnection connection)
+    {
+        Connection = connection;
+        Name = connection.Name;
+        Title = connection.Name;
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(ConnectionColorBrush));
+        OnPropertyChanged(nameof(HasConnectionColor));
+    }
 
     /// <summary>Reload this node's children from scratch (e.g. the Connect/Refresh action).</summary>
     public async Task RefreshAsync()

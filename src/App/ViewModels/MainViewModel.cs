@@ -377,6 +377,9 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Set by the view so the VM can hand off exported text to a save-file dialog + write it.</summary>
     public Func<string, ExportFormat, Task>? ExportFileRequested { get; set; }
 
+    /// <summary>Set by the view so the VM can ask a yes/no question (title, message); false if unavailable.</summary>
+    public Func<string, string, Task<bool>>? ConfirmRequested { get; set; }
+
     partial void OnSelectedNodeChanged(TreeNodeViewModel? value) =>
         SelectedConnection = value?.Connection;
 
@@ -571,9 +574,38 @@ public partial class MainViewModel : ViewModelBase
         dialog.LoadForEdit(SelectedConnection);
 
         var saved = await ConnectionDialogRequested(dialog);
-        if (saved is not null)
+        if (saved is null)
+        {
+            return;
+        }
+
+        var existing = ConnectionNodes.FirstOrDefault(n => n.Connection.Id == saved.Id);
+
+        // A provider swap changes the whole node shape (icon, capabilities, tree) — rebuild it.
+        // Otherwise keep the node so an open/expanded (possibly connected) subtree stays put.
+        if (existing is null || existing.Connection.ProviderId != saved.ProviderId)
         {
             UpsertConnectionNode(saved);
+            return;
+        }
+
+        var wasConnected = existing.State == ConnectionState.Connected;
+        existing.UpdateConnection(saved);
+        SelectedConnection = saved;
+
+        // The live connection still uses the old parameters; only a reconnect applies the edits.
+        if (wasConnected)
+        {
+            var reconnect = ConfirmRequested is not null
+                && await ConfirmRequested(Loc["ReconnectTitle"], Loc["ReconnectMessage"]);
+            if (reconnect)
+            {
+                await existing.RefreshAsync();
+            }
+            else
+            {
+                ReportInfo(saved.Name, Loc["ChangesOnReconnect"]);
+            }
         }
     }
 

@@ -150,6 +150,21 @@
   <data name="ConnectionFailed" xml:space="preserve">
     <value>Kan geen verbinding maken met de server.</value>
   </data>
+  <data name="Yes" xml:space="preserve">
+    <value>Ja</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>Nee</value>
+  </data>
+  <data name="ReconnectTitle" xml:space="preserve">
+    <value>Opnieuw verbinden?</value>
+  </data>
+  <data name="ReconnectMessage" xml:space="preserve">
+    <value>De verbinding staat nog open met de vorige instellingen. Je wijzigingen gelden pas na opnieuw verbinden. Nu opnieuw verbinden?</value>
+  </data>
+  <data name="ChangesOnReconnect" xml:space="preserve">
+    <value>Wijzigingen opgeslagen — ze gelden bij de volgende verbinding.</value>
+  </data>
   <data name="Output" xml:space="preserve">
     <value>Uitvoer</value>
   </data>

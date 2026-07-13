@@ -150,6 +150,21 @@
   <data name="ConnectionFailed" xml:space="preserve">
     <value>Could not connect to the server.</value>
   </data>
+  <data name="Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="ReconnectTitle" xml:space="preserve">
+    <value>Reconnect?</value>
+  </data>
+  <data name="ReconnectMessage" xml:space="preserve">
+    <value>The connection is still open with its previous settings. Your changes only take effect after reconnecting. Reconnect now?</value>
+  </data>
+  <data name="ChangesOnReconnect" xml:space="preserve">
+    <value>Changes saved — they take effect the next time you connect.</value>
+  </data>
   <data name="Output" xml:space="preserve">
     <value>Output</value>
   </data>
