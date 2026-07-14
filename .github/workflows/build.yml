@@ -196,7 +196,7 @@ jobs:
   release:
     name: Nightly release
     needs: build
-    if: ${{ github.event_name == 'schedule' || inputs.publish_release }}
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.publish_release }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
