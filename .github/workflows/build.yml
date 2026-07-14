@@ -18,6 +18,13 @@ on:
     - cron: "0 2 * * *"   # nightly at 02:00 UTC
   push:
     branches: [main]
+    paths-ignore:      # docs / non-code changes shouldn't spend a full build
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".gitignore"
+      - ".idea/**"
+      - "**/*.DotSettings*"
 
 # Superseded push builds cancel each other; scheduled/dispatch runs keep their own
 # lane (event_name in the key) so a push never cancels a nightly or a manual run.
