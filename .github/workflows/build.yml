@@ -1,0 +1,161 @@
+name: Build
+
+# Manual only for now. To enable nightly builds later, uncomment the `schedule`
+# block below (02:00 UTC daily) — nothing runs automatically until you do.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version stamp (leave empty for nightly-<date>-<run>)"
+        required: false
+        default: ""
+  # schedule:
+  #   - cron: "0 2 * * *"   # nightly at 02:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            rid: win-x64
+            package: windows
+            publishArgs: "-p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true"
+          - name: Windows ARM64
+            os: windows-latest
+            rid: win-arm64
+            package: windows
+            publishArgs: "-p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true"
+          - name: Linux AppImage
+            os: ubuntu-latest
+            rid: linux-x64
+            package: appimage
+            publishArgs: ""
+          - name: macOS Apple Silicon (DMG)
+            os: macos-14
+            rid: osx-arm64
+            package: dmg
+            publishArgs: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="0.1.0-nightly.$(date -u +%Y%m%d).${{ github.run_number }}"
+          fi
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: Publish
+        shell: bash
+        run: |
+          dotnet publish src/Desktop/Lionear.SqlExplorer.Desktop.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained true \
+            -p:Version=${{ steps.version.outputs.value }} \
+            ${{ matrix.publishArgs }} \
+            -o publish/${{ matrix.rid }}
+
+      # --- Packaging: one step per target type ---
+
+      - name: Package (Windows zip)
+        if: matrix.package == 'windows'
+        shell: pwsh
+        run: |
+          $out = "artifacts"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          Compress-Archive -Path "publish/${{ matrix.rid }}/*" `
+            -DestinationPath "$out/LionearSqlExplorer-${{ matrix.rid }}.zip" -Force
+
+      - name: Package (Linux AppImage)
+        if: matrix.package == 'appimage'
+        shell: bash
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"   # GitHub runners have no FUSE
+        run: |
+          set -euo pipefail
+          APPDIR=AppDir
+          rm -rf "$APPDIR"
+          mkdir -p "$APPDIR/usr/bin"
+          cp -r publish/${{ matrix.rid }}/* "$APPDIR/usr/bin/"
+          chmod +x "$APPDIR/usr/bin/Lionear.SqlExplorer.Desktop"
+
+          # Icon (top-level + hicolor path both referenced by the .desktop entry)
+          cp src/App/Assets/icon.png "$APPDIR/lionear-sql-explorer.png"
+          mkdir -p "$APPDIR/usr/share/icons/hicolor/256x256/apps"
+          cp src/App/Assets/icon.png "$APPDIR/usr/share/icons/hicolor/256x256/apps/lionear-sql-explorer.png"
+
+          cat > "$APPDIR/lionear-sql-explorer.desktop" <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Lionear SQL Explorer
+          Exec=Lionear.SqlExplorer.Desktop
+          Icon=lionear-sql-explorer
+          Categories=Development;Database;
+          Terminal=false
+          EOF
+
+          cat > "$APPDIR/AppRun" <<'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/bin/Lionear.SqlExplorer.Desktop" "$@"
+          EOF
+          chmod +x "$APPDIR/AppRun"
+
+          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          chmod +x appimagetool
+
+          mkdir -p artifacts
+          ./appimagetool "$APPDIR" "artifacts/LionearSqlExplorer-x86_64.AppImage"
+
+      - name: Package (macOS DMG)
+        if: matrix.package == 'dmg'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The Desktop project's CreateMacAppBundle target assembles the .app
+          # from the publish output on macOS, one level above PublishDir.
+          APP="publish/Lionear SQL Explorer.app"
+          if [ ! -d "$APP" ]; then
+            echo "Expected app bundle not found at: $APP" >&2
+            ls -la publish >&2
+            exit 1
+          fi
+
+          STAGE="$(mktemp -d)"
+          cp -R "$APP" "$STAGE/"
+          ln -s /Applications "$STAGE/Applications"   # drag-to-install UX
+
+          mkdir -p artifacts
+          hdiutil create \
+            -volname "Lionear SQL Explorer" \
+            -srcfolder "$STAGE" \
+            -ov -format UDZO \
+            "artifacts/LionearSqlExplorer-osx-arm64.dmg"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rid }}
+          path: artifacts/*
+          retention-days: 14
+          if-no-files-found: error
