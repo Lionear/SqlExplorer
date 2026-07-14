@@ -9,11 +9,13 @@ using Lionear.SqlExplorer.Core.Providers;
 using Lionear.SqlExplorer.Core.Schema;
 using Lionear.SqlExplorer.Core.Settings;
 using Lionear.SqlExplorer.Core.Shortcuts;
+using Lionear.SqlExplorer.Core.Store;
 using Lionear.SqlExplorer.Core.Tools;
 using Lionear.SqlExplorer.Sdk.Shortcuts;
 using Lionear.SqlExplorer.Sdk.Tools;
 using Lionear.SqlExplorer.Infrastructure.Persistence;
 using Lionear.SqlExplorer.Infrastructure.Secrets;
+using Lionear.SqlExplorer.Infrastructure.Store;
 using Lionear.SqlExplorer.Sdk;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -82,6 +84,22 @@ public static class AppServices
         // Installed tab. Enable/disable/uninstall stage a change here, applied on next startup.
         services.AddSingleton<IPluginStateStore>(stateStore);
         services.AddSingleton(new PluginCatalogService(stateStore, discovered, providerResults, toolResults));
+
+        // Plugin Store: one shared HttpClient feeds the Discovery feed, the catalog merge and the
+        // installer. The store window is opened from the menu, same factory-delegate pattern as the dialogs.
+        services.AddSingleton(new HttpClient());
+        services.AddSingleton<IStoreSourcesStore>(new JsonStoreSourcesStore());
+        services.AddSingleton<IDiscoveryService>(sp => new HttpDiscoveryService(sp.GetRequiredService<HttpClient>()));
+        services.AddSingleton<IStoreCatalog>(sp => new HttpStoreCatalog(
+            sp.GetRequiredService<HttpClient>(),
+            sp.GetRequiredService<IDiscoveryService>(),
+            sp.GetRequiredService<IStoreSourcesStore>()));
+        services.AddSingleton<IPluginInstaller>(sp => new PluginInstaller(
+            sp.GetRequiredService<HttpClient>(),
+            sp.GetRequiredService<IPluginStateStore>()));
+        services.AddSingleton<PluginUpdateService>();
+        services.AddTransient<PluginStoreViewModel>();
+        services.AddSingleton<Func<PluginStoreViewModel>>(sp => sp.GetRequiredService<PluginStoreViewModel>);
 
         // Connections: metadata in a JSON file, secrets in the OS-native keychain.
         // Migrate pre-v10 configs (legacy "Kind" enum) to the manifest "ProviderId" once at startup.

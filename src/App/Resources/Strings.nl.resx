@@ -573,4 +573,136 @@
   <data name="ToggleComment" xml:space="preserve">
     <value>Regelcommentaar aan/uit</value>
   </data>
+  <data name="MenuTools" xml:space="preserve">
+    <value>Extra</value>
+  </data>
+  <data name="PluginStoreMenu" xml:space="preserve">
+    <value>Plugin Store…</value>
+  </data>
+  <data name="PluginStoreTitle" xml:space="preserve">
+    <value>Plugin Store</value>
+  </data>
+  <data name="StoreTabBrowse" xml:space="preserve">
+    <value>Bladeren</value>
+  </data>
+  <data name="StoreTabInstalled" xml:space="preserve">
+    <value>Geïnstalleerd</value>
+  </data>
+  <data name="StoreTabSources" xml:space="preserve">
+    <value>Bronnen</value>
+  </data>
+  <data name="StoreInstallFromFile" xml:space="preserve">
+    <value>Installeren uit bestand…</value>
+  </data>
+  <data name="StoreRestartNeeded" xml:space="preserve">
+    <value>Sommige wijzigingen worden pas na een herstart actief.</value>
+  </data>
+  <data name="StoreSearch" xml:space="preserve">
+    <value>Plugins zoeken…</value>
+  </data>
+  <data name="StoreLoading" xml:space="preserve">
+    <value>Laden…</value>
+  </data>
+  <data name="StoreBundleChip" xml:space="preserve">
+    <value>Bundel</value>
+  </data>
+  <data name="StoreStaged" xml:space="preserve">
+    <value>Geïnstalleerd — herstart nodig</value>
+  </data>
+  <data name="StoreCapabilities" xml:space="preserve">
+    <value>Rechten</value>
+  </data>
+  <data name="StoreBuiltIn" xml:space="preserve">
+    <value>Ingebouwd</value>
+  </data>
+  <data name="StoreInstalledSection" xml:space="preserve">
+    <value>Geïnstalleerd</value>
+  </data>
+  <data name="StoreDiscoverySources" xml:space="preserve">
+    <value>Discovery-bronnen</value>
+  </data>
+  <data name="StoreDiscoveryDesc" xml:space="preserve">
+    <value>Automatisch aangeleverd door Lionear; niet aanpasbaar.</value>
+  </data>
+  <data name="StoreManualSources" xml:space="preserve">
+    <value>Handmatige bronnen</value>
+  </data>
+  <data name="StoreAddSourceHint" xml:space="preserve">
+    <value>Voeg een index.json-URL toe…</value>
+  </data>
+  <data name="Add" xml:space="preserve">
+    <value>Toevoegen</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Verwijderen</value>
+  </data>
+  <data name="StoreConsentTitle" xml:space="preserve">
+    <value>Rechten toestaan?</value>
+  </data>
+  <data name="StoreConsentBody" xml:space="preserve">
+    <value>Deze plugin vraagt de volgende rechten:</value>
+  </data>
+  <data name="StoreConsentApprove" xml:space="preserve">
+    <value>Installeren</value>
+  </data>
+  <data name="StoreDisabled" xml:space="preserve">
+    <value>Uitgeschakeld</value>
+  </data>
+  <data name="StorePendingRemove" xml:space="preserve">
+    <value>Wordt bij herstart verwijderd</value>
+  </data>
+  <data name="StorePendingInstall" xml:space="preserve">
+    <value>Herstart nodig</value>
+  </data>
+  <data name="StoreRollback" xml:space="preserve">
+    <value>Terugdraaien</value>
+  </data>
+  <data name="StoreDisable" xml:space="preserve">
+    <value>Uitschakelen</value>
+  </data>
+  <data name="StoreEnable" xml:space="preserve">
+    <value>Inschakelen</value>
+  </data>
+  <data name="StoreUninstall" xml:space="preserve">
+    <value>Verwijderen</value>
+  </data>
+  <data name="StoreDownloading" xml:space="preserve">
+    <value>Downloaden…</value>
+  </data>
+  <data name="StoreVerifying" xml:space="preserve">
+    <value>Verifiëren…</value>
+  </data>
+  <data name="StoreExtracting" xml:space="preserve">
+    <value>Uitpakken…</value>
+  </data>
+  <data name="StoreStaging" xml:space="preserve">
+    <value>Klaarzetten…</value>
+  </data>
+  <data name="StoreInstalling" xml:space="preserve">
+    <value>Installeren…</value>
+  </data>
+  <data name="StoreInstall" xml:space="preserve">
+    <value>Installeren</value>
+  </data>
+  <data name="StoreUpdate" xml:space="preserve">
+    <value>Bijwerken</value>
+  </data>
+  <data name="StoreDowngrade" xml:space="preserve">
+    <value>Downgraden</value>
+  </data>
+  <data name="StoreReinstall" xml:space="preserve">
+    <value>Herinstalleren</value>
+  </data>
+  <data name="StoreIncompatible" xml:space="preserve">
+    <value>Niet compatibel</value>
+  </data>
+  <data name="StoreInstallAll" xml:space="preserve">
+    <value>Alles installeren</value>
+  </data>
+  <data name="StoreIncompatRange" xml:space="preserve">
+    <value>Vereist host-API {0}–{1}; deze build is {2}.</value>
+  </data>
+  <data name="StoreIncompatMin" xml:space="preserve">
+    <value>Vereist host-API {0}+; deze build is {1}.</value>
+  </data>
 </root>

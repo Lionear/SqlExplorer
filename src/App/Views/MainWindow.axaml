@@ -35,6 +35,13 @@
           </NativeMenu>
         </NativeMenuItem.Menu>
       </NativeMenuItem>
+      <NativeMenuItem Header="{Binding Loc[MenuTools]}">
+        <NativeMenuItem.Menu>
+          <NativeMenu>
+            <NativeMenuItem Header="{Binding Loc[PluginStoreMenu]}" Command="{Binding OpenPluginStoreCommand}" />
+          </NativeMenu>
+        </NativeMenuItem.Menu>
+      </NativeMenuItem>
       <NativeMenuItem Header="{Binding Loc[MenuHelp]}">
         <NativeMenuItem.Menu>
           <NativeMenu>
@@ -56,6 +63,9 @@
       </MenuItem>
       <MenuItem Header="{Binding Loc[MenuEdit]}">
         <MenuItem Header="{Binding Loc[Preferences]}" Command="{Binding OpenSettingsCommand}" />
+      </MenuItem>
+      <MenuItem Header="{Binding Loc[MenuTools]}">
+        <MenuItem Header="{Binding Loc[PluginStoreMenu]}" Command="{Binding OpenPluginStoreCommand}" />
       </MenuItem>
       <MenuItem Header="{Binding Loc[MenuHelp]}">
         <MenuItem Header="{Binding Loc[About]}" Command="{Binding ShowAboutCommand}" />

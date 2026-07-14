@@ -1,0 +1,344 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:Lionear.SqlExplorer.App.Converters"
+        xmlns:plugins="using:Lionear.SqlExplorer.Core.Plugins"
+        x:Class="Lionear.SqlExplorer.App.Views.PluginStoreWindow"
+        Title="{Binding Loc[PluginStoreTitle]}"
+        Width="920" Height="640" MinWidth="720" MinHeight="480"
+        WindowStartupLocation="CenterOwner">
+
+  <Window.Resources>
+    <!-- One Installed-tab row: metadata + status chips + per-plugin actions. Bundled rows expose no
+         manage actions; a failed load paints the whole row red so it stands out in a long list. -->
+    <DataTemplate x:Key="InstalledRow">
+      <Border Classes="Card" Classes.error="{Binding HasLoadError}" Background="{DynamicResource CatPanelBgBrush}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" />
+              <TextBlock Text="{Binding Version}" FontSize="11" VerticalAlignment="Center"
+                         FontFamily="Cascadia Code,Menlo,Consolas,monospace"
+                         Foreground="{DynamicResource CatTextFaintBrush}" />
+            </StackPanel>
+            <!-- status line -->
+            <TextBlock Text="{Binding LoadError}" FontSize="11" TextWrapping="Wrap"
+                       Foreground="{DynamicResource CatStatusErrorBrush}" IsVisible="{Binding HasLoadError}" />
+            <TextBlock Text="{Binding $parent[Window].DataContext.Loc[StoreDisabled]}" FontSize="11"
+                       Foreground="{DynamicResource CatStatusWaitingBrush}"
+                       IsVisible="{Binding !Enabled}" />
+            <TextBlock Text="{Binding $parent[Window].DataContext.Loc[StorePendingRemove]}" FontSize="11"
+                       Foreground="{DynamicResource CatStatusWaitingBrush}"
+                       IsVisible="{Binding Pending, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter={x:Static plugins:PluginPendingAction.Remove}}" />
+            <TextBlock Text="{Binding $parent[Window].DataContext.Loc[StorePendingInstall]}" FontSize="11"
+                       Foreground="{DynamicResource CatAccentBrush}"
+                       IsVisible="{Binding Pending, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter={x:Static plugins:PluginPendingAction.Install}}" />
+          </StackPanel>
+
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Button Classes="Accent" IsVisible="{Binding UpdateAvailable}"
+                    Content="{Binding UpdateTargetVersion, StringFormat='Update → {0}'}"
+                    Command="{Binding $parent[Window].DataContext.UpdateCommand}" CommandParameter="{Binding}" />
+            <Button Classes="Subtle" IsVisible="{Binding HasRollback}"
+                    Content="{Binding $parent[Window].DataContext.Loc[StoreRollback]}"
+                    Command="{Binding $parent[Window].DataContext.RollbackCommand}" CommandParameter="{Binding}" />
+            <Button Classes="Subtle" IsVisible="{Binding Enabled}" IsEnabled="{Binding CanManage}"
+                    Content="{Binding $parent[Window].DataContext.Loc[StoreDisable]}"
+                    Command="{Binding $parent[Window].DataContext.ToggleEnabledCommand}" CommandParameter="{Binding}" />
+            <Button Classes="Subtle" IsVisible="{Binding !Enabled}"
+                    Content="{Binding $parent[Window].DataContext.Loc[StoreEnable]}"
+                    Command="{Binding $parent[Window].DataContext.ToggleEnabledCommand}" CommandParameter="{Binding}" />
+            <Button Classes="Subtle" IsVisible="{Binding CanManage}"
+                    Content="{Binding $parent[Window].DataContext.Loc[StoreUninstall]}"
+                    Command="{Binding $parent[Window].DataContext.UninstallCommand}" CommandParameter="{Binding}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </DataTemplate>
+  </Window.Resources>
+
+  <Window.Styles>
+    <!-- Tabstrip buttons: an accent underline on the selected tab. -->
+    <Style Selector="Button.Tab">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0,0,0,2" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Padding" Value="14,8" />
+    </Style>
+    <Style Selector="Button.Tab.selected">
+      <Setter Property="BorderBrush" Value="{DynamicResource CatAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource CatAccentBrush}" />
+    </Style>
+    <Style Selector="Border.Card">
+      <Setter Property="BorderBrush" Value="{DynamicResource CatHairlineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="Border.Card.error">
+      <Setter Property="BorderBrush" Value="#66D64545" />
+      <Setter Property="Background" Value="#18D64545" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+
+    <!-- ===== Header: breadcrumb + tabstrip + actions ===== -->
+    <Border Grid.Row="0" Background="{DynamicResource CatToolbarBgBrush}"
+            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,0,0,1">
+      <Grid Margin="16,10,16,0" RowDefinitions="Auto,Auto">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6" Margin="0,0,0,6">
+          <TextBlock Text="{Binding Loc[Tools]}" Foreground="{DynamicResource CatTextFaintBrush}" FontSize="12" />
+          <TextBlock Text="›" Foreground="{DynamicResource CatTextFaintBrush}" FontSize="12" />
+          <TextBlock Text="{Binding Loc[PluginStoreTitle]}" FontSize="12" />
+        </StackPanel>
+
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto">
+          <StackPanel Grid.Column="0" Orientation="Horizontal">
+            <Button Classes="Tab" Classes.selected="{Binding SelectedTab, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Browse}"
+                    Content="{Binding Loc[StoreTabBrowse]}" Command="{Binding SelectTabCommand}" CommandParameter="Browse" />
+            <Button Classes="Tab" Classes.selected="{Binding SelectedTab, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Installed}"
+                    Content="{Binding Loc[StoreTabInstalled]}" Command="{Binding SelectTabCommand}" CommandParameter="Installed" />
+            <Button Classes="Tab" Classes.selected="{Binding SelectedTab, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Sources}"
+                    Content="{Binding Loc[StoreTabSources]}" Command="{Binding SelectTabCommand}" CommandParameter="Sources" />
+          </StackPanel>
+          <Button Grid.Column="2" Classes="Subtle" Margin="0,0,8,6" VerticalAlignment="Center"
+                  Content="{Binding Loc[StoreInstallFromFile]}" Command="{Binding InstallFromFileCommand}" />
+          <Button Grid.Column="3" Classes="Subtle" Margin="0,0,0,6" VerticalAlignment="Center"
+                  Content="{Binding Loc[Refresh]}" Command="{Binding RefreshCommand}" />
+        </Grid>
+      </Grid>
+    </Border>
+
+    <!-- ===== Restart-needed banner ===== -->
+    <Border Grid.Row="1" IsVisible="{Binding RestartRequired}" Background="#223574F0"
+            BorderBrush="{DynamicResource CatAccentBrush}" BorderThickness="0,0,0,1" Padding="16,8">
+      <TextBlock Text="{Binding Loc[StoreRestartNeeded]}" Foreground="{DynamicResource CatAccentBrush}"
+                 FontSize="12" VerticalAlignment="Center" />
+    </Border>
+
+    <!-- ===== Error banner ===== -->
+    <Border Grid.Row="2" IsVisible="{Binding ErrorText, Converter={x:Static ObjectConverters.IsNotNull}}"
+            Background="#22D64545" BorderBrush="#66D64545" BorderThickness="0,0,0,1" Padding="16,8">
+      <TextBlock Text="{Binding ErrorText}" Foreground="#F0B4B4" FontSize="12" TextWrapping="Wrap" />
+    </Border>
+
+    <!-- ===== Content ===== -->
+    <Panel Grid.Row="3">
+
+      <!-- ===== BROWSE ===== -->
+      <Grid ColumnDefinitions="360,*"
+            IsVisible="{Binding SelectedTab, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Browse}">
+        <Grid Grid.Column="0" RowDefinitions="Auto,*">
+          <TextBox Grid.Row="0" Margin="12,10" Watermark="{Binding Loc[StoreSearch]}" Text="{Binding SearchText}" />
+          <TextBlock Grid.Row="1" IsVisible="{Binding IsLoading}" Margin="16" Text="{Binding Loc[StoreLoading]}"
+                     Foreground="{DynamicResource CatTextFaintBrush}" />
+          <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsLoading}">
+            <ItemsControl ItemsSource="{Binding BrowseItems}" Margin="12,0,12,12">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Classes="Card" Background="{DynamicResource CatPanelBgBrush}"
+                          PointerPressed="OnBrowseCardPressed" Cursor="Hand">
+                    <StackPanel Spacing="3">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" />
+                        <Border IsVisible="{Binding IsBundle}" Background="{DynamicResource CatAccentBrush}"
+                                CornerRadius="8" Padding="6,1" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding $parent[Window].DataContext.Loc[StoreBundleChip]}"
+                                     FontSize="9.5" Foreground="{DynamicResource CatAccentFgBrush}" />
+                        </Border>
+                      </StackPanel>
+                      <TextBlock Text="{Binding Description}" FontSize="11.5" TextWrapping="Wrap" MaxLines="2"
+                                 Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+
+        <!-- Detail pane -->
+        <Border Grid.Column="1" BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1,0,0,0">
+          <ScrollViewer DataContext="{Binding SelectedBrowseItem}">
+            <StackPanel Margin="22,18" Spacing="10" IsVisible="{Binding Converter={x:Static ObjectConverters.IsNotNull}}">
+              <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="SemiBold" />
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Text="{Binding Author}" FontSize="11.5" Foreground="{DynamicResource CatTextSecondaryBrush}"
+                           IsVisible="{Binding Author, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <TextBlock Text="{Binding SourceName}" FontSize="11.5" Foreground="{DynamicResource CatTextFaintBrush}"
+                           IsVisible="{Binding SourceName, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </StackPanel>
+              <TextBlock Text="{Binding Description}" FontSize="12.5" TextWrapping="Wrap" />
+
+              <!-- Version + action -->
+              <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding !IsBundle}">
+                <ComboBox MinWidth="140" ItemsSource="{Binding Versions}" SelectedItem="{Binding SelectedVersion}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding Version}" FontFamily="Cascadia Code,Menlo,Consolas,monospace" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Classes="Accent" Content="{Binding ActionLabel}" IsEnabled="{Binding CanInstall}"
+                        Command="{Binding $parent[Window].DataContext.InstallCommand}" CommandParameter="{Binding}" />
+                <TextBlock Text="{Binding $parent[Window].DataContext.Loc[StoreStaged]}" IsVisible="{Binding IsStaged}"
+                           VerticalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource CatStatusConnectedBrush}" />
+              </StackPanel>
+
+              <!-- Bundle install-all -->
+              <Button Classes="Accent" IsVisible="{Binding IsBundle}" Content="{Binding ActionLabel}"
+                      Command="{Binding $parent[Window].DataContext.InstallCommand}" CommandParameter="{Binding}" />
+
+              <TextBlock Text="{Binding IncompatibleReason}" FontSize="11.5" TextWrapping="Wrap"
+                         Foreground="{DynamicResource CatStatusWaitingBrush}"
+                         IsVisible="{Binding IncompatibleReason, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+              <!-- Capabilities -->
+              <StackPanel Spacing="4" IsVisible="{Binding Capabilities.Count}">
+                <TextBlock Text="{Binding $parent[Window].DataContext.Loc[StoreCapabilities]}" FontSize="11"
+                           FontWeight="SemiBold" Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                <ItemsControl ItemsSource="{Binding Capabilities}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding}" FontSize="11.5" Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+
+              <TextBlock Text="{Binding Homepage}" FontSize="11.5" Foreground="{DynamicResource CatAccentBrush}"
+                         IsVisible="{Binding Homepage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+      </Grid>
+
+      <!-- ===== INSTALLED ===== -->
+      <Grid RowDefinitions="Auto,*"
+            IsVisible="{Binding SelectedTab, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Installed}">
+        <Grid Grid.Row="0" Margin="16,12" ColumnDefinitions="*,Auto">
+          <TextBlock Grid.Column="0" Text="{Binding Loc[StoreTabInstalled]}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="Accent" IsVisible="{Binding HasUpdates}" Command="{Binding UpdateAllCommand}">
+            <TextBlock Text="{Binding UpdateCount, StringFormat='Update all ({0})'}" />
+          </Button>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1">
+          <StackPanel Margin="16,0,16,16" Spacing="14">
+            <!-- Bundled -->
+            <StackPanel Spacing="6">
+              <TextBlock Text="{Binding Loc[StoreBuiltIn]}" FontSize="11" FontWeight="SemiBold"
+                         Foreground="{DynamicResource CatTextSecondaryBrush}" />
+              <ItemsControl ItemsSource="{Binding BundledPlugins}" ItemTemplate="{StaticResource InstalledRow}" />
+            </StackPanel>
+            <!-- User-installed -->
+            <StackPanel Spacing="6" IsVisible="{Binding HasUserPlugins}">
+              <TextBlock Text="{Binding Loc[StoreInstalledSection]}" FontSize="11" FontWeight="SemiBold"
+                         Foreground="{DynamicResource CatTextSecondaryBrush}" />
+              <ItemsControl ItemsSource="{Binding UserPlugins}" ItemTemplate="{StaticResource InstalledRow}" />
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
+
+      <!-- ===== SOURCES ===== -->
+      <ScrollViewer IsVisible="{Binding SelectedTab, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Sources}">
+        <StackPanel Margin="16,14" Spacing="16">
+          <!-- Discovery (read-only) -->
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="🔒" FontSize="12" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding Loc[StoreDiscoverySources]}" FontSize="13" FontWeight="SemiBold" />
+            </StackPanel>
+            <TextBlock Text="{Binding Loc[StoreDiscoveryDesc]}" FontSize="11.5" TextWrapping="Wrap"
+                       Foreground="{DynamicResource CatTextSecondaryBrush}" />
+            <ItemsControl ItemsSource="{Binding DiscoverySources}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Classes="Card" Background="{DynamicResource CatPanelBgBrush}">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" />
+                        <TextBlock Text="{Binding Url}" FontSize="10.5" FontFamily="Cascadia Code,Menlo,Consolas,monospace"
+                                   Foreground="{DynamicResource CatTextFaintBrush}" />
+                        <TextBlock Text="{Binding Error}" FontSize="10.5" Foreground="{DynamicResource CatStatusErrorBrush}"
+                                   IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                      </StackPanel>
+                      <Ellipse Grid.Column="1" Width="8" Height="8" VerticalAlignment="Center"
+                               Fill="{Binding Ok, Converter={x:Static c:BoolToStatusBrushConverter.Instance}}" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+
+          <!-- Manual -->
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding Loc[StoreManualSources]}" FontSize="13" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBox Grid.Column="0" Watermark="{Binding Loc[StoreAddSourceHint]}" Text="{Binding NewSourceUrl}" />
+              <Button Grid.Column="1" Classes="Subtle" Margin="8,0,0,0" Content="{Binding Loc[Add]}" Command="{Binding AddSourceCommand}" />
+            </Grid>
+            <ItemsControl ItemsSource="{Binding ManualSources}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Classes="Card" Background="{DynamicResource CatPanelBgBrush}">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <Ellipse Grid.Column="0" Width="8" Height="8" Margin="0,0,10,0" VerticalAlignment="Center"
+                               Fill="{Binding Ok, Converter={x:Static c:BoolToStatusBrushConverter.Instance}}" />
+                      <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Text="{Binding Url}" FontSize="11.5" FontFamily="Cascadia Code,Menlo,Consolas,monospace" />
+                        <TextBlock Text="{Binding Error}" FontSize="10.5" Foreground="{DynamicResource CatStatusErrorBrush}"
+                                   IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                      </StackPanel>
+                      <Button Grid.Column="2" Classes="Subtle" Content="{Binding $parent[Window].DataContext.Loc[Remove]}"
+                              Command="{Binding $parent[Window].DataContext.RemoveSourceCommand}" CommandParameter="{Binding}" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </Panel>
+
+    <!-- ===== Busy / progress bar ===== -->
+    <Border Grid.Row="4" IsVisible="{Binding IsBusy}" Background="{DynamicResource CatToolbarBgBrush}"
+            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,1,0,0" Padding="16,10">
+      <StackPanel Spacing="6">
+        <TextBlock Text="{Binding BusyText}" FontSize="11.5" />
+        <ProgressBar Minimum="0" Maximum="1" Value="{Binding ProgressValue}" IsIndeterminate="{Binding ProgressIndeterminate}" />
+      </StackPanel>
+    </Border>
+
+    <!-- ===== Capability-consent overlay ===== -->
+    <Border Grid.Row="0" Grid.RowSpan="5" IsVisible="{Binding IsConsentVisible}" Background="#99000000">
+      <Border Background="{DynamicResource CatPanelBgBrush}" BorderBrush="{DynamicResource CatHairlineBrush}"
+              BorderThickness="1" CornerRadius="8" Padding="22" MaxWidth="460"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="12">
+          <TextBlock Text="{Binding Loc[StoreConsentTitle]}" FontSize="15" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding ConsentPluginName}" FontSize="12.5" Foreground="{DynamicResource CatTextSecondaryBrush}" />
+          <TextBlock Text="{Binding Loc[StoreConsentBody]}" FontSize="12" TextWrapping="Wrap" />
+          <Border Background="{DynamicResource CatToolbarBgBrush}" CornerRadius="6" Padding="12,8">
+            <ItemsControl ItemsSource="{Binding ConsentCapabilities}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" FontSize="12" Margin="0,2" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Classes="Subtle" Content="{Binding Loc[Cancel]}" Command="{Binding CancelConsentCommand}" />
+            <Button Classes="Accent" Content="{Binding Loc[StoreConsentApprove]}" Command="{Binding ConfirmConsentCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+  </Grid>
+</Window>

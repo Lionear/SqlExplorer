@@ -43,6 +43,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly Func<AlterObjectDialogViewModel> _alterDialogFactory;
     private readonly Func<ImportCsvDialogViewModel> _importCsvDialogFactory;
     private readonly Func<SettingsViewModel> _settingsDialogFactory;
+    private readonly Func<PluginStoreViewModel> _pluginStoreFactory;
     private readonly IToolRegistry _tools;
     private readonly Func<ToolDialogViewModel> _toolDialogFactory;
     private readonly IAppSettingsStore _settingsStore;
@@ -95,6 +96,7 @@ public partial class MainViewModel : ViewModelBase
         Func<SettingsViewModel> settingsDialogFactory,
         IToolRegistry tools,
         Func<ToolDialogViewModel> toolDialogFactory,
+        Func<PluginStoreViewModel> pluginStoreFactory,
         IAppSettingsStore settingsStore,
         ILocalizer localizer)
     {
@@ -110,6 +112,7 @@ public partial class MainViewModel : ViewModelBase
         _settingsDialogFactory = settingsDialogFactory;
         _tools = tools;
         _toolDialogFactory = toolDialogFactory;
+        _pluginStoreFactory = pluginStoreFactory;
         _settingsStore = settingsStore;
         Loc = localizer;
 
@@ -1420,6 +1423,20 @@ public partial class MainViewModel : ViewModelBase
         {
             desktop.Shutdown();
         }
+    }
+
+    /// <summary>Set by the view so the VM can show the Plugin Store window.</summary>
+    public Func<PluginStoreViewModel, Task>? PluginStoreRequested { get; set; }
+
+    [RelayCommand]
+    private async Task OpenPluginStoreAsync()
+    {
+        if (PluginStoreRequested is null)
+        {
+            return;
+        }
+
+        await PluginStoreRequested(_pluginStoreFactory());
     }
 
     /// <summary>Set by the view so the VM can show the About window.</summary>

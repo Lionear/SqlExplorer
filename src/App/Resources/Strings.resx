@@ -573,4 +573,136 @@
   <data name="ToggleComment" xml:space="preserve">
     <value>Toggle line comment</value>
   </data>
+  <data name="MenuTools" xml:space="preserve">
+    <value>Tools</value>
+  </data>
+  <data name="PluginStoreMenu" xml:space="preserve">
+    <value>Plugin Store…</value>
+  </data>
+  <data name="PluginStoreTitle" xml:space="preserve">
+    <value>Plugin Store</value>
+  </data>
+  <data name="StoreTabBrowse" xml:space="preserve">
+    <value>Browse</value>
+  </data>
+  <data name="StoreTabInstalled" xml:space="preserve">
+    <value>Installed</value>
+  </data>
+  <data name="StoreTabSources" xml:space="preserve">
+    <value>Sources</value>
+  </data>
+  <data name="StoreInstallFromFile" xml:space="preserve">
+    <value>Install from file…</value>
+  </data>
+  <data name="StoreRestartNeeded" xml:space="preserve">
+    <value>Some changes take effect after a restart.</value>
+  </data>
+  <data name="StoreSearch" xml:space="preserve">
+    <value>Search plugins…</value>
+  </data>
+  <data name="StoreLoading" xml:space="preserve">
+    <value>Loading…</value>
+  </data>
+  <data name="StoreBundleChip" xml:space="preserve">
+    <value>Bundle</value>
+  </data>
+  <data name="StoreStaged" xml:space="preserve">
+    <value>Installed — restart needed</value>
+  </data>
+  <data name="StoreCapabilities" xml:space="preserve">
+    <value>Capabilities</value>
+  </data>
+  <data name="StoreBuiltIn" xml:space="preserve">
+    <value>Built-in</value>
+  </data>
+  <data name="StoreInstalledSection" xml:space="preserve">
+    <value>Installed</value>
+  </data>
+  <data name="StoreDiscoverySources" xml:space="preserve">
+    <value>Discovery sources</value>
+  </data>
+  <data name="StoreDiscoveryDesc" xml:space="preserve">
+    <value>Automatically provided by Lionear; not editable.</value>
+  </data>
+  <data name="StoreManualSources" xml:space="preserve">
+    <value>Manual sources</value>
+  </data>
+  <data name="StoreAddSourceHint" xml:space="preserve">
+    <value>Add an index.json URL…</value>
+  </data>
+  <data name="Add" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="StoreConsentTitle" xml:space="preserve">
+    <value>Grant capabilities?</value>
+  </data>
+  <data name="StoreConsentBody" xml:space="preserve">
+    <value>This plugin requests the following capabilities:</value>
+  </data>
+  <data name="StoreConsentApprove" xml:space="preserve">
+    <value>Install</value>
+  </data>
+  <data name="StoreDisabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="StorePendingRemove" xml:space="preserve">
+    <value>Will be removed on restart</value>
+  </data>
+  <data name="StorePendingInstall" xml:space="preserve">
+    <value>Restart needed</value>
+  </data>
+  <data name="StoreRollback" xml:space="preserve">
+    <value>Roll back</value>
+  </data>
+  <data name="StoreDisable" xml:space="preserve">
+    <value>Disable</value>
+  </data>
+  <data name="StoreEnable" xml:space="preserve">
+    <value>Enable</value>
+  </data>
+  <data name="StoreUninstall" xml:space="preserve">
+    <value>Uninstall</value>
+  </data>
+  <data name="StoreDownloading" xml:space="preserve">
+    <value>Downloading…</value>
+  </data>
+  <data name="StoreVerifying" xml:space="preserve">
+    <value>Verifying…</value>
+  </data>
+  <data name="StoreExtracting" xml:space="preserve">
+    <value>Extracting…</value>
+  </data>
+  <data name="StoreStaging" xml:space="preserve">
+    <value>Staging…</value>
+  </data>
+  <data name="StoreInstalling" xml:space="preserve">
+    <value>Installing…</value>
+  </data>
+  <data name="StoreInstall" xml:space="preserve">
+    <value>Install</value>
+  </data>
+  <data name="StoreUpdate" xml:space="preserve">
+    <value>Update</value>
+  </data>
+  <data name="StoreDowngrade" xml:space="preserve">
+    <value>Downgrade</value>
+  </data>
+  <data name="StoreReinstall" xml:space="preserve">
+    <value>Reinstall</value>
+  </data>
+  <data name="StoreIncompatible" xml:space="preserve">
+    <value>Incompatible</value>
+  </data>
+  <data name="StoreInstallAll" xml:space="preserve">
+    <value>Install all</value>
+  </data>
+  <data name="StoreIncompatRange" xml:space="preserve">
+    <value>Requires host API {0}–{1}; this build is {2}.</value>
+  </data>
+  <data name="StoreIncompatMin" xml:space="preserve">
+    <value>Requires host API {0}+; this build is {1}.</value>
+  </data>
 </root>
