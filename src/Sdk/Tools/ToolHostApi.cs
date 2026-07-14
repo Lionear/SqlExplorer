@@ -7,7 +7,10 @@ namespace Lionear.SqlExplorer.Sdk.Tools;
 /// </summary>
 public static class ToolHostApi
 {
-    public const int Version = 1;
+    // v2 (2026-07-14): added IToolPlugin.MenuPath (default []) — tools can declare a nested submenu path
+    //                  (Tools ▸ Shrink ▸ Database) instead of only appearing flat under Tools. Also
+    //                  IToolUiContext.QueryAsync (Route-B live-data hook). Both additive.
+    public const int Version = 2;
 
     public static bool IsCompatible(int pluginVersion) => pluginVersion == Version;
 }

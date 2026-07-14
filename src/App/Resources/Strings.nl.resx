@@ -72,6 +72,12 @@
   <data name="Cancel" xml:space="preserve">
     <value>Annuleren</value>
   </data>
+  <data name="Close" xml:space="preserve">
+    <value>Sluiten</value>
+  </data>
+  <data name="Properties" xml:space="preserve">
+    <value>Eigenschappen…</value>
+  </data>
   <data name="Delete" xml:space="preserve">
     <value>Verwijderen</value>
   </data>

@@ -6,6 +6,7 @@
     <Project Path="src/Providers.MySql/Lionear.SqlExplorer.Providers.MySql.csproj" />
     <Project Path="src/Providers.Postgres/Lionear.SqlExplorer.Providers.Postgres.csproj" />
     <Project Path="src/Providers.Sqlite/Lionear.SqlExplorer.Providers.Sqlite.csproj" />
+    <Project Path="src/Tools.MsSqlAdmin/Lionear.SqlExplorer.Tools.MsSqlAdmin.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/App/Lionear.SqlExplorer.App.csproj" />

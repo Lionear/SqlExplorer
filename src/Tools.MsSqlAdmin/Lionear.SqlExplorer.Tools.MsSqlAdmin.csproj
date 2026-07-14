@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Lionear.SqlExplorer.Tools.MsSqlAdmin</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Contract only. No SqlClient dependency: this tool reaches SQL Server purely through the host's
+         IDbProvider (ExecuteDdlAsync for DBCC, IToolUiContext.QueryAsync for the live file listing).
+         Private=false keeps Sdk.dll out of the plugin folder so the host's copy is used across the ALC
+         boundary (single type identity). -->
+    <ProjectReference Include="..\Sdk\Lionear.SqlExplorer.Sdk.csproj" Private="false" />
+    <!-- Route B: the Shrink dialogs return Avalonia Controls, so Avalonia is a compile-time reference.
+         ExcludeAssets=runtime — the host owns Avalonia and ToolLoadContext shares it, so the plugin must
+         not ship its own copy (same pattern as Providers.MsSql's Route B view). -->
+    <PackageReference Include="Avalonia" Version="12.0.5" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Lionear.SqlExplorer.Sdk.Connections" />
+    <Using Include="Lionear.SqlExplorer.Sdk.Schema" />
+    <Using Include="Lionear.SqlExplorer.Sdk.Query" />
+    <Using Include="Lionear.SqlExplorer.Sdk.Branding" />
+    <Using Include="Lionear.SqlExplorer.Sdk.Tools" />
+    <Using Include="Lionear.SqlExplorer.Sdk.Ui" />
+  </ItemGroup>
+
+</Project>

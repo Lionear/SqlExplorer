@@ -9,12 +9,20 @@ using Microsoft.Data.SqlClient;
 
 namespace Lionear.SqlExplorer.Providers.MsSql;
 
-public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
+public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi, ICustomNodeInfoUi
 {
     // Route B (Notes §4.4): render the Advanced section with a provider-owned view instead of the
     // host-generated form. The declared Advanced ConnectionFields still define the data — the view
     // just reads/writes them through the context.
     public Control CreateAdvancedView(IConnectionUiContext context) => new MsSqlAdvancedView(context);
+
+    // Route B, third capability: SQL Server's "Database Properties" dialog on a Database node. Read-only,
+    // no Execute/progress — the host shows the view in generic info-dialog chrome.
+    public bool HasInfoFor(DbNodeRef node) => node.Kind == DbNodeKind.Database;
+
+    public string InfoTitle(DbNodeRef node) => "Database Properties";
+
+    public Control CreateInfoView(NodeInfoContext context) => new DatabasePropertiesView(context);
 
     public string DisplayName => "Microsoft SQL Server";
 
@@ -46,8 +54,13 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
             Default: "Lionear SQL Explorer", Group: "Connection", Advanced: true),
         new("connectTimeout", "Connect timeout (s)", ConnectionFieldType.Number,
             Placeholder: "15", Group: "Connection", Advanced: true),
+        // Command timeout 0 = no timeout (a command waits indefinitely); the SqlClient default is 30.
+        new("commandTimeout", "Command timeout (s)", ConnectionFieldType.Number,
+            Default: "0", Group: "Connection", Advanced: true),
         new("multipleActiveResultSets", "Multiple active result sets (MARS)", ConnectionFieldType.Bool,
-            Default: "false", Group: "Connection", Advanced: true)
+            Default: "false", Group: "Connection", Advanced: true),
+        new("pooling", "Connection pooling", ConnectionFieldType.Bool,
+            Default: "true", Group: "Connection", Advanced: true)
     ];
 
     public string BuildConnectionString(IReadOnlyDictionary<string, string?> values)
@@ -81,10 +94,19 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
             builder.ConnectTimeout = seconds;
         }
 
+        // Command timeout is set explicitly (including the 0 = infinite default) so it's always applied.
+        if (Value(values, "commandTimeout") is { } cmdTimeout && int.TryParse(cmdTimeout, out var cmdSeconds))
+        {
+            builder.CommandTimeout = cmdSeconds;
+        }
+
         if (Bool(values, "multipleActiveResultSets", fallback: false))
         {
             builder.MultipleActiveResultSets = true;
         }
+
+        // Pooling defaults to true (matches SqlClient's own default); set explicitly either way.
+        builder.Pooling = Bool(values, "pooling", fallback: true);
 
         return builder.ConnectionString;
     }
@@ -138,7 +160,9 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
         if (b.ContainsKey("Trust Server Certificate")) result["trustServerCertificate"] = b.TrustServerCertificate ? "true" : "false";
         if (b.ContainsKey("Application Name")) result["applicationName"] = b.ApplicationName;
         if (b.ContainsKey("Connect Timeout")) result["connectTimeout"] = b.ConnectTimeout.ToString();
+        if (b.ContainsKey("Command Timeout")) result["commandTimeout"] = b.CommandTimeout.ToString();
         if (b.ContainsKey("Multiple Active Result Sets")) result["multipleActiveResultSets"] = b.MultipleActiveResultSets ? "true" : "false";
+        if (b.ContainsKey("Pooling")) result["pooling"] = b.Pooling ? "true" : "false";
 
         return result;
     }

@@ -273,6 +273,7 @@ public partial class MainView : UserControl
             _viewModel.SettingsDialogRequested = ShowSettingsDialogAsync;
             _viewModel.ToolDialogRequested = ShowToolDialogAsync;
             _viewModel.RoutineParametersRequested = ShowRoutineParametersDialogAsync;
+            _viewModel.NodeInfoRequested = ShowNodeInfoDialogAsync;
             _viewModel.PluginStoreRequested = ShowPluginStoreAsync;
             _viewModel.RestartRequested = () => { AppRestart.Restart(); return Task.CompletedTask; };
             _viewModel.ConfirmRequested = ShowConfirmAsync;
@@ -435,6 +436,17 @@ public partial class MainView : UserControl
         }
 
         var dialog = new RoutineParametersDialog { DataContext = dialogViewModel };
+        await dialog.ShowDialog(owner);
+    }
+
+    private async Task ShowNodeInfoDialogAsync(NodeInfoDialogViewModel dialogViewModel)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+
+        var dialog = new NodeInfoDialog { DataContext = dialogViewModel };
         await dialog.ShowDialog(owner);
     }
 

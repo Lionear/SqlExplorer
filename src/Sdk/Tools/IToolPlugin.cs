@@ -14,8 +14,22 @@ public interface IToolPlugin
     /// <summary>Stable id (one assembly may ship several tools, so this need not match the manifest id).</summary>
     string Id { get; }
 
-    /// <summary>Menu-item / dialog title (e.g. "Backup…").</summary>
+    /// <summary>Menu-item label — the leaf shown in the (possibly nested) tools menu, e.g. "Database…"
+    /// under a "Shrink" submenu.</summary>
     string Title { get; }
+
+    /// <summary>Title for the tool's dialog window/header. Defaults to <see cref="Title"/>, but a tool whose
+    /// menu label is a short leaf (e.g. "Database…" under "Shrink") can give the dialog a fuller standalone
+    /// name (e.g. "Shrink Database").</summary>
+    string DialogTitle => Title;
+
+    /// <summary>
+    /// Optional submenu path this tool lives under, as ordered ancestor labels (e.g. <c>["Shrink"]</c> to
+    /// show it as <c>Tools ▸ Shrink ▸ {Title}</c>, or <c>["Maintenance", "Shrink"]</c> for a deeper nest).
+    /// Empty (the default) places the tool directly under the Tools menu. Tools sharing a path — even from
+    /// different plugins — merge into the same submenu, so a plugin can contribute the whole stack.
+    /// </summary>
+    IReadOnlyList<string> MenuPath => [];
 
     ProviderIcon? Icon => null;
 

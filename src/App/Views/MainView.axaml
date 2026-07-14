@@ -4,6 +4,18 @@
              xmlns:cvt="using:Lionear.SqlExplorer.App.Converters"
              xmlns:views="using:Lionear.SqlExplorer.App.Views"
              x:Class="Lionear.SqlExplorer.App.Views.MainView">
+  <UserControl.Resources>
+    <!-- Recursive menu-item theme for the tools tree (ToolMenuNode): a leaf binds its Run command; a
+         group re-applies this same theme to its Children, giving arbitrarily deep submenus. -->
+    <ControlTheme x:Key="ToolMenuNodeTheme" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+      <Setter Property="Header" Value="{Binding Title}" />
+      <Setter Property="Command" Value="{Binding Run}" />
+      <Setter Property="ItemsSource" Value="{Binding Children}" />
+      <!-- DynamicResource (not Static): a ControlTheme can't reference itself via StaticResource during
+           construction; DynamicResource resolves lazily once the dictionary is built. -->
+      <Setter Property="ItemContainerTheme" Value="{DynamicResource ToolMenuNodeTheme}" />
+    </ControlTheme>
+  </UserControl.Resources>
   <Grid RowDefinitions="Auto,*,Auto,Auto">
 
     <StackPanel Grid.Row="0">
@@ -87,16 +99,12 @@
                           IsVisible="{Binding SelectedNode.IsConnectionNode, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[Delete]}" Command="{Binding DeleteConnectionCommand}"
                           IsVisible="{Binding SelectedNode.IsConnectionNode, FallbackValue=False}" />
-                <!-- Tool plugins applicable to the selected node (universal backup, dumps, …). -->
+                <!-- Tool plugins applicable to the selected node (universal backup, dumps, …). The
+                     ItemContainerTheme is self-referencing (binds ItemsSource to each node's Children and
+                     re-applies itself), so a tool's MenuPath renders as arbitrarily deep submenus. -->
                 <MenuItem Header="{Binding Loc[Tools]}" ItemsSource="{Binding ApplicableTools}"
-                          IsVisible="{Binding HasApplicableTools}">
-                  <MenuItem.ItemContainerTheme>
-                    <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
-                      <Setter Property="Header" Value="{Binding Title}" />
-                      <Setter Property="Command" Value="{Binding Run}" />
-                    </ControlTheme>
-                  </MenuItem.ItemContainerTheme>
-                </MenuItem>
+                          IsVisible="{Binding HasApplicableTools}"
+                          ItemContainerTheme="{DynamicResource ToolMenuNodeTheme}" />
                 <MenuItem Header="{Binding Loc[Refresh]}" Command="{Binding RefreshNodeCommand}"
                           IsVisible="{Binding SelectedNode.CanRefresh, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[CollapseAll]}" Command="{Binding CollapseAllNodeCommand}"
@@ -146,6 +154,9 @@
                           IsVisible="{Binding SelectedNode.CanDropSchema, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[DropDatabase]}" Command="{Binding DropDatabaseCommand}"
                           IsVisible="{Binding SelectedNode.CanDropDatabase, FallbackValue=False}" />
+                <Separator IsVisible="{Binding SelectedNode.CanShowProperties, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[Properties]}" Command="{Binding ShowPropertiesCommand}"
+                          IsVisible="{Binding SelectedNode.CanShowProperties, FallbackValue=False}" />
               </ContextMenu>
             </TreeView.ContextMenu>
             <TreeView.ItemTemplate>

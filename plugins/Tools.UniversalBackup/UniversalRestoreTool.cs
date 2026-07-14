@@ -17,6 +17,8 @@ public sealed class UniversalRestoreTool : IToolPlugin
 
     public string Title => "Restore from backup…";
 
+    public IReadOnlyList<string> MenuPath => ["Backup & Restore"];
+
     public ProviderIcon? Icon { get; } = ProviderIconLoader.Load(typeof(UniversalRestoreTool), "♻");
 
     public ToolTarget Target { get; } = new(NodeKinds: [DbNodeKind.Database]);

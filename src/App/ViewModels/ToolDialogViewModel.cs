@@ -38,6 +38,7 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
     {
         Loc = localizer;
         _pluginStore = pluginStore;
+        Log.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasLogArea));
     }
 
     public ILocalizer Loc { get; }
@@ -72,9 +73,14 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
 
     public ObservableCollection<string> Log { get; } = [];
 
+    // Hide the progress-log panel until there is something to show, so form-only tools (e.g. the Shrink
+    // dialogs) aren't dominated by a big empty box before the first run.
+    public bool HasLogArea => IsRunning || IsCompleted || Log.Count > 0;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanExecute))]
     [NotifyPropertyChangedFor(nameof(InputsEnabled))]
+    [NotifyPropertyChangedFor(nameof(HasLogArea))]
     private bool _isRunning;
 
     /// <summary>Set once the tool has finished successfully: the dialog switches to a done state (success
@@ -82,6 +88,7 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanExecute))]
     [NotifyPropertyChangedFor(nameof(InputsEnabled))]
+    [NotifyPropertyChangedFor(nameof(HasLogArea))]
     private bool _isCompleted;
 
     /// <summary>Inputs are editable only before a run and while not finished.</summary>
@@ -122,7 +129,7 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
         _node = node;
         _provider = provider;
         _providerId = providerId;
-        Title = tool.Title;
+        Title = tool.DialogTitle;
 
         if (tool is ICustomToolUi customUi)
         {
@@ -237,4 +244,8 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
         _customValues[key] = value;
         OnPropertyChanged(nameof(CanExecute));
     }
+
+    // Route B live-data hook: run a read-only query through the same provider/profile the tool will use.
+    public Task<QueryResult> QueryAsync(string sql, CancellationToken ct) =>
+        _provider.ExecuteQueryAsync(_profile, sql, ct);
 }

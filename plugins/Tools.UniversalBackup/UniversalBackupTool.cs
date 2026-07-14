@@ -19,6 +19,8 @@ public sealed class UniversalBackupTool : IToolPlugin, IPluginSettings
 
     public string Title => "Backup…";
 
+    public IReadOnlyList<string> MenuPath => ["Backup & Restore"];
+
     public ProviderIcon? Icon { get; } = ProviderIconLoader.Load(typeof(UniversalBackupTool), "💾");
 
     // Offered on a Database node (not the connection root — that would ambiguously mean "every database").

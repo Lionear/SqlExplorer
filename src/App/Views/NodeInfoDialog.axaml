@@ -1,0 +1,20 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Lionear.SqlExplorer.App.Views.NodeInfoDialog"
+        Title="{Binding Title}"
+        Width="620" Height="480" MinWidth="480" MinHeight="360"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="*,Auto">
+
+    <!-- Provider-supplied read-only view (ICustomNodeInfoUi). -->
+    <ScrollViewer Grid.Row="0">
+      <ContentControl Content="{Binding View}" Margin="18,16" />
+    </ScrollViewer>
+
+    <!-- Action bar: Close only (no Execute — this is informational). -->
+    <Grid Grid.Row="1" Margin="18,12" ColumnDefinitions="*,Auto">
+      <Button Grid.Column="1" Classes="Accent" Content="{Binding Loc[Close]}"
+              Command="{Binding CloseCommand}" IsDefault="True" IsCancel="True" />
+    </Grid>
+  </Grid>
+</Window>

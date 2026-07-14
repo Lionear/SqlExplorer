@@ -38,6 +38,10 @@ public sealed class MsSqlAdvancedView : UserControl
         var timeout = new TextBox { Text = context.GetValue("connectTimeout"), PlaceholderText = "15" };
         timeout.TextChanged += (_, _) => context.SetValue("connectTimeout", timeout.Text);
 
+        // Command timeout: default "0" (no timeout) when the field was never set on this connection.
+        var commandTimeout = new TextBox { Text = context.GetValue("commandTimeout") ?? "0", PlaceholderText = "0" };
+        commandTimeout.TextChanged += (_, _) => context.SetValue("commandTimeout", commandTimeout.Text);
+
         var mars = new CheckBox
         {
             Content = "Multiple active result sets (MARS)",
@@ -45,6 +49,15 @@ public sealed class MsSqlAdvancedView : UserControl
         };
         mars.IsCheckedChanged += (_, _) =>
             context.SetValue("multipleActiveResultSets", mars.IsChecked == true ? "true" : "false");
+
+        var pooling = new CheckBox
+        {
+            Content = "Connection pooling",
+            // Default on (only an explicit "false" unchecks it), mirroring the Trust-certificate field.
+            IsChecked = context.GetValue("pooling") is not "false"
+        };
+        pooling.IsCheckedChanged += (_, _) =>
+            context.SetValue("pooling", pooling.IsChecked == true ? "true" : "false");
 
         Content = new StackPanel
         {
@@ -60,7 +73,10 @@ public sealed class MsSqlAdvancedView : UserControl
                 appName,
                 new TextBlock { Text = "Connect timeout (s)", Opacity = 0.7 },
                 timeout,
-                mars
+                new TextBlock { Text = "Command timeout (s) — 0 = no timeout", Opacity = 0.7 },
+                commandTimeout,
+                mars,
+                pooling
             }
         };
     }

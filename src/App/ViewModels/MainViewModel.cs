@@ -501,8 +501,9 @@ public partial class MainViewModel : ViewModelBase
         RefreshApplicableTools(value);
     }
 
-    /// <summary>Tool-plugin actions applicable to the selected node, shown in the sidebar context menu.</summary>
-    public ObservableCollection<ToolMenuEntry> ApplicableTools { get; } = [];
+    /// <summary>Tool-plugin actions applicable to the selected node, as a (possibly nested) menu tree shown
+    /// in the sidebar context menu. Top-level nodes sit directly under the "Tools" item.</summary>
+    public ObservableCollection<ToolMenuNode> ApplicableTools { get; } = [];
 
     public bool HasApplicableTools => ApplicableTools.Count > 0;
 
@@ -516,11 +517,29 @@ public partial class MainViewModel : ViewModelBase
             foreach (var tool in _tools.Applicable(connection.ProviderId, node.NodeKind))
             {
                 var captured = tool;
-                ApplicableTools.Add(new ToolMenuEntry(tool.Title, new RelayCommand(() => RunToolCommand.Execute(captured))));
+                var leaf = new ToolMenuNode(tool.Title, new RelayCommand(() => RunToolCommand.Execute(captured)));
+
+                // Walk the tool's MenuPath, creating or reusing a group node per segment, so tools that
+                // share a path (even from different plugins) land in the same submenu.
+                var siblings = ApplicableTools;
+                foreach (var segment in tool.MenuPath)
+                {
+                    var group = siblings.FirstOrDefault(n => n.Run is null && n.Title == segment)
+                        ?? AddTo(siblings, new ToolMenuNode(segment, null));
+                    siblings = group.Children;
+                }
+
+                siblings.Add(leaf);
             }
         }
 
         OnPropertyChanged(nameof(HasApplicableTools));
+    }
+
+    private static ToolMenuNode AddTo(ObservableCollection<ToolMenuNode> collection, ToolMenuNode node)
+    {
+        collection.Add(node);
+        return node;
     }
 
     // Run a tool: resolve the profile/provider/node for the selection, open the generic tool dialog.
@@ -1411,6 +1430,40 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>Set by the view so the VM can show the routine-parameter dialog before generating a call.</summary>
     public Func<RoutineParametersDialogViewModel, Task>? RoutineParametersRequested { get; set; }
+
+    // Properties…: show the provider's read-only info view (ICustomNodeInfoUi) for the selected node in the
+    // lightweight node-info dialog. Informational only, so it is a separate context item, not a tool.
+    [RelayCommand]
+    private async Task ShowPropertiesAsync()
+    {
+        if (SelectedNode is not { CanShowProperties: true } node || node.Connection is not { } connection
+            || node.NodeKind is not { } kind || NodeInfoRequested is null)
+        {
+            return;
+        }
+
+        if (_providers.Get(connection.ProviderId) is not ICustomNodeInfoUi info)
+        {
+            return;
+        }
+
+        try
+        {
+            var provider = _providers.Get(connection.ProviderId);
+            var profile = _connections.Resolve(connection, node.DatabaseName);
+            var nodeRef = new DbNodeRef(kind, node.Name);
+            var view = info.CreateInfoView(new NodeInfoContext(profile, nodeRef, provider));
+            var dialog = new NodeInfoDialogViewModel(info.InfoTitle(nodeRef), view, Loc);
+            await NodeInfoRequested(dialog);
+        }
+        catch (Exception ex)
+        {
+            ReportError(connection.Name, ex.Message);
+        }
+    }
+
+    /// <summary>Set by the view so the VM can show the node-info (properties) dialog.</summary>
+    public Func<NodeInfoDialogViewModel, Task>? NodeInfoRequested { get; set; }
 
     [RelayCommand]
     private async Task CloseTab(DocumentViewModel? document)

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "mssql-admin",
+  "type": "tool",
+  "name": "SQL Server Admin Dialogs",
+  "version": "1.0.0",
+  "hostApiVersion": 2,
+  "entryAssembly": "Lionear.SqlExplorer.Tools.MsSqlAdmin.dll"
+}

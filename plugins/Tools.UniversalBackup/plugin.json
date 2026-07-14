@@ -4,6 +4,6 @@
   "type": "tool",
   "name": "Universal Backup & Restore",
   "version": "1.0.0",
-  "hostApiVersion": 1,
+  "hostApiVersion": 2,
   "entryAssembly": "Lionear.SqlExplorer.Tools.UniversalBackup.dll"
 }

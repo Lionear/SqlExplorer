@@ -38,6 +38,10 @@
       <ProviderPluginFile Include="$(MSBuildThisFileDirectory)..\Providers.MsSql\bin\$(Configuration)\$(TargetFramework)\**\*">
         <PluginId>sqlserver</PluginId>
       </ProviderPluginFile>
+      <!-- Core admin tool plugin, staged unconditionally (Debug + Release) like the providers. -->
+      <ProviderPluginFile Include="$(MSBuildThisFileDirectory)..\Tools.MsSqlAdmin\bin\$(Configuration)\$(TargetFramework)\**\*">
+        <PluginId>mssql-admin</PluginId>
+      </ProviderPluginFile>
       <!-- Debug-only, non-shipped plugins from the repo-root plugins/ folder (see App.csproj). Absent
            from Release/publish staging. Future dev-only tool plugins (plugins/Tools.*) go here too. -->
       <ProviderPluginFile Include="$(MSBuildThisFileDirectory)..\..\plugins\Providers.Template\bin\$(Configuration)\$(TargetFramework)\**\*"
