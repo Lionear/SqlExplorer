@@ -151,6 +151,7 @@
                 IsReadOnly="{Binding !IsResultEditable}"
                 SelectedItem="{Binding SelectedRow}"
                 SelectionMode="Extended"
+                HeadersVisibility="All"
                 CanUserResizeColumns="True">
         <DataGrid.ContextMenu>
           <!-- Copies the current selection, or the whole result set if nothing is selected — same

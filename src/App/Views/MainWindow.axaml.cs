@@ -173,6 +173,7 @@ public partial class MainWindow : Window
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         PersistLayout();
+        (DataContext as MainViewModel)?.PersistOpenTabs();
         base.OnClosing(e);
     }
 

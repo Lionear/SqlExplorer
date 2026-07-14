@@ -146,7 +146,7 @@
             </TreeView.ContextMenu>
             <TreeView.ItemTemplate>
               <TreeDataTemplate ItemsSource="{Binding Children}">
-                <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Stretch">
+                <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Stretch" ToolTip.Tip="{Binding Tooltip}">
                   <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
                     <!-- Connection colour flag (prod = red): a coloured bar on the root when set. -->
                     <Border Width="3" Height="14" CornerRadius="1.5" VerticalAlignment="Center"
@@ -194,6 +194,10 @@
               <StackPanel Orientation="Horizontal" Spacing="8" ToolTip.Tip="{Binding TabTooltip}">
                 <StackPanel.ContextMenu>
                   <ContextMenu>
+                    <MenuItem Header="{Binding $parent[TabControl].DataContext.Loc[DuplicateTab]}"
+                              Command="{Binding $parent[TabControl].DataContext.DuplicateTabCommand}"
+                              CommandParameter="{Binding}" />
+                    <Separator />
                     <MenuItem Header="{Binding $parent[TabControl].DataContext.Loc[CloseTab]}"
                               Command="{Binding $parent[TabControl].DataContext.CloseTabCommand}"
                               CommandParameter="{Binding}" />

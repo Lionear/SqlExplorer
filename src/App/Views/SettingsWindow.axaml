@@ -76,6 +76,10 @@
                          IsChecked="{Binding Language, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=en, Mode=OneWay}"
                          Command="{Binding SetLanguageCommand}" CommandParameter="en" />
           </StackPanel>
+          <TextBlock Text="{Binding Loc[Startup]}" FontWeight="SemiBold" Margin="0,10,0,0" />
+          <CheckBox Content="{Binding Loc[RestoreTabsOnStartup]}" IsChecked="{Binding RestoreTabsOnStartup}" />
+          <TextBlock Text="{Binding Loc[SettingsSchemaTree]}" FontWeight="SemiBold" Margin="0,10,0,0" />
+          <CheckBox Content="{Binding Loc[ShowSystemDatabases]}" IsChecked="{Binding ShowSystemDatabases}" />
         </StackPanel>
 
         <!-- Appearance -->

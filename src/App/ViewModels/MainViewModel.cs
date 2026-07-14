@@ -16,6 +16,7 @@ using Lionear.SqlExplorer.Core.Import;
 using Lionear.SqlExplorer.Core.Localization;
 using Lionear.SqlExplorer.Core.Providers;
 using Lionear.SqlExplorer.Core.Schema;
+using Lionear.SqlExplorer.Core.Session;
 using Lionear.SqlExplorer.Core.Settings;
 using Lionear.SqlExplorer.Core.Shortcuts;
 using Lionear.SqlExplorer.Core.Tools;
@@ -48,6 +49,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly IToolRegistry _tools;
     private readonly Func<ToolDialogViewModel> _toolDialogFactory;
     private readonly IAppSettingsStore _settingsStore;
+    private readonly IOpenTabsStore _openTabsStore;
 
     // Selected tree node drives the active connection: any node knows its owning connection.
     [ObservableProperty]
@@ -92,6 +94,7 @@ public partial class MainViewModel : ViewModelBase
         Func<PluginStoreViewModel> pluginStoreFactory,
         Core.Plugins.PluginCatalogService pluginCatalog,
         IAppSettingsStore settingsStore,
+        IOpenTabsStore openTabsStore,
         ILocalizer localizer)
     {
         _providers = providers;
@@ -109,12 +112,43 @@ public partial class MainViewModel : ViewModelBase
         _pluginStoreFactory = pluginStoreFactory;
         _pluginCatalog = pluginCatalog;
         _settingsStore = settingsStore;
+        _openTabsStore = openTabsStore;
         Loc = localizer;
 
         _history.Changed += OnHistoryChanged;
         RefreshConnections();
+        RestoreOpenTabs();
         EvaluatePluginRestart();
     }
+
+    // Reopen the query tabs from the previous session (skipping any whose connection no longer exists).
+    private void RestoreOpenTabs()
+    {
+        if (!_settingsStore.Load().RestoreTabsOnStartup)
+        {
+            return;
+        }
+
+        foreach (var tab in _openTabsStore.Load())
+        {
+            if (_connections.List().FirstOrDefault(c => c.Id == tab.ConnectionId) is not { } connection)
+            {
+                continue;
+            }
+
+            var document = NewDocument();
+            document.InitQuery(connection, tab.Database);
+            document.Sql = tab.Sql;
+            AddDocument(document);
+        }
+    }
+
+    /// <summary>Persist the open query tabs so the next launch can reopen them (called by the view on close).</summary>
+    public void PersistOpenTabs() =>
+        _openTabsStore.Save(Documents
+            .Where(d => d is { IsQueryMode: true, Connection: not null })
+            .Select(d => new OpenTabState(d.Connection!.Id, d.SelectedDatabase, d.Sql))
+            .ToList());
 
     /// <summary>True when the Plugin Store has staged changes that need a restart — shows a main-window banner.</summary>
     [ObservableProperty]
@@ -335,6 +369,7 @@ public partial class MainViewModel : ViewModelBase
         ShortcutCatalog.Ids.Save => SaveActiveDocumentCommand,
         ShortcutCatalog.Ids.Format => FormatActiveDocumentCommand,
         ShortcutCatalog.Ids.ToggleSearch => ToggleSearchCommand,
+        ShortcutCatalog.Ids.RefreshTree => RefreshNodeCommand,
         _ => null
     };
 
@@ -776,7 +811,10 @@ public partial class MainViewModel : ViewModelBase
                 ReportInfo(connection.Name, Loc.Get("StatusConnected", nodes.Count));
             }
 
-            return nodes;
+            // Hide engine-managed system databases unless the user opted in.
+            return _settingsStore.Load().ShowSystemDatabases
+                ? nodes
+                : nodes.Where(n => !n.IsSystem).ToList();
         }
         catch (Exception ex)
         {
@@ -1309,6 +1347,20 @@ public partial class MainViewModel : ViewModelBase
 
     [RelayCommand]
     private Task CloseAllTabs() => CloseManyAsync(Documents.ToList());
+
+    // Duplicate a query tab: a fresh tab on the same connection with the same SQL. (Browse tabs reopen
+    // from the tree, so there's nothing to duplicate.)
+    [RelayCommand]
+    private void DuplicateTab(DocumentViewModel? document)
+    {
+        if (document is { IsQueryMode: true, Connection: { } connection })
+        {
+            var copy = NewDocument();
+            copy.InitQuery(connection);
+            copy.Sql = document.Sql;
+            AddDocument(copy);
+        }
+    }
 
     // Close one tab, confirming first if it has unsaved grid edits. Returns false if the user cancelled.
     private async Task<bool> TryCloseAsync(DocumentViewModel document)

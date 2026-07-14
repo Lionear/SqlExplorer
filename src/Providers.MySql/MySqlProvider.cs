@@ -211,18 +211,35 @@ public sealed class MySqlProvider : IDbProvider
     private static DbTreeNode ForeignKeyFolder() =>
         new() { Kind = DbNodeKind.ForeignKeyFolder, Name = "Foreign Keys", HasChildren = true };
 
+    private static readonly HashSet<string> SystemSchemas =
+        new(StringComparer.OrdinalIgnoreCase) { "information_schema", "mysql", "performance_schema", "sys" };
+
     private async Task<IReadOnlyList<DbTreeNode>> LoadDatabasesAsync(ConnectionProfile profile, CancellationToken ct)
     {
+        // All schemas here (system ones flagged) — the host decides whether to show them. The switcher's
+        // GetDatabasesAsync stays user-only.
+        const string sql = "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name";
+
         var sizes = await LoadDatabaseSizesAsync(profile, ct);
-        return (await GetDatabasesAsync(profile, ct))
-            .Select(name => new DbTreeNode
+        var nodes = new List<DbTreeNode>();
+        await using var connection = new MySqlConnection(profile.ConnectionString);
+        await connection.OpenAsync(ct);
+        await using var command = new MySqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var name = reader.GetString(0);
+            nodes.Add(new DbTreeNode
             {
                 Kind = DbNodeKind.Database,
                 Name = name,
                 HasChildren = true,
+                IsSystem = SystemSchemas.Contains(name),
                 Badge = sizes.TryGetValue(name, out var bytes) ? ByteSize.Format(bytes) : null
-            })
-            .ToList();
+            });
+        }
+
+        return nodes;
     }
 
     // Per-schema on-disk size = sum of each table's data + index length. Best-effort.
@@ -263,9 +280,10 @@ public sealed class MySqlProvider : IDbProvider
         bool isView,
         CancellationToken ct)
     {
-        // data_length + index_length gives the table's on-disk size; it's NULL for views (no storage).
+        // data_length + index_length gives the table's on-disk size, table_rows an estimate; both are
+        // NULL for views (no storage).
         const string sql = """
-            SELECT table_name, data_length + index_length
+            SELECT table_name, data_length + index_length, table_rows
             FROM information_schema.tables
             WHERE table_schema = @db AND table_type = @type
             ORDER BY table_name
@@ -286,7 +304,8 @@ public sealed class MySqlProvider : IDbProvider
                 Kind = kind,
                 Name = reader.GetString(0),
                 HasChildren = true,
-                Badge = reader.IsDBNull(1) ? null : ByteSize.Format(Convert.ToInt64(reader.GetValue(1)))
+                Badge = reader.IsDBNull(1) ? null : ByteSize.Format(Convert.ToInt64(reader.GetValue(1))),
+                Tooltip = reader.IsDBNull(2) ? null : TableStats.RowTooltip(Convert.ToInt64(reader.GetValue(2)))
             });
         }
 

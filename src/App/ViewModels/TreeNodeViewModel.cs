@@ -117,6 +117,9 @@ public partial class TreeNodeViewModel : ViewModelBase
 
     public bool HasBadge => !string.IsNullOrEmpty(Badge);
 
+    /// <summary>Optional hover text (e.g. a table's row estimate); set by the provider.</summary>
+    public string? Tooltip { get; private set; }
+
     /// <summary>A vector line-icon drawn when there is no <see cref="IconImage"/>.</summary>
     public Geometry? IconGeometry { get; }
 
@@ -310,7 +313,7 @@ public partial class TreeNodeViewModel : ViewModelBase
                 var childPath = new List<DbNodeRef>(_pathToChildren) { new(child.Kind, child.Name) };
                 Children.Add(new TreeNodeViewModel(
                     Connection, _provider!, child.Kind, child.Name, title, child.HasChildren,
-                    NodeIcons.For(child.Kind), iconImage: null, childPath, _load) { Parent = this, Badge = child.Badge });
+                    NodeIcons.For(child.Kind), iconImage: null, childPath, _load) { Parent = this, Badge = child.Badge, Tooltip = child.Tooltip });
             }
 
             // No children came back -> drop the expander so the node reads as a leaf.

@@ -46,4 +46,11 @@ public sealed class AppSettings
 
     /// <summary>Whether the save-flow shows the generated SQL for review before running it.</summary>
     public bool ConfirmBeforeSave { get; set; } = true;
+
+    /// <summary>Whether the query tabs from the previous session are reopened on startup.</summary>
+    public bool RestoreTabsOnStartup { get; set; } = true;
+
+    /// <summary>Whether engine-managed system databases (SQL Server's master/msdb, MySQL's mysql/sys, …)
+    /// are shown in the schema tree.</summary>
+    public bool ShowSystemDatabases { get; set; }
 }

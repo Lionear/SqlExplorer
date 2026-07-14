@@ -390,6 +390,18 @@
   <data name="ConfirmBeforeSave" xml:space="preserve">
     <value>Show a review dialog before saving changes</value>
   </data>
+  <data name="Startup" xml:space="preserve">
+    <value>Startup</value>
+  </data>
+  <data name="RestoreTabsOnStartup" xml:space="preserve">
+    <value>Reopen the previous session's query tabs</value>
+  </data>
+  <data name="SettingsSchemaTree" xml:space="preserve">
+    <value>Schema tree</value>
+  </data>
+  <data name="ShowSystemDatabases" xml:space="preserve">
+    <value>Show system databases (applies on next refresh)</value>
+  </data>
   <data name="RestoreDefaults" xml:space="preserve">
     <value>Restore Defaults</value>
   </data>
@@ -567,8 +579,17 @@
   <data name="ShortcutGroupSearch" xml:space="preserve">
     <value>Search</value>
   </data>
+  <data name="ShortcutGroupTree" xml:space="preserve">
+    <value>Tree</value>
+  </data>
+  <data name="RefreshTree" xml:space="preserve">
+    <value>Refresh selected object</value>
+  </data>
   <data name="CloseTab" xml:space="preserve">
     <value>Close tab</value>
+  </data>
+  <data name="DuplicateTab" xml:space="preserve">
+    <value>Duplicate tab</value>
   </data>
   <data name="CloseOtherTabs" xml:space="preserve">
     <value>Close other tabs</value>
@@ -596,6 +617,12 @@
   </data>
   <data name="ToggleComment" xml:space="preserve">
     <value>Toggle line comment</value>
+  </data>
+  <data name="ZoomIn" xml:space="preserve">
+    <value>Increase editor font size</value>
+  </data>
+  <data name="ZoomOut" xml:space="preserve">
+    <value>Decrease editor font size</value>
   </data>
   <data name="MenuTools" xml:space="preserve">
     <value>Tools</value>

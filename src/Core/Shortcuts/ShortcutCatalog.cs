@@ -20,6 +20,9 @@ public static class ShortcutCatalog
         public const string Format = "Format";
         public const string ToggleSearch = "ToggleSearch";
         public const string ToggleComment = "ToggleComment";
+        public const string ZoomIn = "ZoomIn";
+        public const string ZoomOut = "ZoomOut";
+        public const string RefreshTree = "RefreshTree";
     }
 
     private static class Groups
@@ -28,6 +31,7 @@ public static class ShortcutCatalog
         public const string Query = "ShortcutGroupQuery";
         public const string Editor = "ShortcutGroupEditor";
         public const string Search = "ShortcutGroupSearch";
+        public const string Tree = "ShortcutGroupTree";
     }
 
     /// <summary>
@@ -54,7 +58,11 @@ public static class ShortcutCatalog
         new(Ids.Format, "Format", Groups.Query, ShortcutScope.Window, "Mod+Shift+F"),
 
         new(Ids.ToggleComment, "ToggleComment", Groups.Editor, ShortcutScope.Editor, "Mod+OemQuestion"),
+        new(Ids.ZoomIn, "ZoomIn", Groups.Editor, ShortcutScope.Editor, "Mod+OemPlus"),
+        new(Ids.ZoomOut, "ZoomOut", Groups.Editor, ShortcutScope.Editor, "Mod+OemMinus"),
 
         new(Ids.ToggleSearch, "ToggleSearch", Groups.Search, ShortcutScope.Window, "Mod+K"),
+
+        new(Ids.RefreshTree, "RefreshTree", Groups.Tree, ShortcutScope.Window, "Mod+R"),
     ];
 }

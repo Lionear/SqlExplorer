@@ -338,7 +338,7 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
         return parent switch
         {
             // The connection root is a server: Databases sits alongside SSMS-style server folders.
-            null => RootFolders(),
+            null => await RootFoldersAsync(profile, ct),
             // The "Databases" folder has its own kind so "New Database…" can be offered on it.
             DbNodeKind.DatabaseFolder => await LoadDatabasesAsync(profile, ct),
             // Every cosmetic folder shares the Group kind, so route Group nodes by their name.
@@ -367,12 +367,19 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
     private const string ServerRoles = "Server Roles";
     private const string AgentJobs = "Agent Jobs";
 
-    private static IReadOnlyList<DbTreeNode> RootFolders() =>
-    [
-        new() { Kind = DbNodeKind.DatabaseFolder, Name = Databases, HasChildren = true },
-        new() { Kind = DbNodeKind.Group, Name = Security, HasChildren = true },
-        new() { Kind = DbNodeKind.Group, Name = Administration, HasChildren = true }
-    ];
+    private async Task<IReadOnlyList<DbTreeNode>> RootFoldersAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        // Aggregate size on the Databases folder = sum of the user databases shown under it.
+        var sizes = await LoadDatabaseSizesAsync(profile, ct);
+        var total = (await GetDatabasesAsync(profile, ct)).Where(sizes.ContainsKey).Sum(name => sizes[name]);
+
+        return
+        [
+            new() { Kind = DbNodeKind.DatabaseFolder, Name = Databases, HasChildren = true, Badge = ByteSize.Format(total) },
+            new() { Kind = DbNodeKind.Group, Name = Security, HasChildren = true },
+            new() { Kind = DbNodeKind.Group, Name = Administration, HasChildren = true }
+        ];
+    }
 
     // Cosmetic Group folders all share one kind; dispatch on the folder's name.
     private async Task<IReadOnlyList<DbTreeNode>> LoadGroupAsync(
@@ -465,16 +472,29 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
 
     private async Task<IReadOnlyList<DbTreeNode>> LoadDatabasesAsync(ConnectionProfile profile, CancellationToken ct)
     {
+        // All databases here (system ones flagged) — the host decides whether to show them. The
+        // switcher's GetDatabasesAsync stays user-only. database_id 1..4 = master/tempdb/model/msdb.
+        const string sql = "SELECT name, database_id FROM sys.databases ORDER BY name";
+
         var sizes = await LoadDatabaseSizesAsync(profile, ct);
-        return (await GetDatabasesAsync(profile, ct))
-            .Select(name => new DbTreeNode
+        var nodes = new List<DbTreeNode>();
+        await using var connection = await OpenAsync(profile, ct);
+        await using var command = new SqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var name = reader.GetString(0);
+            nodes.Add(new DbTreeNode
             {
                 Kind = DbNodeKind.Database,
                 Name = name,
                 HasChildren = true,
+                IsSystem = reader.GetInt32(1) <= 4,
                 Badge = sizes.TryGetValue(name, out var bytes) ? ByteSize.Format(bytes) : null
-            })
-            .ToList();
+            });
+        }
+
+        return nodes;
     }
 
     // Per-database on-disk size = sum of its data/log files (sys.master_files, sizes in 8 KB pages).
@@ -554,9 +574,9 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
         await using var connection = new SqlConnection(ConnectionStringFor(profile, Name(ancestors, DbNodeKind.Database)));
         await connection.OpenAsync(ct);
 
-        // Tables carry an on-disk size badge; views have no storage. Fetched first so the reader below
-        // has the connection to itself.
-        var sizes = isView ? null : await LoadTableSizesAsync(connection, schema, ct);
+        // Tables carry an on-disk size badge + a row-count tooltip; views have neither. Fetched first so
+        // the reader below has the connection to itself.
+        var stats = isView ? null : await LoadTableStatsAsync(connection, schema, ct);
 
         await using var command = new SqlCommand(sql, connection);
         command.Parameters.AddWithValue("schema", schema);
@@ -565,27 +585,31 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
         while (await reader.ReadAsync(ct))
         {
             var name = reader.GetString(0);
+            var stat = stats is not null && stats.TryGetValue(name, out var s) ? s : default;
             nodes.Add(new DbTreeNode
             {
                 Kind = kind,
                 Name = name,
                 HasChildren = true,
-                Badge = sizes is not null && sizes.TryGetValue(name, out var bytes) ? ByteSize.Format(bytes) : null
+                Badge = ByteSize.Format(stat.Size),
+                Tooltip = TableStats.RowTooltip(stat.Rows)
             });
         }
 
         return nodes;
     }
 
-    // Reserved storage per table (data + indexes), in bytes. Best-effort — a permission error just omits
-    // the badges.
-    private static async Task<IReadOnlyDictionary<string, long>> LoadTableSizesAsync(
+    // Reserved storage (data + indexes) + row count per table. Best-effort — a permission error just
+    // omits the badges/tooltips.
+    private static async Task<IReadOnlyDictionary<string, TableStats>> LoadTableStatsAsync(
         SqlConnection connection,
         string schema,
         CancellationToken ct)
     {
         const string sql = """
-            SELECT t.name, SUM(ps.reserved_page_count) * 8 * 1024
+            SELECT t.name,
+                   SUM(ps.reserved_page_count) * 8 * 1024,
+                   SUM(CASE WHEN ps.index_id IN (0, 1) THEN ps.row_count ELSE 0 END)
             FROM sys.tables t
             JOIN sys.schemas s ON s.schema_id = t.schema_id
             JOIN sys.dm_db_partition_stats ps ON ps.object_id = t.object_id
@@ -593,7 +617,7 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
             GROUP BY t.name
             """;
 
-        var sizes = new Dictionary<string, long>(StringComparer.Ordinal);
+        var stats = new Dictionary<string, TableStats>(StringComparer.Ordinal);
         try
         {
             await using var command = new SqlCommand(sql, connection);
@@ -601,15 +625,15 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
             await using var reader = await command.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
-                sizes[reader.GetString(0)] = reader.GetInt64(1);
+                stats[reader.GetString(0)] = new TableStats(reader.GetInt64(1), reader.GetInt64(2));
             }
         }
         catch
         {
-            // No access to sys.dm_db_partition_stats → no badges.
+            // No access to sys.dm_db_partition_stats → no badges/tooltips.
         }
 
-        return sizes;
+        return stats;
     }
 
     private static async Task<IReadOnlyList<DbTreeNode>> LoadColumnsAsync(

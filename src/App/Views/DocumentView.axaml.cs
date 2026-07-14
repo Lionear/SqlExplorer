@@ -58,10 +58,25 @@ public partial class DocumentView : UserControl
             _resultsGrid.Sorting += OnGridSorting;
             _resultsGrid.CellPointerPressed += OnCellPointerPressed;
             _resultsGrid.SelectionChanged += OnGridSelectionChanged;
+            _resultsGrid.LoadingRow += OnLoadingRow;
         }
 
         DataContextChanged += OnDataContextChanged;
+        Loaded += OnLoaded;
     }
+
+    // Focus the SQL editor when a query tab opens so you can type immediately (no click needed).
+    private void OnLoaded(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel is { IsQueryMode: true })
+        {
+            _sqlEditor?.Focus();
+        }
+    }
+
+    // Number the rows in the row header (1-based, current grid position) as they're realized.
+    private static void OnLoadingRow(object? sender, DataGridRowEventArgs e) =>
+        e.Row.Header = (e.Row.Index + 1).ToString();
 
     // Browse mode pages server-side, so a header click must re-query with ORDER BY over the whole
     // table — not client-sort the current page. Cancel the built-in sort and drive the VM instead.
@@ -382,18 +397,30 @@ public partial class DocumentView : UserControl
             OpenCompletion();
             e.Handled = true;
         }
-        else if (MatchesToggleComment(e))
+        else if (MatchesShortcut(e, ShortcutCatalog.Ids.ToggleComment, Key.OemQuestion, KeyModifiers.Control))
         {
             ToggleLineComment();
+            e.Handled = true;
+        }
+        else if (MatchesShortcut(e, ShortcutCatalog.Ids.ZoomIn, Key.OemPlus, KeyModifiers.Control))
+        {
+            _sqlEditor!.FontSize = Math.Min(_sqlEditor.FontSize + 1, 32);
+            e.Handled = true;
+        }
+        else if (MatchesShortcut(e, ShortcutCatalog.Ids.ZoomOut, Key.OemMinus, KeyModifiers.Control))
+        {
+            _sqlEditor!.FontSize = Math.Max(_sqlEditor.FontSize - 1, 8);
             e.Handled = true;
         }
     }
 
     // Default Ctrl+OemQuestion (Ctrl+/); falls back to that when no keymap is available (e.g. previewer)
     // or the persisted gesture is malformed.
-    private static bool MatchesToggleComment(KeyEventArgs e)
+    // Resolve an editor-scoped shortcut from the live keymap (so it honours rebinds from Settings ▸
+    // Keyboard), falling back to a fixed default only when the keymap isn't available yet.
+    private static bool MatchesShortcut(KeyEventArgs e, string commandId, Key fallbackKey, KeyModifiers fallbackMods)
     {
-        var gesture = KeymapService.Current?.Resolve(ShortcutCatalog.Ids.ToggleComment);
+        var gesture = KeymapService.Current?.Resolve(commandId);
         if (gesture is { Length: > 0 })
         {
             try
@@ -406,7 +433,7 @@ public partial class DocumentView : UserControl
             }
         }
 
-        return e.Key == Key.OemQuestion && e.KeyModifiers == KeyModifiers.Control;
+        return e.Key == fallbackKey && e.KeyModifiers == fallbackMods;
     }
 
     // Comment or uncomment the selected lines (or the caret line) with "-- ", DataGrip/VS Code style.

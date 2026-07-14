@@ -312,11 +312,14 @@ public partial class DocumentViewModel : ViewModelBase
     /// <summary>Set by the view so the document can show the generated SQL for review before saving.</summary>
     public Func<string, Task<bool>>? SaveReviewRequested { get; set; }
 
-    public void InitQuery(SavedConnection connection)
+    public void InitQuery(SavedConnection connection, string? database = null)
     {
         // Mode must land before the Connection assignment: OnConnectionChanged branches on IsQueryMode
         // to decide whether to touch Title/AvailableDatabases at all (browse tabs manage their own).
         Mode = DocumentMode.Query;
+        // Seed the target database (e.g. a restored session tab) before Connection triggers the database
+        // refresh, which re-selects it once the list has loaded.
+        _database = database;
         AvailableConnections = _connections.List();
 
         // Re-resolve to the AvailableConnections instance with the same id rather than using `connection`
@@ -364,6 +367,10 @@ public partial class DocumentViewModel : ViewModelBase
 
     private async Task RefreshDatabasesAsync(SavedConnection connection)
     {
+        // Preserve the intended database (a restored/current tab's) across the reset below — clearing
+        // SelectedDatabase writes null back through to _database.
+        var target = _database;
+
         AvailableDatabases.Clear();
         SelectedDatabase = null;
         OnPropertyChanged(nameof(HasDatabasePicker));
@@ -386,11 +393,18 @@ public partial class DocumentViewModel : ViewModelBase
                 AvailableDatabases.Add(database);
             }
 
-            // Show the database this tab actually runs against instead of a blank picker: the per-tab
-            // override if set, otherwise the connection's configured default (e.g. "master"/"postgres").
-            var current = _database ?? connection.Values.GetValueOrDefault("database");
-            if (current is { Length: > 0 } db && AvailableDatabases.Contains(db))
+            // Show the database this tab actually runs against instead of a blank picker: the preserved
+            // target if set, otherwise the connection's configured default (e.g. "master"/"postgres").
+            // Include it in the list even when the engine's database query omits it (SQL Server hides the
+            // system databases), so the picker can always reflect and re-select the current database.
+            var current = target ?? connection.Values.GetValueOrDefault("database");
+            if (current is { Length: > 0 } db)
             {
+                if (!AvailableDatabases.Contains(db))
+                {
+                    AvailableDatabases.Insert(0, db);
+                }
+
                 SelectedDatabase = db;
             }
 

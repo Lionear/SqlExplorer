@@ -254,5 +254,18 @@
     <Setter Property="BorderThickness" Value="0,0,1,1" />
     <Setter Property="Padding" Value="8,5" />
   </Style>
+  <!-- Row-number gutter: themed frame like the column headers, wider, with faint right-aligned numbers
+       and a hairline separator between rows. -->
+  <Style Selector="DataGridRowHeader">
+    <Setter Property="Background" Value="{DynamicResource CatToolbarBgBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource CatTextFaintBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource CatHairlineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+    <Setter Property="AreSeparatorsVisible" Value="True" />
+    <Setter Property="SeparatorBrush" Value="{DynamicResource CatHairlineBrush}" />
+    <Setter Property="MinWidth" Value="42" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="HorizontalContentAlignment" Value="Right" />
+  </Style>
 
 </Styles>

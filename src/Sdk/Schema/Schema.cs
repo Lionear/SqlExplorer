@@ -78,5 +78,12 @@ public sealed record DbTreeNode
     /// <summary>Optional right-aligned badge, e.g. an object's on-disk size ("1.8G"). See <see cref="ByteSize"/>.</summary>
     public string? Badge { get; init; }
 
+    /// <summary>Optional hover text, e.g. a table's estimated row count.</summary>
+    public string? Tooltip { get; init; }
+
+    /// <summary>True for an engine-managed system object (e.g. SQL Server's master/msdb databases). The
+    /// host hides these from the tree unless the user opts in, and never indexes them for completion.</summary>
+    public bool IsSystem { get; init; }
+
     public bool HasChildren { get; init; }
 }

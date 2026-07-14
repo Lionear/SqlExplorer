@@ -105,6 +105,14 @@ public sealed class SchemaCache(IDbProviderRegistry providers, ConnectionService
         foreach (var child in children)
         {
             ct.ThrowIfCancellationRequested();
+
+            // Never index engine-managed system databases (master/msdb/…), regardless of whether the
+            // tree shows them — completion/search over them is just noise.
+            if (child.IsSystem)
+            {
+                continue;
+            }
+
             var path = new List<DbNodeRef>(ancestors) { new(child.Kind, child.Name) };
 
             if (child.Kind is DbNodeKind.Table or DbNodeKind.View)

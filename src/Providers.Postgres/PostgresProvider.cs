@@ -324,8 +324,8 @@ public sealed class PostgresProvider : IDbProvider
         await using var connection = new NpgsqlConnection(ConnectionStringFor(profile, Name(ancestors, DbNodeKind.Database)));
         await connection.OpenAsync(ct);
 
-        // Tables carry a size badge (table + indexes + toast); views have no storage.
-        var sizes = isView ? null : await LoadTableSizesAsync(connection, schema, ct);
+        // Tables carry a size badge (table + indexes + toast) + row-count tooltip; views have neither.
+        var stats = isView ? null : await LoadTableStatsAsync(connection, schema, ct);
 
         await using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.AddWithValue("schema", schema);
@@ -334,32 +334,35 @@ public sealed class PostgresProvider : IDbProvider
         while (await reader.ReadAsync(ct))
         {
             var name = reader.GetString(0);
+            var stat = stats is not null && stats.TryGetValue(name, out var s) ? s : default;
             nodes.Add(new DbTreeNode
             {
                 Kind = kind,
                 Name = name,
                 HasChildren = true,
-                Badge = sizes is not null && sizes.TryGetValue(name, out var bytes) ? ByteSize.Format(bytes) : null
+                Badge = ByteSize.Format(stat.Size),
+                Tooltip = TableStats.RowTooltip(stat.Rows)
             });
         }
 
         return nodes;
     }
 
-    // Total on-disk size per table (heap + indexes + toast) via pg_total_relation_size. Best-effort.
-    private static async Task<IReadOnlyDictionary<string, long>> LoadTableSizesAsync(
+    // Total on-disk size (heap + indexes + toast) + row estimate per table. reltuples is -1 until the
+    // table is first analysed; RowTooltip drops non-positive counts. Best-effort.
+    private static async Task<IReadOnlyDictionary<string, TableStats>> LoadTableStatsAsync(
         NpgsqlConnection connection,
         string schema,
         CancellationToken ct)
     {
         const string sql = """
-            SELECT c.relname, pg_total_relation_size(c.oid)
+            SELECT c.relname, pg_total_relation_size(c.oid), c.reltuples::bigint
             FROM pg_class c
             JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE n.nspname = @schema AND c.relkind = 'r'
             """;
 
-        var sizes = new Dictionary<string, long>(StringComparer.Ordinal);
+        var stats = new Dictionary<string, TableStats>(StringComparer.Ordinal);
         try
         {
             await using var command = new NpgsqlCommand(sql, connection);
@@ -367,15 +370,15 @@ public sealed class PostgresProvider : IDbProvider
             await using var reader = await command.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
-                sizes[reader.GetString(0)] = reader.GetInt64(1);
+                stats[reader.GetString(0)] = new TableStats(reader.GetInt64(1), reader.GetInt64(2));
             }
         }
         catch
         {
-            // No access → no badges.
+            // No access → no badges/tooltips.
         }
 
-        return sizes;
+        return stats;
     }
 
     private async Task<IReadOnlyList<DbTreeNode>> LoadColumnsAsync(
