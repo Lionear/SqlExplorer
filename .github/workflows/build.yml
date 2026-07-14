@@ -194,6 +194,7 @@ jobs:
       - name: Publish/refresh nightly release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}   # gh has no checkout here; resolve the repo via API, not git
         run: |
           set -euo pipefail
           TAG=nightly
