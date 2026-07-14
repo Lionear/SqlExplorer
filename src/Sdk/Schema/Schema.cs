@@ -75,5 +75,8 @@ public sealed record DbTreeNode
     /// <summary>Optional secondary label, e.g. a column's data type or "(PK)".</summary>
     public string? Detail { get; init; }
 
+    /// <summary>Optional right-aligned badge, e.g. an object's on-disk size ("1.8G"). See <see cref="ByteSize"/>.</summary>
+    public string? Badge { get; init; }
+
     public bool HasChildren { get; init; }
 }

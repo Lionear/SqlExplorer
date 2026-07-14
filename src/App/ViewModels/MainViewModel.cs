@@ -312,7 +312,13 @@ public partial class MainViewModel : ViewModelBase
     private void FormatActiveDocument() => SelectedDocument?.FormatCommand.Execute(null);
 
     [RelayCommand]
-    private void CloseActiveTab() => CloseTab(SelectedDocument);
+    private async Task CloseActiveTab()
+    {
+        if (SelectedDocument is { } document)
+        {
+            await TryCloseAsync(document);
+        }
+    }
 
     /// <summary>
     /// Maps a <see cref="ShortcutCatalog"/> command id to the window-level command it triggers, so the
@@ -1284,13 +1290,63 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void CloseTab(DocumentViewModel? document)
+    private async Task CloseTab(DocumentViewModel? document)
     {
-        if (document is null)
+        if (document is not null)
+        {
+            await TryCloseAsync(document);
+        }
+    }
+
+    [RelayCommand]
+    private async Task CloseOtherTabs(DocumentViewModel? keep)
+    {
+        if (keep is not null)
+        {
+            await CloseManyAsync(Documents.Where(d => d != keep).ToList());
+        }
+    }
+
+    [RelayCommand]
+    private Task CloseAllTabs() => CloseManyAsync(Documents.ToList());
+
+    // Close one tab, confirming first if it has unsaved grid edits. Returns false if the user cancelled.
+    private async Task<bool> TryCloseAsync(DocumentViewModel document)
+    {
+        if (document.HasChanges && !await ConfirmDiscardAsync(1))
+        {
+            return false;
+        }
+
+        RemoveTab(document);
+        return true;
+    }
+
+    // Close a batch (Close others / Close all): one combined confirm if any of them have unsaved edits,
+    // rather than a dialog per tab.
+    private async Task CloseManyAsync(IReadOnlyList<DocumentViewModel> documents)
+    {
+        var dirty = documents.Count(d => d.HasChanges);
+        if (dirty > 0 && !await ConfirmDiscardAsync(dirty))
         {
             return;
         }
 
+        foreach (var document in documents)
+        {
+            RemoveTab(document);
+        }
+    }
+
+    // No confirm hook wired (headless/tests) → proceed rather than block.
+    private async Task<bool> ConfirmDiscardAsync(int count) =>
+        ConfirmRequested is null
+        || await ConfirmRequested(
+            Loc["ConfirmDiscardTitle"],
+            count == 1 ? Loc["ConfirmDiscardChanges"] : string.Format(Loc["ConfirmDiscardChangesMany"], count));
+
+    private void RemoveTab(DocumentViewModel document)
+    {
         // Remember closed query tabs so Ctrl+Shift+T can bring them back (browse tabs reopen from the tree).
         if (document.IsQueryMode && document.Connection is { } connection)
         {

@@ -158,6 +158,7 @@
           <ContextMenu>
             <MenuItem Header="{Binding Loc[SetNull]}" Click="OnSetNullClick"
                       IsVisible="{Binding IsResultEditable}" />
+            <MenuItem Header="{Binding Loc[CopyCell]}" Click="OnCopyCellClick" />
             <MenuItem Header="{Binding Loc[Copy]}" Click="OnCopyClick" />
             <MenuItem Header="{Binding Loc[CopyWithHeaders]}" Click="OnCopyWithHeadersClick" />
             <Separator />

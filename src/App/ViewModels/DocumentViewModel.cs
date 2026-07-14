@@ -167,10 +167,17 @@ public partial class DocumentViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsResultEditable))]
     [NotifyPropertyChangedFor(nameof(ReadOnlyReason))]
+    [NotifyPropertyChangedFor(nameof(TabTooltip))]
     private SavedConnection _connection = null!;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TabTooltip))]
     private string? _selectedDatabase;
+
+    /// <summary>Tab hover text: which connection and database this tab runs against.</summary>
+    public string TabTooltip => Connection is { } c
+        ? $"{c.Name} · {_database ?? c.Values.GetValueOrDefault("database") ?? "—"}"
+        : Title;
 
     private readonly IAppSettingsStore _settingsStore;
 
@@ -377,6 +384,14 @@ public partial class DocumentViewModel : ViewModelBase
             foreach (var database in databases)
             {
                 AvailableDatabases.Add(database);
+            }
+
+            // Show the database this tab actually runs against instead of a blank picker: the per-tab
+            // override if set, otherwise the connection's configured default (e.g. "master"/"postgres").
+            var current = _database ?? connection.Values.GetValueOrDefault("database");
+            if (current is { Length: > 0 } db && AvailableDatabases.Contains(db))
+            {
+                SelectedDatabase = db;
             }
 
             OnPropertyChanged(nameof(HasDatabasePicker));

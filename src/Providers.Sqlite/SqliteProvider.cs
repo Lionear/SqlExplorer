@@ -282,16 +282,62 @@ public sealed class SqliteProvider : IDbProvider
         var nodes = new List<DbTreeNode>();
         await using var connection = new SqliteConnection(profile.ConnectionString);
         await connection.OpenAsync(ct);
+
+        // Tables carry a size badge (best-effort — dbstat is an optional build feature); views have none.
+        var sizes = isView ? null : await LoadTableSizesAsync(connection, ct);
+
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
         command.Parameters.AddWithValue("@type", isView ? "view" : "table");
         await using var reader = await command.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            nodes.Add(new DbTreeNode { Kind = kind, Name = reader.GetString(0), HasChildren = true });
+            var name = reader.GetString(0);
+            nodes.Add(new DbTreeNode
+            {
+                Kind = kind,
+                Name = name,
+                HasChildren = true,
+                Badge = sizes is not null && sizes.TryGetValue(name, out var bytes) ? ByteSize.Format(bytes) : null
+            });
         }
 
         return nodes;
+    }
+
+    // Total pages per table (its own btree + its indexes) via the optional dbstat virtual table
+    // (SQLITE_ENABLE_DBSTAT_VTAB). When the build lacks it the query throws and we return no sizes.
+    private static async Task<IReadOnlyDictionary<string, long>> LoadTableSizesAsync(
+        SqliteConnection connection,
+        CancellationToken ct)
+    {
+        const string sql = """
+            SELECT m.tbl_name, SUM(d.pgsize)
+            FROM dbstat d
+            JOIN sqlite_schema m ON m.name = d.name
+            GROUP BY m.tbl_name
+            """;
+
+        var sizes = new Dictionary<string, long>(StringComparer.Ordinal);
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            await using var reader = await command.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                if (!reader.IsDBNull(1))
+                {
+                    sizes[reader.GetString(0)] = Convert.ToInt64(reader.GetValue(1));
+                }
+            }
+        }
+        catch
+        {
+            // dbstat not available in this SQLite build → no size badges.
+        }
+
+        return sizes;
     }
 
     private async Task<IReadOnlyList<DbTreeNode>> LoadColumnsAsync(

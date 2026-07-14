@@ -232,6 +232,24 @@ public partial class DocumentView : UserControl
         }
     }
 
+    private void OnCopyCellClick(object? sender, RoutedEventArgs e) => _ = CopyCellAsync();
+
+    // Copy just the value of the cell under the cursor (tracked by OnCellPointerPressed, which also fires
+    // on the right-click that opens this menu).
+    private async Task CopyCellAsync()
+    {
+        if (TopLevel.GetTopLevel(this) is not { Clipboard: { } clipboard }
+            || _currentRow is null
+            || _currentColumnIndex < 0
+            || _currentColumnIndex >= _currentRow.Cells.Count)
+        {
+            return;
+        }
+
+        var value = _currentRow.Cells[_currentColumnIndex].Value;
+        await clipboard.SetTextAsync(value?.ToString() ?? string.Empty);
+    }
+
     private void OnCopyClick(object? sender, RoutedEventArgs e) => _ = CopyTsvAsync(includeHeaders: false);
 
     private void OnCopyWithHeadersClick(object? sender, RoutedEventArgs e) => _ = CopyTsvAsync(includeHeaders: true);

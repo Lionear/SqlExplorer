@@ -60,6 +60,13 @@ public partial class MainView : UserControl
             _outputList.AddHandler(InputElement.PointerPressedEvent, OnOutputPointerPressed, RoutingStrategies.Tunnel);
         }
 
+        var documentTabs = this.FindControl<TabControl>("DocumentTabs");
+        if (documentTabs is not null)
+        {
+            // Middle-click a tab header closes that tab (common editor gesture).
+            documentTabs.AddHandler(InputElement.PointerPressedEvent, OnDocumentTabsPointerPressed, RoutingStrategies.Tunnel);
+        }
+
         DataContextChanged += OnDataContextChanged;
     }
 
@@ -138,6 +145,39 @@ public partial class MainView : UserControl
         }
 
         Dispatcher.UIThread.Post(() => list.ScrollIntoView(vm.OutputEntries[^1]));
+    }
+
+    // Tab-strip pointer gestures: middle-click a tab header closes it; double-click the empty strip opens
+    // a new query tab. Clicks in the tab content pane (inside a DocumentView) are ignored.
+    private void OnDocumentTabsPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_viewModel is null || e.Source is not Visual source)
+        {
+            return;
+        }
+
+        var point = e.GetCurrentPoint(sender as Visual).Properties;
+        var tabItem = source.FindAncestorOfType<TabItem>();
+
+        if (point.IsMiddleButtonPressed && tabItem is { DataContext: DocumentViewModel document })
+        {
+            if (_viewModel.CloseTabCommand.CanExecute(document))
+            {
+                _viewModel.CloseTabCommand.Execute(document);
+            }
+
+            e.Handled = true;
+            return;
+        }
+
+        // Double-click the empty strip (not a tab header, not the content pane) → new query tab.
+        if (point.IsLeftButtonPressed && e.ClickCount == 2 && tabItem is null
+            && source.FindAncestorOfType<DocumentView>() is null
+            && _viewModel.NewQueryTabCommand.CanExecute(null))
+        {
+            _viewModel.NewQueryTabCommand.Execute(null);
+            e.Handled = true;
+        }
     }
 
     // Right-click an output row selects it first, so the context menu's Copy acts on that line.

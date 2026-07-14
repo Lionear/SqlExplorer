@@ -570,6 +570,24 @@
   <data name="CloseTab" xml:space="preserve">
     <value>Tabblad sluiten</value>
   </data>
+  <data name="CloseOtherTabs" xml:space="preserve">
+    <value>Andere tabbladen sluiten</value>
+  </data>
+  <data name="CloseAllTabs" xml:space="preserve">
+    <value>Alle tabbladen sluiten</value>
+  </data>
+  <data name="CopyCell" xml:space="preserve">
+    <value>Cel kopiëren</value>
+  </data>
+  <data name="ConfirmDiscardTitle" xml:space="preserve">
+    <value>Niet-opgeslagen wijzigingen</value>
+  </data>
+  <data name="ConfirmDiscardChanges" xml:space="preserve">
+    <value>Dit tabblad heeft niet-opgeslagen wijzigingen. Sluiten en verwerpen?</value>
+  </data>
+  <data name="ConfirmDiscardChangesMany" xml:space="preserve">
+    <value>{0} tabbladen hebben niet-opgeslagen wijzigingen. Sluiten en de wijzigingen verwerpen?</value>
+  </data>
   <data name="ReopenTab" xml:space="preserve">
     <value>Gesloten tabblad heropenen</value>
   </data>

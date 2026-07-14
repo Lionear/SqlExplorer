@@ -243,10 +243,44 @@ public sealed class PostgresProvider : IDbProvider
         new() { Kind = DbNodeKind.SequenceFolder, Name = "Sequences", HasChildren = true }
     ];
 
-    private async Task<IReadOnlyList<DbTreeNode>> LoadDatabasesAsync(ConnectionProfile profile, CancellationToken ct) =>
-        (await GetDatabasesAsync(profile, ct))
-            .Select(name => new DbTreeNode { Kind = DbNodeKind.Database, Name = name, HasChildren = true })
+    private async Task<IReadOnlyList<DbTreeNode>> LoadDatabasesAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        var sizes = await LoadDatabaseSizesAsync(profile, ct);
+        return (await GetDatabasesAsync(profile, ct))
+            .Select(name => new DbTreeNode
+            {
+                Kind = DbNodeKind.Database,
+                Name = name,
+                HasChildren = true,
+                Badge = sizes.TryGetValue(name, out var bytes) ? ByteSize.Format(bytes) : null
+            })
             .ToList();
+    }
+
+    // Per-database on-disk size via pg_database_size. Best-effort — omitted on error.
+    private async Task<IReadOnlyDictionary<string, long>> LoadDatabaseSizesAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        const string sql = "SELECT datname, pg_database_size(oid) FROM pg_database WHERE datallowconn = true";
+
+        var sizes = new Dictionary<string, long>(StringComparer.Ordinal);
+        try
+        {
+            await using var connection = new NpgsqlConnection(profile.ConnectionString);
+            await connection.OpenAsync(ct);
+            await using var command = new NpgsqlCommand(sql, connection);
+            await using var reader = await command.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                sizes[reader.GetString(0)] = reader.GetInt64(1);
+            }
+        }
+        catch
+        {
+            // No access → no badges.
+        }
+
+        return sizes;
+    }
 
     private async Task<IReadOnlyList<DbTreeNode>> LoadSchemasAsync(
         ConnectionProfile profile,
@@ -285,19 +319,63 @@ public sealed class PostgresProvider : IDbProvider
             """;
 
         var kind = isView ? DbNodeKind.View : DbNodeKind.Table;
+        var schema = Name(ancestors, DbNodeKind.Schema);
         var nodes = new List<DbTreeNode>();
         await using var connection = new NpgsqlConnection(ConnectionStringFor(profile, Name(ancestors, DbNodeKind.Database)));
         await connection.OpenAsync(ct);
+
+        // Tables carry a size badge (table + indexes + toast); views have no storage.
+        var sizes = isView ? null : await LoadTableSizesAsync(connection, schema, ct);
+
         await using var command = new NpgsqlCommand(sql, connection);
-        command.Parameters.AddWithValue("schema", Name(ancestors, DbNodeKind.Schema));
+        command.Parameters.AddWithValue("schema", schema);
         command.Parameters.AddWithValue("type", isView ? "VIEW" : "BASE TABLE");
         await using var reader = await command.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            nodes.Add(new DbTreeNode { Kind = kind, Name = reader.GetString(0), HasChildren = true });
+            var name = reader.GetString(0);
+            nodes.Add(new DbTreeNode
+            {
+                Kind = kind,
+                Name = name,
+                HasChildren = true,
+                Badge = sizes is not null && sizes.TryGetValue(name, out var bytes) ? ByteSize.Format(bytes) : null
+            });
         }
 
         return nodes;
+    }
+
+    // Total on-disk size per table (heap + indexes + toast) via pg_total_relation_size. Best-effort.
+    private static async Task<IReadOnlyDictionary<string, long>> LoadTableSizesAsync(
+        NpgsqlConnection connection,
+        string schema,
+        CancellationToken ct)
+    {
+        const string sql = """
+            SELECT c.relname, pg_total_relation_size(c.oid)
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = @schema AND c.relkind = 'r'
+            """;
+
+        var sizes = new Dictionary<string, long>(StringComparer.Ordinal);
+        try
+        {
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("schema", schema);
+            await using var reader = await command.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                sizes[reader.GetString(0)] = reader.GetInt64(1);
+            }
+        }
+        catch
+        {
+            // No access → no badges.
+        }
+
+        return sizes;
     }
 
     private async Task<IReadOnlyList<DbTreeNode>> LoadColumnsAsync(
@@ -317,7 +395,8 @@ public sealed class PostgresProvider : IDbProvider
             """;
 
         const string colSql = """
-            SELECT column_name, data_type, is_nullable
+            SELECT column_name, data_type, is_nullable,
+                   character_maximum_length, numeric_precision, numeric_scale
             FROM information_schema.columns
             WHERE table_schema = @schema AND table_name = @table
             ORDER BY ordinal_position
@@ -347,13 +426,37 @@ public sealed class PostgresProvider : IDbProvider
             while (await colReader.ReadAsync(ct))
             {
                 var name = colReader.GetString(0);
-                var dataType = colReader.GetString(1);
                 var pk = primaryKeys.Contains(name) ? " (PK)" : string.Empty;
-                nodes.Add(new DbTreeNode { Kind = DbNodeKind.Column, Name = name, Detail = $"{dataType}{pk}" });
+                // Full type incl. length/precision — data_type alone is "character varying"/"numeric" without
+                // the size, so a DDL round-trip (e.g. backup/restore) would lose it.
+                var fullType = FormatColumnType(
+                    colReader.GetString(1),
+                    Nullable(colReader, 3),
+                    Nullable(colReader, 4),
+                    Nullable(colReader, 5));
+                nodes.Add(new DbTreeNode { Kind = DbNodeKind.Column, Name = name, Detail = $"{fullType}{pk}" });
             }
         }
 
         return nodes;
+    }
+
+    private static int? Nullable(NpgsqlDataReader reader, int ordinal) =>
+        reader.IsDBNull(ordinal) ? null : Convert.ToInt32(reader.GetValue(ordinal));
+
+    // Rebuild the full Postgres type string from information_schema parts: (length) for the
+    // character/bit types, (precision, scale) for numeric, bare name otherwise.
+    private static string FormatColumnType(string dataType, int? maxLength, int? precision, int? scale)
+    {
+        switch (dataType)
+        {
+            case "character varying" or "character" or "bit" or "bit varying" when maxLength is { } length:
+                return $"{dataType}({length})";
+            case "numeric" when precision is { } p:
+                return scale is { } s and > 0 ? $"{dataType}({p},{s})" : $"{dataType}({p})";
+            default:
+                return dataType;
+        }
     }
 
     private async Task<IReadOnlyList<DbTreeNode>> LoadSequencesAsync(

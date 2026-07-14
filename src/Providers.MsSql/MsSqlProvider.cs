@@ -463,10 +463,51 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
         new() { Kind = DbNodeKind.SequenceFolder, Name = "Sequences", HasChildren = true }
     ];
 
-    private async Task<IReadOnlyList<DbTreeNode>> LoadDatabasesAsync(ConnectionProfile profile, CancellationToken ct) =>
-        (await GetDatabasesAsync(profile, ct))
-            .Select(name => new DbTreeNode { Kind = DbNodeKind.Database, Name = name, HasChildren = true })
+    private async Task<IReadOnlyList<DbTreeNode>> LoadDatabasesAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        var sizes = await LoadDatabaseSizesAsync(profile, ct);
+        return (await GetDatabasesAsync(profile, ct))
+            .Select(name => new DbTreeNode
+            {
+                Kind = DbNodeKind.Database,
+                Name = name,
+                HasChildren = true,
+                Badge = sizes.TryGetValue(name, out var bytes) ? ByteSize.Format(bytes) : null
+            })
             .ToList();
+    }
+
+    // Per-database on-disk size = sum of its data/log files (sys.master_files, sizes in 8 KB pages).
+    // Best-effort: on a permission error the size badges are simply omitted.
+    private async Task<IReadOnlyDictionary<string, long>> LoadDatabaseSizesAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        const string sql = """
+            SELECT DB_NAME(database_id), SUM(CAST(size AS bigint)) * 8 * 1024
+            FROM sys.master_files
+            GROUP BY database_id
+            """;
+
+        var sizes = new Dictionary<string, long>(StringComparer.Ordinal);
+        try
+        {
+            await using var connection = await OpenAsync(profile, ct);
+            await using var command = new SqlCommand(sql, connection);
+            await using var reader = await command.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                if (!reader.IsDBNull(0))
+                {
+                    sizes[reader.GetString(0)] = reader.GetInt64(1);
+                }
+            }
+        }
+        catch
+        {
+            // No access to sys.master_files → no badges, not an error.
+        }
+
+        return sizes;
+    }
 
     private static async Task<IReadOnlyList<DbTreeNode>> LoadSchemasAsync(
         ConnectionProfile profile,
@@ -508,19 +549,67 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
             """;
 
         var kind = isView ? DbNodeKind.View : DbNodeKind.Table;
+        var schema = Name(ancestors, DbNodeKind.Schema);
         var nodes = new List<DbTreeNode>();
         await using var connection = new SqlConnection(ConnectionStringFor(profile, Name(ancestors, DbNodeKind.Database)));
         await connection.OpenAsync(ct);
+
+        // Tables carry an on-disk size badge; views have no storage. Fetched first so the reader below
+        // has the connection to itself.
+        var sizes = isView ? null : await LoadTableSizesAsync(connection, schema, ct);
+
         await using var command = new SqlCommand(sql, connection);
-        command.Parameters.AddWithValue("schema", Name(ancestors, DbNodeKind.Schema));
+        command.Parameters.AddWithValue("schema", schema);
         command.Parameters.AddWithValue("type", isView ? "VIEW" : "BASE TABLE");
         await using var reader = await command.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            nodes.Add(new DbTreeNode { Kind = kind, Name = reader.GetString(0), HasChildren = true });
+            var name = reader.GetString(0);
+            nodes.Add(new DbTreeNode
+            {
+                Kind = kind,
+                Name = name,
+                HasChildren = true,
+                Badge = sizes is not null && sizes.TryGetValue(name, out var bytes) ? ByteSize.Format(bytes) : null
+            });
         }
 
         return nodes;
+    }
+
+    // Reserved storage per table (data + indexes), in bytes. Best-effort — a permission error just omits
+    // the badges.
+    private static async Task<IReadOnlyDictionary<string, long>> LoadTableSizesAsync(
+        SqlConnection connection,
+        string schema,
+        CancellationToken ct)
+    {
+        const string sql = """
+            SELECT t.name, SUM(ps.reserved_page_count) * 8 * 1024
+            FROM sys.tables t
+            JOIN sys.schemas s ON s.schema_id = t.schema_id
+            JOIN sys.dm_db_partition_stats ps ON ps.object_id = t.object_id
+            WHERE s.name = @schema
+            GROUP BY t.name
+            """;
+
+        var sizes = new Dictionary<string, long>(StringComparer.Ordinal);
+        try
+        {
+            await using var command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("schema", schema);
+            await using var reader = await command.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                sizes[reader.GetString(0)] = reader.GetInt64(1);
+            }
+        }
+        catch
+        {
+            // No access to sys.dm_db_partition_stats → no badges.
+        }
+
+        return sizes;
     }
 
     private static async Task<IReadOnlyList<DbTreeNode>> LoadColumnsAsync(

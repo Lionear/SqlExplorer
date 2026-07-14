@@ -64,6 +64,11 @@
             <TreeView.Styles>
               <Style Selector="TreeViewItem">
                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                <!-- Stretch the row so the right-aligned size badge reaches the tree's right edge. -->
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <!-- Compact rows (the Fluent default is roomy): tighter height + padding. -->
+                <Setter Property="MinHeight" Value="22" />
+                <Setter Property="Padding" Value="4,1" />
               </Style>
             </TreeView.Styles>
             <TreeView.ContextMenu>
@@ -141,25 +146,34 @@
             </TreeView.ContextMenu>
             <TreeView.ItemTemplate>
               <TreeDataTemplate ItemsSource="{Binding Children}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <!-- Connection colour flag (prod = red): a coloured bar on the root when set. -->
-                  <Border Width="3" Height="14" CornerRadius="1.5" VerticalAlignment="Center"
-                          Background="{Binding ConnectionColorBrush}"
-                          IsVisible="{Binding HasConnectionColor}" />
-                  <!-- Connection state LED (connection roots only): grey/blue/green/red. -->
-                  <Panel Width="8" Height="8" VerticalAlignment="Center" IsVisible="{Binding IsConnectionNode}">
-                    <Ellipse Width="8" Height="8"
-                             Fill="{Binding State, Converter={x:Static cvt:ConnectionStateBrushConverter.Instance}}" />
-                  </Panel>
-                  <Image Width="16" Height="16" VerticalAlignment="Center"
-                         Source="{Binding IconImage}" IsVisible="{Binding HasImageIcon}" />
-                  <Path Width="16" Height="16" VerticalAlignment="Center"
-                        Data="{Binding IconGeometry}"
-                        Stroke="{DynamicResource CatTextSecondaryBrush}" StrokeThickness="1.3"
-                        StrokeJoin="Round" StrokeLineCap="Round"
-                        IsVisible="{Binding HasVectorIcon}" />
-                  <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
-                </StackPanel>
+                <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Stretch">
+                  <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                    <!-- Connection colour flag (prod = red): a coloured bar on the root when set. -->
+                    <Border Width="3" Height="14" CornerRadius="1.5" VerticalAlignment="Center"
+                            Background="{Binding ConnectionColorBrush}"
+                            IsVisible="{Binding HasConnectionColor}" />
+                    <!-- Connection state LED (connection roots only): grey/blue/green/red. -->
+                    <Panel Width="8" Height="8" VerticalAlignment="Center" IsVisible="{Binding IsConnectionNode}">
+                      <Ellipse Width="8" Height="8"
+                               Fill="{Binding State, Converter={x:Static cvt:ConnectionStateBrushConverter.Instance}}" />
+                    </Panel>
+                    <Image Width="16" Height="16" VerticalAlignment="Center"
+                           Source="{Binding IconImage}" IsVisible="{Binding HasImageIcon}" />
+                    <Path Width="16" Height="16" VerticalAlignment="Center"
+                          Data="{Binding IconGeometry}"
+                          Stroke="{DynamicResource CatTextSecondaryBrush}" StrokeThickness="1.3"
+                          StrokeJoin="Round" StrokeLineCap="Round"
+                          IsVisible="{Binding HasVectorIcon}" />
+                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <!-- Right-aligned on-disk size badge (databases/tables), DataGrip-style. -->
+                  <Border Grid.Column="1" IsVisible="{Binding HasBadge}" VerticalAlignment="Center"
+                          Background="{DynamicResource CatHairlineBrush}" CornerRadius="3"
+                          Padding="5,1" Margin="8,0,4,0">
+                    <TextBlock Text="{Binding Badge}" FontSize="10.5"
+                               Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                  </Border>
+                </Grid>
               </TreeDataTemplate>
             </TreeView.ItemTemplate>
           </TreeView>
@@ -174,10 +188,22 @@
       <Grid Grid.Column="2" Margin="0">
 
         <Panel>
-        <TabControl ItemsSource="{Binding Documents}" SelectedItem="{Binding SelectedDocument}">
+        <TabControl x:Name="DocumentTabs" ItemsSource="{Binding Documents}" SelectedItem="{Binding SelectedDocument}">
           <TabControl.ItemTemplate>
             <DataTemplate>
-              <StackPanel Orientation="Horizontal" Spacing="8">
+              <StackPanel Orientation="Horizontal" Spacing="8" ToolTip.Tip="{Binding TabTooltip}">
+                <StackPanel.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Header="{Binding $parent[TabControl].DataContext.Loc[CloseTab]}"
+                              Command="{Binding $parent[TabControl].DataContext.CloseTabCommand}"
+                              CommandParameter="{Binding}" />
+                    <MenuItem Header="{Binding $parent[TabControl].DataContext.Loc[CloseOtherTabs]}"
+                              Command="{Binding $parent[TabControl].DataContext.CloseOtherTabsCommand}"
+                              CommandParameter="{Binding}" />
+                    <MenuItem Header="{Binding $parent[TabControl].DataContext.Loc[CloseAllTabs]}"
+                              Command="{Binding $parent[TabControl].DataContext.CloseAllTabsCommand}" />
+                  </ContextMenu>
+                </StackPanel.ContextMenu>
                 <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
                 <Button Content="×" Classes="Subtle" Padding="6,0" FontSize="15"
                         VerticalAlignment="Center"

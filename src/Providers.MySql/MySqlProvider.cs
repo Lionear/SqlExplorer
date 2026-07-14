@@ -211,10 +211,51 @@ public sealed class MySqlProvider : IDbProvider
     private static DbTreeNode ForeignKeyFolder() =>
         new() { Kind = DbNodeKind.ForeignKeyFolder, Name = "Foreign Keys", HasChildren = true };
 
-    private async Task<IReadOnlyList<DbTreeNode>> LoadDatabasesAsync(ConnectionProfile profile, CancellationToken ct) =>
-        (await GetDatabasesAsync(profile, ct))
-            .Select(name => new DbTreeNode { Kind = DbNodeKind.Database, Name = name, HasChildren = true })
+    private async Task<IReadOnlyList<DbTreeNode>> LoadDatabasesAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        var sizes = await LoadDatabaseSizesAsync(profile, ct);
+        return (await GetDatabasesAsync(profile, ct))
+            .Select(name => new DbTreeNode
+            {
+                Kind = DbNodeKind.Database,
+                Name = name,
+                HasChildren = true,
+                Badge = sizes.TryGetValue(name, out var bytes) ? ByteSize.Format(bytes) : null
+            })
             .ToList();
+    }
+
+    // Per-schema on-disk size = sum of each table's data + index length. Best-effort.
+    private async Task<IReadOnlyDictionary<string, long>> LoadDatabaseSizesAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        const string sql = """
+            SELECT table_schema, SUM(data_length + index_length)
+            FROM information_schema.tables
+            GROUP BY table_schema
+            """;
+
+        var sizes = new Dictionary<string, long>(StringComparer.Ordinal);
+        try
+        {
+            await using var connection = new MySqlConnection(profile.ConnectionString);
+            await connection.OpenAsync(ct);
+            await using var command = new MySqlCommand(sql, connection);
+            await using var reader = await command.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                if (!reader.IsDBNull(1))
+                {
+                    sizes[reader.GetString(0)] = Convert.ToInt64(reader.GetValue(1));
+                }
+            }
+        }
+        catch
+        {
+            // No access → no badges.
+        }
+
+        return sizes;
+    }
 
     private static async Task<IReadOnlyList<DbTreeNode>> LoadRelationsAsync(
         ConnectionProfile profile,
@@ -222,8 +263,10 @@ public sealed class MySqlProvider : IDbProvider
         bool isView,
         CancellationToken ct)
     {
+        // data_length + index_length gives the table's on-disk size; it's NULL for views (no storage).
         const string sql = """
-            SELECT table_name FROM information_schema.tables
+            SELECT table_name, data_length + index_length
+            FROM information_schema.tables
             WHERE table_schema = @db AND table_type = @type
             ORDER BY table_name
             """;
@@ -238,7 +281,13 @@ public sealed class MySqlProvider : IDbProvider
         await using var reader = await command.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            nodes.Add(new DbTreeNode { Kind = kind, Name = reader.GetString(0), HasChildren = true });
+            nodes.Add(new DbTreeNode
+            {
+                Kind = kind,
+                Name = reader.GetString(0),
+                HasChildren = true,
+                Badge = reader.IsDBNull(1) ? null : ByteSize.Format(Convert.ToInt64(reader.GetValue(1)))
+            });
         }
 
         return nodes;

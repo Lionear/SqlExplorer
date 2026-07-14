@@ -570,6 +570,24 @@
   <data name="CloseTab" xml:space="preserve">
     <value>Close tab</value>
   </data>
+  <data name="CloseOtherTabs" xml:space="preserve">
+    <value>Close other tabs</value>
+  </data>
+  <data name="CloseAllTabs" xml:space="preserve">
+    <value>Close all tabs</value>
+  </data>
+  <data name="CopyCell" xml:space="preserve">
+    <value>Copy cell</value>
+  </data>
+  <data name="ConfirmDiscardTitle" xml:space="preserve">
+    <value>Unsaved changes</value>
+  </data>
+  <data name="ConfirmDiscardChanges" xml:space="preserve">
+    <value>This tab has unsaved changes. Close it and discard them?</value>
+  </data>
+  <data name="ConfirmDiscardChangesMany" xml:space="preserve">
+    <value>{0} tabs have unsaved changes. Close them and discard the changes?</value>
+  </data>
   <data name="ReopenTab" xml:space="preserve">
     <value>Reopen closed tab</value>
   </data>
