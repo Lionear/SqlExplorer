@@ -1,26 +1,38 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using CommunityToolkit.Mvvm.Input;
 using Lionear.SqlExplorer.App.ViewModels;
 using Lionear.SqlExplorer.Core.Settings;
+using Lionear.SqlExplorer.Core.Shortcuts;
 
 namespace Lionear.SqlExplorer.App.Views;
 
 public partial class MainWindow : Window
 {
     private readonly IAppSettingsStore? _settingsStore;
+    private readonly KeymapService? _keymap;
 
     // Parameterless ctor keeps the XAML previewer happy; the real app uses the injected overload.
-    public MainWindow() : this(null)
+    public MainWindow() : this(null, null)
     {
     }
 
-    public MainWindow(IAppSettingsStore? settingsStore)
+    public MainWindow(IAppSettingsStore? settingsStore, KeymapService? keymap)
     {
         _settingsStore = settingsStore;
+        _keymap = keymap;
         InitializeComponent();
         RestoreLayout();
+
+        // Rebuild the window's key bindings whenever the user changes the keymap in Settings.
+        if (_keymap is not null)
+        {
+            _keymap.Changed += RebuildKeyBindings;
+        }
 
         // macOS gets its menu bar from NativeMenu.Menu (set in XAML) — the in-window Menu would
         // otherwise render a second, redundant bar underneath the title bar there.
@@ -34,6 +46,7 @@ public partial class MainWindow : Window
             if (DataContext is MainViewModel vm)
             {
                 vm.AboutRequested = ShowAboutAsync;
+                RebuildKeyBindings();
 
                 // A language switch fires Loc.PropertyChanged(null) — the correct "everything on
                 // this object changed" signal, and Loc[key] does return the fresh string right away,
@@ -52,6 +65,66 @@ public partial class MainWindow : Window
                 };
             }
         };
+    }
+
+    // Materialize the live keymap into Window.KeyBindings. Called once the VM is attached and again on
+    // every keymap change. Only Window-scoped commands land here; editor-scoped ones (toggle comment)
+    // are handled by the SQL editor itself. Unparseable or unbound gestures are simply skipped.
+    private void RebuildKeyBindings()
+    {
+        if (_keymap is null || DataContext is not MainViewModel vm)
+        {
+            return;
+        }
+
+        KeyBindings.Clear();
+        foreach (var command in _keymap.Commands)
+        {
+            if (command.Scope != ShortcutScope.Window)
+            {
+                continue;
+            }
+
+            var gesture = _keymap.Resolve(command.Id);
+            if (string.IsNullOrWhiteSpace(gesture)
+                || vm.ResolveShortcut(command.Id) is not { } target
+                || TryParseGesture(gesture) is not { } parsed)
+            {
+                continue;
+            }
+
+            KeyBindings.Add(new KeyBinding { Gesture = parsed, Command = target });
+        }
+
+        // Plugin-contributed shortcuts (always window-scoped): wrap each plugin action in a command.
+        foreach (var plugin in _keymap.PluginShortcuts)
+        {
+            var gesture = _keymap.Resolve(plugin.Id);
+            if (string.IsNullOrWhiteSpace(gesture) || TryParseGesture(gesture) is not { } parsed)
+            {
+                continue;
+            }
+
+            var action = plugin.ExecuteAsync;
+            KeyBindings.Add(new KeyBinding
+            {
+                Gesture = parsed,
+                Command = new AsyncRelayCommand(() => action(CancellationToken.None))
+            });
+        }
+    }
+
+    // KeyGesture.Parse throws on a malformed string; treat any bad persisted gesture as "no binding".
+    private static KeyGesture? TryParseGesture(string gesture)
+    {
+        try
+        {
+            return KeyGesture.Parse(gesture);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     private async Task ShowAboutAsync()

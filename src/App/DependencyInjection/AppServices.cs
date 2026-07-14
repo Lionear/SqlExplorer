@@ -8,7 +8,9 @@ using Lionear.SqlExplorer.Core.Plugins;
 using Lionear.SqlExplorer.Core.Providers;
 using Lionear.SqlExplorer.Core.Schema;
 using Lionear.SqlExplorer.Core.Settings;
+using Lionear.SqlExplorer.Core.Shortcuts;
 using Lionear.SqlExplorer.Core.Tools;
+using Lionear.SqlExplorer.Sdk.Shortcuts;
 using Lionear.SqlExplorer.Sdk.Tools;
 using Lionear.SqlExplorer.Infrastructure.Persistence;
 using Lionear.SqlExplorer.Infrastructure.Secrets;
@@ -75,6 +77,14 @@ public static class AppServices
         // app-settings save above.
         services.AddSingleton<IPluginSettingsStore>(new JsonPluginSettingsStore());
 
+        // User keyboard-shortcut overrides (keymap.json). The service is the live keymap consulted by
+        // the main window's key bindings and the editor's comment shortcut. Plugin-contributed shortcuts
+        // (IShortcutContributor on any provider/tool) are merged in here so they share rebinding,
+        // conflict detection and persistence with the built-ins.
+        services.AddSingleton<IKeymapStore>(new JsonKeymapStore());
+        var pluginShortcuts = CollectPluginShortcuts(registrations, tools);
+        services.AddSingleton(sp => new KeymapService(sp.GetRequiredService<IKeymapStore>(), pluginShortcuts));
+
         // Query history (searchable, re-runnable) beside connections.json.
         services.AddSingleton<IQueryHistoryStore>(new JsonQueryHistoryStore());
         services.AddSingleton<ConnectionService>();
@@ -117,6 +127,52 @@ public static class AppServices
 
         services.AddTransient<MainViewModel>();
 
-        return services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
+
+        // Editor tabs are created outside DI (as DataTemplate content), so expose the keymap statically
+        // for the editor's comment shortcut to resolve against.
+        KeymapService.Current = provider.GetRequiredService<KeymapService>();
+
+        return provider;
+    }
+
+    // Flatten IShortcutContributor across providers and tools into namespaced host shortcuts. The id is
+    // prefixed with the plugin id so two plugins can use the same local id without clashing.
+    private static List<PluginShortcut> CollectPluginShortcuts(
+        IReadOnlyList<ProviderRegistration> providers,
+        IReadOnlyList<IToolPlugin> tools)
+    {
+        var result = new List<PluginShortcut>();
+
+        void Add(string pluginId, string pluginTitle, object plugin)
+        {
+            if (plugin is not IShortcutContributor contributor)
+            {
+                return;
+            }
+
+            foreach (var shortcut in contributor.Shortcuts)
+            {
+                result.Add(new PluginShortcut(
+                    $"{pluginId}:{shortcut.Id}",
+                    pluginId,
+                    pluginTitle,
+                    shortcut.Title,
+                    shortcut.DefaultGesture,
+                    shortcut.ExecuteAsync));
+            }
+        }
+
+        foreach (var registration in providers)
+        {
+            Add(registration.Id, registration.Provider.DisplayName, registration.Provider);
+        }
+
+        foreach (var tool in tools)
+        {
+            Add(tool.Id, tool.Title, tool);
+        }
+
+        return result;
     }
 }

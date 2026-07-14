@@ -17,6 +17,7 @@ using Lionear.SqlExplorer.Core.Localization;
 using Lionear.SqlExplorer.Core.Providers;
 using Lionear.SqlExplorer.Core.Schema;
 using Lionear.SqlExplorer.Core.Settings;
+using Lionear.SqlExplorer.Core.Shortcuts;
 using Lionear.SqlExplorer.Core.Tools;
 using Lionear.SqlExplorer.Sdk;
 using Lionear.SqlExplorer.Sdk.Tools;
@@ -281,6 +282,24 @@ public partial class MainViewModel : ViewModelBase
 
     [RelayCommand]
     private void CloseActiveTab() => CloseTab(SelectedDocument);
+
+    /// <summary>
+    /// Maps a <see cref="ShortcutCatalog"/> command id to the window-level command it triggers, so the
+    /// main window can build its key bindings dynamically from the live keymap. Editor-scoped commands
+    /// (e.g. toggle comment) are handled inside the editor and are not resolved here.
+    /// </summary>
+    public System.Windows.Input.ICommand? ResolveShortcut(string commandId) => commandId switch
+    {
+        ShortcutCatalog.Ids.NewQueryTab => NewQueryTabCommand,
+        ShortcutCatalog.Ids.CloseTab => CloseActiveTabCommand,
+        ShortcutCatalog.Ids.ReopenTab => ReopenClosedTabCommand,
+        ShortcutCatalog.Ids.Run => RunActiveDocumentCommand,
+        ShortcutCatalog.Ids.RunAtCursor => RunActiveDocumentAtCursorCommand,
+        ShortcutCatalog.Ids.Save => SaveActiveDocumentCommand,
+        ShortcutCatalog.Ids.Format => FormatActiveDocumentCommand,
+        ShortcutCatalog.Ids.ToggleSearch => ToggleSearchCommand,
+        _ => null
+    };
 
     // Fuzzy quick-open across every connection's cached snapshot (1.1): a table/view whose qualified
     // name or one of its columns matches. Connections without a snapshot yet (never connected, or

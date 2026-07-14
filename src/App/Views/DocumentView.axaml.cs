@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
@@ -15,6 +16,7 @@ using Lionear.SqlExplorer.App.Completion;
 using Lionear.SqlExplorer.App.Converters;
 using Lionear.SqlExplorer.App.ViewModels;
 using Lionear.SqlExplorer.Core.Editing;
+using Lionear.SqlExplorer.Core.Shortcuts;
 
 namespace Lionear.SqlExplorer.App.Views;
 
@@ -353,7 +355,8 @@ public partial class DocumentView : UserControl
         }
     }
 
-    // Ctrl+Space explicitly requests completion anywhere in the query; Ctrl+/ toggles line comments.
+    // Ctrl+Space explicitly requests completion anywhere in the query; the line-comment toggle is
+    // resolved live from the user's keymap (default Ctrl+/) so it honours a rebind from Settings.
     private void OnSqlEditorKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.Control)
@@ -361,11 +364,31 @@ public partial class DocumentView : UserControl
             OpenCompletion();
             e.Handled = true;
         }
-        else if (e.Key == Key.OemQuestion && e.KeyModifiers == KeyModifiers.Control)
+        else if (MatchesToggleComment(e))
         {
             ToggleLineComment();
             e.Handled = true;
         }
+    }
+
+    // Default Ctrl+OemQuestion (Ctrl+/); falls back to that when no keymap is available (e.g. previewer)
+    // or the persisted gesture is malformed.
+    private static bool MatchesToggleComment(KeyEventArgs e)
+    {
+        var gesture = KeymapService.Current?.Resolve(ShortcutCatalog.Ids.ToggleComment);
+        if (gesture is { Length: > 0 })
+        {
+            try
+            {
+                return KeyGesture.Parse(gesture).Matches(e);
+            }
+            catch (Exception)
+            {
+                // Fall through to the default below.
+            }
+        }
+
+        return e.Key == Key.OemQuestion && e.KeyModifiers == KeyModifiers.Control;
     }
 
     // Comment or uncomment the selected lines (or the caret line) with "-- ", DataGrip/VS Code style.

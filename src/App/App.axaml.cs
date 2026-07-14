@@ -8,6 +8,7 @@ using Lionear.SqlExplorer.App.ViewModels;
 using Lionear.SqlExplorer.App.Views;
 using Lionear.SqlExplorer.Core.Localization;
 using Lionear.SqlExplorer.Core.Settings;
+using Lionear.SqlExplorer.Core.Shortcuts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Lionear.SqlExplorer.App;
@@ -31,11 +32,12 @@ public partial class App : Application
         }
 
         var viewModel = services.GetRequiredService<MainViewModel>();
+        var keymap = services.GetRequiredService<KeymapService>();
 
         switch (ApplicationLifetime)
         {
             case IClassicDesktopStyleApplicationLifetime desktop:
-                desktop.MainWindow = new MainWindow(settingsStore) { DataContext = viewModel };
+                desktop.MainWindow = new MainWindow(settingsStore, keymap) { DataContext = viewModel };
                 break;
             case ISingleViewApplicationLifetime singleView:
                 singleView.MainView = new MainView { DataContext = viewModel };

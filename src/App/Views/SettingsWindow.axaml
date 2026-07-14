@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="using:Lionear.SqlExplorer.App.Converters"
+        xmlns:ctl="using:Lionear.SqlExplorer.App.Controls"
         xmlns:settings="using:Lionear.SqlExplorer.Core.Settings"
         x:Class="Lionear.SqlExplorer.App.Views.SettingsWindow"
         Title="{Binding Loc[Preferences]}"
@@ -24,6 +25,18 @@
       </StackPanel>
     </DataTemplate>
   </Window.Resources>
+
+  <Window.Styles>
+    <!-- Capture chip: accent while listening for keys, red outline while it clashes with another binding. -->
+    <Style Selector="ctl|ShortcutCaptureBox:capturing">
+      <Setter Property="BorderBrush" Value="{DynamicResource CatAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource CatAccentBrush}" />
+      <Setter Property="Background" Value="#223574F0" />
+    </Style>
+    <Style Selector="ctl|ShortcutCaptureBox.conflict">
+      <Setter Property="BorderBrush" Value="{DynamicResource CatStatusErrorBrush}" />
+    </Style>
+  </Window.Styles>
 
   <Grid ColumnDefinitions="172,*">
 
@@ -101,6 +114,71 @@
           <TextBlock Text="{Binding Loc[SettingsQuery]}" FontSize="14" FontWeight="SemiBold" />
           <CheckBox Content="{Binding Loc[ConfirmBeforeSave]}" IsChecked="{Binding ConfirmBeforeSave}" Margin="0,6,0,0" />
         </StackPanel>
+
+        <!-- Keyboard -->
+        <Grid RowDefinitions="Auto,Auto,Auto,*"
+              IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Keyboard}">
+          <TextBlock Grid.Row="0" Text="{Binding Loc[SettingsKeyboard]}" FontSize="14" FontWeight="SemiBold" />
+          <TextBlock Grid.Row="1" Text="{Binding Loc[KeyboardDesc]}" FontSize="12" TextWrapping="Wrap"
+                     Foreground="{DynamicResource CatTextSecondaryBrush}" Margin="0,4,0,10" />
+
+          <!-- Conflict banner: only while two commands share a gesture (save is blocked meanwhile). -->
+          <Border Grid.Row="2" IsVisible="{Binding HasShortcutConflicts}" Margin="0,0,0,10"
+                  Background="#22D64545" BorderBrush="#66D64545" BorderThickness="1" CornerRadius="5" Padding="10,6">
+            <TextBlock Text="{Binding Loc[ShortcutConflictBanner]}" FontSize="12" Foreground="#F0B4B4" TextWrapping="Wrap" />
+          </Border>
+
+          <Border Grid.Row="3" BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1" CornerRadius="6">
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding ShortcutGroups}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel>
+                      <!-- Group header (Tabs/Query/Editor/Search) -->
+                      <TextBlock Text="{Binding Label}" FontSize="10.5" FontWeight="SemiBold" Margin="12,9,12,5"
+                                 Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                      <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Grid ColumnDefinitions="*,Auto,Auto" Height="42" Margin="12,0"
+                                  Background="Transparent">
+                              <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
+                                <TextBlock Text="{Binding Label}" FontSize="12.5" />
+                                <TextBlock Text="{Binding ConflictWith, StringFormat='Conflicts with “{0}”'}"
+                                           IsVisible="{Binding HasConflict}" FontSize="11"
+                                           Foreground="{DynamicResource CatStatusErrorBrush}" />
+                              </StackPanel>
+
+                              <!-- Click-to-capture chip -->
+                              <ctl:ShortcutCaptureBox Grid.Column="1" MinWidth="130" VerticalAlignment="Center"
+                                                      HorizontalContentAlignment="Center"
+                                                      Gesture="{Binding Gesture, Mode=TwoWay}"
+                                                      CapturingText="{Binding $parent[Window].DataContext.Loc[ShortcutPressKeys]}"
+                                                      UnboundText="{Binding $parent[Window].DataContext.Loc[ShortcutUnbound]}"
+                                                      Classes.conflict="{Binding HasConflict}" />
+
+                              <!-- Reset-to-default (only once changed) -->
+                              <Button Grid.Column="2" Classes="Subtle" Width="28" Height="28" Padding="0"
+                                      Margin="6,0,0,0" VerticalAlignment="Center"
+                                      IsVisible="{Binding IsChanged}"
+                                      Command="{Binding ResetCommand}"
+                                      ToolTip.Tip="{Binding $parent[Window].DataContext.Loc[ShortcutResetTooltip]}">
+                                <Path Width="14" Height="14" Stretch="Uniform"
+                                      Data="M3,8 A5,5 0 1 1 4.6,11.7 M3,5 V8 H6"
+                                      Stroke="{DynamicResource CatTextSecondaryBrush}" StrokeThickness="1.4"
+                                      StrokeJoin="Round" StrokeLineCap="Round" />
+                              </Button>
+                            </Grid>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Border>
+        </Grid>
 
         <!-- Plugins -->
         <Grid RowDefinitions="Auto,Auto,*"

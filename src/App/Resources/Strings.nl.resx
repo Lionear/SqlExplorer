@@ -531,4 +531,46 @@
   <data name="ConfirmDeleteConnection" xml:space="preserve">
     <value>Connectie "{0}" verwijderen? Dit kan niet ongedaan worden gemaakt.</value>
   </data>
+  <data name="SettingsKeyboard" xml:space="preserve">
+    <value>Toetsenbord</value>
+  </data>
+  <data name="KeyboardDesc" xml:space="preserve">
+    <value>Klik een sneltoets en druk de gewenste toetscombinatie in. Wijzigingen zijn direct actief — geen herstart nodig.</value>
+  </data>
+  <data name="ShortcutPressKeys" xml:space="preserve">
+    <value>Toets in…</value>
+  </data>
+  <data name="ShortcutUnbound" xml:space="preserve">
+    <value>Niet toegewezen</value>
+  </data>
+  <data name="ShortcutResetTooltip" xml:space="preserve">
+    <value>Terug naar standaard</value>
+  </data>
+  <data name="ShortcutConflictBanner" xml:space="preserve">
+    <value>Twee commando's delen een sneltoets — los het conflict op vóór je opslaat.</value>
+  </data>
+  <data name="ShortcutGroupTabs" xml:space="preserve">
+    <value>Tabbladen</value>
+  </data>
+  <data name="ShortcutGroupQuery" xml:space="preserve">
+    <value>Query</value>
+  </data>
+  <data name="ShortcutGroupEditor" xml:space="preserve">
+    <value>Editor</value>
+  </data>
+  <data name="ShortcutGroupSearch" xml:space="preserve">
+    <value>Zoeken</value>
+  </data>
+  <data name="CloseTab" xml:space="preserve">
+    <value>Tabblad sluiten</value>
+  </data>
+  <data name="ReopenTab" xml:space="preserve">
+    <value>Gesloten tabblad heropenen</value>
+  </data>
+  <data name="ToggleSearch" xml:space="preserve">
+    <value>Ga naar / zoeken</value>
+  </data>
+  <data name="ToggleComment" xml:space="preserve">
+    <value>Regelcommentaar aan/uit</value>
+  </data>
 </root>

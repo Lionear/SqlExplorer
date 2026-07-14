@@ -5,18 +5,10 @@
         Title="Lionear SQL Explorer"
         Icon="/Assets/icon.png"
         Width="1150" Height="740">
-  <!-- Quick-open shortcut lives on the window (not MainView): with nothing focused yet, a keypress
-       is delivered to the TopLevel itself, so a UserControl-level KeyBinding would never see it. -->
-  <Window.KeyBindings>
-    <KeyBinding Gesture="Ctrl+K" Command="{Binding ToggleSearchCommand}" />
-    <KeyBinding Gesture="F5" Command="{Binding RunActiveDocumentCommand}" />
-    <KeyBinding Gesture="Ctrl+Enter" Command="{Binding RunActiveDocumentAtCursorCommand}" />
-    <KeyBinding Gesture="Ctrl+T" Command="{Binding NewQueryTabCommand}" />
-    <KeyBinding Gesture="Ctrl+W" Command="{Binding CloseActiveTabCommand}" />
-    <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveActiveDocumentCommand}" />
-    <KeyBinding Gesture="Ctrl+Shift+F" Command="{Binding FormatActiveDocumentCommand}" />
-    <KeyBinding Gesture="Ctrl+Shift+T" Command="{Binding ReopenClosedTabCommand}" />
-  </Window.KeyBindings>
+  <!-- Window-level shortcuts (Ctrl+K, F5, Ctrl+T, …) are built in code from the live keymap
+       (KeymapService) so they can be rebound in Settings › Keyboard without a restart. They live on
+       the window, not MainView: with nothing focused yet a keypress lands on the TopLevel itself, so a
+       UserControl-level KeyBinding would never see it. See MainWindow.RebuildKeyBindings(). -->
 
   <!-- macOS gets its menu bar from NativeMenu.Menu below (native, always active regardless of OS —
        Avalonia only surfaces it on macOS); the in-window Menu here is hidden there in code-behind

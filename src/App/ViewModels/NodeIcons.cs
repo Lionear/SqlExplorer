@@ -91,6 +91,10 @@ public static class NodeIcons
     public static readonly Geometry SettingsQuery =
         Parse("M5.5,3.5 L12.5,8 L5.5,12.5 Z");
 
+    // Keyboard outline with a few keys → keyboard shortcuts.
+    public static readonly Geometry SettingsKeyboard =
+        Parse("M2,4.5 H14 V11.5 H2 Z M4,6.5 H4.01 M6,6.5 H6.01 M8,6.5 H8.01 M10,6.5 H10.01 M12,6.5 H12.01 M4,9.5 H4.01 M12,9.5 H12.01 M6,9.5 H10");
+
     // Four blocks → plugins/extensions.
     public static readonly Geometry SettingsPlugins =
         Parse("M3,3 H6.5 V6.5 H3 Z M9.5,3 H13 V6.5 H9.5 Z M3,9.5 H6.5 V13 H3 Z M9.5,9.5 H13 V13 H9.5 Z");

@@ -531,4 +531,46 @@
   <data name="ConfirmDeleteConnection" xml:space="preserve">
     <value>Delete the connection "{0}"? This cannot be undone.</value>
   </data>
+  <data name="SettingsKeyboard" xml:space="preserve">
+    <value>Keyboard</value>
+  </data>
+  <data name="KeyboardDesc" xml:space="preserve">
+    <value>Click a shortcut, then press the key combination you want. Changes apply live — no restart.</value>
+  </data>
+  <data name="ShortcutPressKeys" xml:space="preserve">
+    <value>Press keys…</value>
+  </data>
+  <data name="ShortcutUnbound" xml:space="preserve">
+    <value>Unbound</value>
+  </data>
+  <data name="ShortcutResetTooltip" xml:space="preserve">
+    <value>Reset to default</value>
+  </data>
+  <data name="ShortcutConflictBanner" xml:space="preserve">
+    <value>Two commands share a shortcut — resolve the conflict before saving.</value>
+  </data>
+  <data name="ShortcutGroupTabs" xml:space="preserve">
+    <value>Tabs</value>
+  </data>
+  <data name="ShortcutGroupQuery" xml:space="preserve">
+    <value>Query</value>
+  </data>
+  <data name="ShortcutGroupEditor" xml:space="preserve">
+    <value>Editor</value>
+  </data>
+  <data name="ShortcutGroupSearch" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="CloseTab" xml:space="preserve">
+    <value>Close tab</value>
+  </data>
+  <data name="ReopenTab" xml:space="preserve">
+    <value>Reopen closed tab</value>
+  </data>
+  <data name="ToggleSearch" xml:space="preserve">
+    <value>Go to / search</value>
+  </data>
+  <data name="ToggleComment" xml:space="preserve">
+    <value>Toggle line comment</value>
+  </data>
 </root>

@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using Lionear.SqlExplorer.Sdk;
 using Lionear.SqlExplorer.Sdk.Settings;
+using Lionear.SqlExplorer.Sdk.Shortcuts;
 
 namespace Lionear.SqlExplorer.Providers.Template;
 
@@ -14,7 +16,7 @@ namespace Lionear.SqlExplorer.Providers.Template;
 /// Settings ▸ Plugins, rendered by the host and persisted to <c>plugin-settings.json</c> under this
 /// plugin's id — the exact shape a real tool (e.g. one needing a path to <c>mysqldump</c>) would use.
 /// </remarks>
-public sealed class TemplateProvider : IDbProvider, IPluginSettings
+public sealed class TemplateProvider : IDbProvider, IPluginSettings, IShortcutContributor
 {
     public string DisplayName => "Template (example)";
 
@@ -39,6 +41,23 @@ public sealed class TemplateProvider : IDbProvider, IPluginSettings
         new("verbose", "Verbose output", PluginSettingFieldType.Bool, Group: "Behaviour"),
         new("extraArgs", "Extra arguments", PluginSettingFieldType.Text,
             Placeholder: "--flag value", Group: "Behaviour")
+    ];
+
+    // --- Route: IShortcutContributor. Two example shortcuts: one with a suggested default (Mod = Cmd on
+    //     macOS, Ctrl elsewhere) and one shipped unbound for the user to assign. Both just write a line to
+    //     the debug output — a real plugin would kick off its own work here. ---
+    public IReadOnlyList<ShortcutContribution> Shortcuts { get; } =
+    [
+        new("ping", "Template: ping", "Mod+Alt+P", ct =>
+        {
+            Debug.WriteLine("[Template] ping shortcut fired");
+            return Task.CompletedTask;
+        }),
+        new("secondary", "Template: secondary action", DefaultGesture: null, ct =>
+        {
+            Debug.WriteLine("[Template] secondary shortcut fired");
+            return Task.CompletedTask;
+        })
     ];
 
     public string BuildConnectionString(IReadOnlyDictionary<string, string?> values) =>
