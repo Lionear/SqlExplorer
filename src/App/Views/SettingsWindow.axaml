@@ -107,7 +107,8 @@
           <TextBlock Text="{Binding Loc[SettingsEditor]}" FontSize="14" FontWeight="SemiBold" />
           <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
             <TextBlock Grid.Column="0" Text="{Binding Loc[EditorFontSize]}" VerticalAlignment="Center" />
-            <NumericUpDown Grid.Column="1" Width="100" Minimum="8" Maximum="32" Value="{Binding EditorFontSize}" />
+            <NumericUpDown Grid.Column="1" Width="150" MinHeight="34" FontSize="14"
+                           Minimum="8" Maximum="32" Value="{Binding EditorFontSize}" />
           </Grid>
           <CheckBox Content="{Binding Loc[EditorWordWrap]}" IsChecked="{Binding EditorWordWrap}" />
         </StackPanel>

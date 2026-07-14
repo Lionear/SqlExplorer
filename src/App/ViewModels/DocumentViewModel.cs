@@ -209,6 +209,15 @@ public partial class DocumentViewModel : ViewModelBase
 
     public bool EditorWordWrap { get; }
 
+    /// <summary>Persist a live editor-zoom change as the global font size, so it survives a restart and
+    /// applies to newly opened tabs.</summary>
+    public void PersistEditorFontSize(double size)
+    {
+        var settings = _settingsStore.Load();
+        settings.EditorFontSize = size;
+        _settingsStore.Save(settings);
+    }
+
     /// <summary>Quick-open-ranked completions (1.3) for the SQL text at <paramref name="caret"/>: alias
     /// columns after "alias.", tables after FROM/JOIN, a broad table+column+keyword mix elsewhere.</summary>
     public CompletionResult GetCompletions(string sql, int caret)

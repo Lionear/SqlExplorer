@@ -405,11 +405,13 @@ public partial class DocumentView : UserControl
         else if (MatchesShortcut(e, ShortcutCatalog.Ids.ZoomIn, Key.OemPlus, KeyModifiers.Control))
         {
             _sqlEditor!.FontSize = Math.Min(_sqlEditor.FontSize + 1, 32);
+            _viewModel?.PersistEditorFontSize(_sqlEditor.FontSize);
             e.Handled = true;
         }
         else if (MatchesShortcut(e, ShortcutCatalog.Ids.ZoomOut, Key.OemMinus, KeyModifiers.Control))
         {
             _sqlEditor!.FontSize = Math.Max(_sqlEditor.FontSize - 1, 8);
+            _viewModel?.PersistEditorFontSize(_sqlEditor.FontSize);
             e.Handled = true;
         }
     }
