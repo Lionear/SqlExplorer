@@ -9,8 +9,8 @@ on:
         description: "Version stamp (leave empty for nightly-<date>-<run>)"
         required: false
         default: ""
-  # schedule:
-  #   - cron: "0 2 * * *"   # nightly at 02:00 UTC
+  schedule:
+    - cron: "0 2 * * *"   # nightly at 02:00 UTC
 
 permissions:
   contents: read
