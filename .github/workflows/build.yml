@@ -9,6 +9,11 @@ on:
         description: "Version stamp (leave empty for nightly-<date>-<run>)"
         required: false
         default: ""
+      publish_release:
+        description: "Also refresh the 'nightly' GitHub release with these builds"
+        type: boolean
+        required: false
+        default: false
   schedule:
     - cron: "0 2 * * *"   # nightly at 02:00 UTC
 
@@ -160,3 +165,37 @@ jobs:
           path: artifacts/*
           retention-days: 14
           if-no-files-found: error
+
+  # Publishes a rolling "nightly" prerelease with fixed asset download links:
+  #   https://github.com/Lionear/Lionear.SqlExplorer/releases/download/nightly/<file>
+  # Runs on the scheduled nightly build, or on a manual run when publish_release is ticked.
+  release:
+    name: Nightly release
+    needs: build
+    if: ${{ github.event_name == 'schedule' || inputs.publish_release }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist   # each artifact lands in dist/<rid>/<file>
+
+      - name: Publish/refresh nightly release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=nightly
+          NOTES="Automated nightly build from ${GITHUB_SHA:0:7} on $(date -u +'%Y-%m-%d %H:%M UTC').
+
+          Unsigned: macOS Gatekeeper and Windows SmartScreen will warn on first launch."
+
+          # Recreate the release so the tag, date and notes track the latest build.
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" dist/*/* \
+            --title "Nightly build" \
+            --notes "$NOTES" \
+            --prerelease \
+            --target "$GITHUB_SHA"
