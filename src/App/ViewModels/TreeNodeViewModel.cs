@@ -152,6 +152,16 @@ public partial class TreeNodeViewModel : ViewModelBase
 
     public bool IsColumn => NodeKind is DbNodeKind.Column;
 
+    /// <summary>The path from the connection root down to this node (inclusive) — the ancestry a provider
+    /// reads to introspect this object (definition/parameters/call). Empty for a connection root.</summary>
+    public IReadOnlyList<DbNodeRef> NodePath => _pathToChildren;
+
+    /// <summary>"View Definition" is offered on a procedure/function/trigger (their CREATE text opens in a tab).</summary>
+    public bool CanViewDefinition => NodeKind is DbNodeKind.Procedure or DbNodeKind.Function or DbNodeKind.Trigger;
+
+    /// <summary>"Execute…" is offered on a procedure/function (a trigger is fired by events, not by hand).</summary>
+    public bool CanExecuteRoutine => NodeKind is DbNodeKind.Procedure or DbNodeKind.Function;
+
     public bool IsCopyable => IsTableOrView || IsColumn
         || NodeKind is DbNodeKind.Index or DbNodeKind.Sequence or DbNodeKind.Object;
 

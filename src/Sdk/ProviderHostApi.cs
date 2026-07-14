@@ -45,7 +45,13 @@ public static class ProviderHostApi
     //                   MSSQL no longer hardcodes TrustServerCertificate — it is a field now (FR-3).
     //                   Also IDbProvider.ParseConnectionString (default null) — inverse of
     //                   BuildConnectionString, prefills the dialog from a pasted string (FR-1).
-    public const int Version = 15;
+    // v16 (2026-07-14): added DbNodeKind ProcedureFolder/Procedure/FunctionFolder/Function/TriggerFolder/
+    //                   Trigger (Programmability in the tree) + RoutineParameter and IDbProvider
+    //                   .GetObjectDefinitionAsync (default null) / GetRoutineParametersAsync (default [])
+    //                   / BuildCallStatement (default throws) — View Definition opens in an editable tab,
+    //                   Execute… generates a call script (OUT params captured in a trailing SELECT) the
+    //                   user runs. Roadmap Fase 4: browse/execute procedures/functions/triggers.
+    public const int Version = 16;
 
     /// <summary>True when this host can load a plugin built for <paramref name="pluginVersion"/>.</summary>
     public static bool IsCompatible(int pluginVersion) => pluginVersion == Version;

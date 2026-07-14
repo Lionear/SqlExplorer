@@ -120,6 +120,24 @@
   <data name="BrowseTable" xml:space="preserve">
     <value>Browse table</value>
   </data>
+  <data name="ViewDefinition" xml:space="preserve">
+    <value>View definition</value>
+  </data>
+  <data name="ExecuteRoutine" xml:space="preserve">
+    <value>Execute…</value>
+  </data>
+  <data name="OpenInEditor" xml:space="preserve">
+    <value>Open in editor</value>
+  </data>
+  <data name="DefinitionUnavailable" xml:space="preserve">
+    <value>No definition is available for this object.</value>
+  </data>
+  <data name="ParameterOutput" xml:space="preserve">
+    <value>(output)</value>
+  </data>
+  <data name="RoutineExecuteHint" xml:space="preserve">
+    <value>Enter values for the input parameters. A call script opens in a new tab — press Run to execute it.</value>
+  </data>
   <data name="PrevPage" xml:space="preserve">
     <value>‹ Prev</value>
   </data>

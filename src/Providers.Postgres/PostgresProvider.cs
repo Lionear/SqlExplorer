@@ -213,8 +213,11 @@ public sealed class PostgresProvider : IDbProvider
             DbNodeKind.TableFolder => await LoadRelationsAsync(profile, ancestors, isView: false, ct),
             DbNodeKind.ViewFolder => await LoadRelationsAsync(profile, ancestors, isView: true, ct),
             DbNodeKind.SequenceFolder => await LoadSequencesAsync(profile, ancestors, ct),
-            // Tables carry extra "Indexes"/"Foreign Keys" folders; views have neither.
-            DbNodeKind.Table => [ColumnFolder(), IndexFolder(), ForeignKeyFolder()],
+            DbNodeKind.ProcedureFolder => await LoadRoutinesAsync(profile, ancestors, kind: 'p', ct),
+            DbNodeKind.FunctionFolder => await LoadRoutinesAsync(profile, ancestors, kind: 'f', ct),
+            DbNodeKind.TriggerFolder => await LoadTriggersAsync(profile, ancestors, ct),
+            // Tables carry extra "Indexes"/"Foreign Keys"/"Triggers" folders; views have none.
+            DbNodeKind.Table => [ColumnFolder(), IndexFolder(), ForeignKeyFolder(), TriggerFolder()],
             DbNodeKind.ColumnFolder => await LoadColumnsAsync(profile, ancestors.Take(ancestors.Count - 1).ToList(), ct),
             DbNodeKind.View => await LoadColumnsAsync(profile, ancestors, ct),
             DbNodeKind.IndexFolder => await LoadIndexesAsync(profile, ancestors, ct),
@@ -236,10 +239,15 @@ public sealed class PostgresProvider : IDbProvider
     private static DbTreeNode ForeignKeyFolder() =>
         new() { Kind = DbNodeKind.ForeignKeyFolder, Name = "Foreign Keys", HasChildren = true };
 
+    private static DbTreeNode TriggerFolder() =>
+        new() { Kind = DbNodeKind.TriggerFolder, Name = "Triggers", HasChildren = true };
+
     private static IReadOnlyList<DbTreeNode> Folders() =>
     [
         new() { Kind = DbNodeKind.TableFolder, Name = "Tables", HasChildren = true },
         new() { Kind = DbNodeKind.ViewFolder, Name = "Views", HasChildren = true },
+        new() { Kind = DbNodeKind.ProcedureFolder, Name = "Procedures", HasChildren = true },
+        new() { Kind = DbNodeKind.FunctionFolder, Name = "Functions", HasChildren = true },
         new() { Kind = DbNodeKind.SequenceFolder, Name = "Sequences", HasChildren = true }
     ];
 
@@ -558,6 +566,187 @@ public sealed class PostgresProvider : IDbProvider
 
         return nodes;
     }
+
+    // Procedures (prokind 'p', PG11+) and functions (prokind 'f') are schema-scoped. DISTINCT collapses
+    // overloads to a single node (v1: the definition/params flow then picks the first overload).
+    private async Task<IReadOnlyList<DbTreeNode>> LoadRoutinesAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        char kind,
+        CancellationToken ct)
+    {
+        const string sql = """
+            SELECT DISTINCT p.proname
+            FROM pg_proc p
+            JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = @schema AND p.prokind = @kind
+            ORDER BY p.proname
+            """;
+
+        var nodeKind = kind == 'p' ? DbNodeKind.Procedure : DbNodeKind.Function;
+        var nodes = new List<DbTreeNode>();
+        await using var connection = new NpgsqlConnection(ConnectionStringFor(profile, Name(ancestors, DbNodeKind.Database)));
+        await connection.OpenAsync(ct);
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("schema", Name(ancestors, DbNodeKind.Schema));
+        command.Parameters.AddWithValue("kind", kind);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            nodes.Add(new DbTreeNode { Kind = nodeKind, Name = reader.GetString(0) });
+        }
+
+        return nodes;
+    }
+
+    private async Task<IReadOnlyList<DbTreeNode>> LoadTriggersAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        CancellationToken ct)
+    {
+        // NOT tgisinternal drops the hidden triggers Postgres creates to enforce foreign keys.
+        const string sql = """
+            SELECT t.tgname
+            FROM pg_trigger t
+            JOIN pg_class c ON c.oid = t.tgrelid
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = @schema AND c.relname = @table AND NOT t.tgisinternal
+            ORDER BY t.tgname
+            """;
+
+        var nodes = new List<DbTreeNode>();
+        await using var connection = new NpgsqlConnection(ConnectionStringFor(profile, Name(ancestors, DbNodeKind.Database)));
+        await connection.OpenAsync(ct);
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("schema", Name(ancestors, DbNodeKind.Schema));
+        command.Parameters.AddWithValue("table", Name(ancestors, DbNodeKind.Table));
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            nodes.Add(new DbTreeNode { Kind = DbNodeKind.Trigger, Name = reader.GetString(0) });
+        }
+
+        return nodes;
+    }
+
+    // View Definition: pg_get_functiondef reconstructs a procedure/function's CREATE text;
+    // pg_get_triggerdef does the same for a trigger.
+    public async Task<string?> GetObjectDefinitionAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        CancellationToken ct)
+    {
+        var schema = Name(ancestors, DbNodeKind.Schema);
+        await using var connection = new NpgsqlConnection(ConnectionStringFor(profile, Name(ancestors, DbNodeKind.Database)));
+        await connection.OpenAsync(ct);
+
+        NpgsqlCommand command;
+        if (ancestors[^1].Kind == DbNodeKind.Trigger)
+        {
+            command = new NpgsqlCommand("""
+                SELECT pg_get_triggerdef(t.oid)
+                FROM pg_trigger t
+                JOIN pg_class c ON c.oid = t.tgrelid
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                WHERE n.nspname = @schema AND c.relname = @table AND t.tgname = @name
+                """, connection);
+            command.Parameters.AddWithValue("table", Name(ancestors, DbNodeKind.Table));
+        }
+        else
+        {
+            command = new NpgsqlCommand("""
+                SELECT pg_get_functiondef(p.oid)
+                FROM pg_proc p
+                JOIN pg_namespace n ON n.oid = p.pronamespace
+                WHERE n.nspname = @schema AND p.proname = @name
+                LIMIT 1
+                """, connection);
+        }
+
+        await using (command)
+        {
+            command.Parameters.AddWithValue("schema", schema);
+            command.Parameters.AddWithValue("name", ancestors[^1].Name);
+            return await command.ExecuteScalarAsync(ct) as string;
+        }
+    }
+
+    public async Task<IReadOnlyList<RoutineParameter>> GetRoutineParametersAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        CancellationToken ct)
+    {
+        // information_schema.parameters keyed via the routine's specific_name (overloads share proname,
+        // so pick the first match). parameter_mode is IN/OUT/INOUT/VARIADIC.
+        const string sql = """
+            SELECT p.parameter_name, p.data_type, p.parameter_mode
+            FROM information_schema.parameters p
+            WHERE p.specific_schema = @schema AND p.specific_name = (
+                SELECT r.specific_name FROM information_schema.routines r
+                WHERE r.routine_schema = @schema AND r.routine_name = @name
+                LIMIT 1)
+            ORDER BY p.ordinal_position
+            """;
+
+        var result = new List<RoutineParameter>();
+        await using var connection = new NpgsqlConnection(ConnectionStringFor(profile, Name(ancestors, DbNodeKind.Database)));
+        await connection.OpenAsync(ct);
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("schema", Name(ancestors, DbNodeKind.Schema));
+        command.Parameters.AddWithValue("name", ancestors[^1].Name);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        var index = 0;
+        while (await reader.ReadAsync(ct))
+        {
+            index++;
+            var name = reader.IsDBNull(0) ? $"${index}" : reader.GetString(0);
+            var type = reader.GetString(1);
+            // Treat OUT as pure output; INOUT/VARIADIC still need a user value, so mark them input.
+            var isOutput = reader.GetString(2).Equals("OUT", StringComparison.OrdinalIgnoreCase);
+            result.Add(new RoutineParameter(name, type, isOutput, Default: null));
+        }
+
+        return result;
+    }
+
+    public SqlStatement BuildCallStatement(
+        IReadOnlyList<DbNodeRef> ancestors,
+        IReadOnlyList<RoutineParameter> parameters,
+        IReadOnlyDictionary<string, string?> inputValues)
+    {
+        var qualified = $"{Dialect.QuoteIdentifier(Name(ancestors, DbNodeKind.Schema))}.{Dialect.QuoteIdentifier(ancestors[^1].Name)}";
+
+        if (ancestors[^1].Kind == DbNodeKind.Function)
+        {
+            // A function's OUT parameters come back as result columns, so only IN args are passed.
+            var args = string.Join(", ", parameters.Where(p => !p.IsOutput).Select(p => FormatValue(p, inputValues)));
+            return new SqlStatement($"SELECT * FROM {qualified}({args});", []);
+        }
+
+        // Procedure (PG11+): CALL passes every parameter positionally — OUT placeholders are NULL and
+        // CALL returns them (PG14+).
+        var callArgs = string.Join(", ", parameters.Select(p => p.IsOutput ? "NULL" : FormatValue(p, inputValues)));
+        return new SqlStatement($"CALL {qualified}({callArgs});", []);
+    }
+
+    private static string FormatValue(RoutineParameter parameter, IReadOnlyDictionary<string, string?> values)
+    {
+        var raw = values.TryGetValue(parameter.Name, out var v) ? v : null;
+        if (string.IsNullOrEmpty(raw))
+        {
+            return "NULL";
+        }
+
+        return NeedsQuote(parameter.Type) ? "'" + raw.Replace("'", "''") + "'" : raw;
+    }
+
+    // Numeric/boolean types pass through unquoted; everything else (text/date/uuid/json/…) is quoted.
+    private static bool NeedsQuote(string type) => type.ToLowerInvariant() switch
+    {
+        "smallint" or "integer" or "bigint" or "numeric" or "decimal" or "real"
+            or "double precision" or "boolean" or "money" or "oid" => false,
+        _ => true
+    };
 
     // Re-point the connection at a sibling database on the same server; secrets/host stay intact.
     private static string ConnectionStringFor(ConnectionProfile profile, string database) =>

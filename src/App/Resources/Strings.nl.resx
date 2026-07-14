@@ -120,6 +120,24 @@
   <data name="BrowseTable" xml:space="preserve">
     <value>Tabel bekijken</value>
   </data>
+  <data name="ViewDefinition" xml:space="preserve">
+    <value>Definitie tonen</value>
+  </data>
+  <data name="ExecuteRoutine" xml:space="preserve">
+    <value>Uitvoeren…</value>
+  </data>
+  <data name="OpenInEditor" xml:space="preserve">
+    <value>Openen in editor</value>
+  </data>
+  <data name="DefinitionUnavailable" xml:space="preserve">
+    <value>Voor dit object is geen definitie beschikbaar.</value>
+  </data>
+  <data name="ParameterOutput" xml:space="preserve">
+    <value>(uitvoer)</value>
+  </data>
+  <data name="RoutineExecuteHint" xml:space="preserve">
+    <value>Vul de invoerparameters in. Er opent een call-script in een nieuw tabblad — druk op Run om het uit te voeren.</value>
+  </data>
   <data name="PrevPage" xml:space="preserve">
     <value>‹ Vorige</value>
   </data>

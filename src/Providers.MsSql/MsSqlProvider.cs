@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Text;
 using Avalonia.Controls;
 using Lionear.SqlExplorer.Sdk;
 using Lionear.SqlExplorer.Sdk.Ui;
@@ -349,8 +350,11 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
             DbNodeKind.TableFolder => await LoadRelationsAsync(profile, ancestors, isView: false, ct),
             DbNodeKind.ViewFolder => await LoadRelationsAsync(profile, ancestors, isView: true, ct),
             DbNodeKind.SequenceFolder => await LoadSequencesAsync(profile, ancestors, ct),
-            // Tables carry extra "Indexes"/"Foreign Keys" folders; views have neither.
-            DbNodeKind.Table => [ColumnFolder(), IndexFolder(), ForeignKeyFolder()],
+            DbNodeKind.ProcedureFolder => await LoadRoutinesAsync(profile, ancestors, isFunction: false, ct),
+            DbNodeKind.FunctionFolder => await LoadRoutinesAsync(profile, ancestors, isFunction: true, ct),
+            DbNodeKind.TriggerFolder => await LoadTriggersAsync(profile, ancestors, ct),
+            // Tables carry extra "Indexes"/"Foreign Keys"/"Triggers" folders; views have none.
+            DbNodeKind.Table => [ColumnFolder(), IndexFolder(), ForeignKeyFolder(), TriggerFolder()],
             DbNodeKind.ColumnFolder => await LoadColumnsAsync(profile, ancestors.Take(ancestors.Count - 1).ToList(), ct),
             DbNodeKind.View => await LoadColumnsAsync(profile, ancestors, ct),
             DbNodeKind.IndexFolder => await LoadIndexesAsync(profile, ancestors, ct),
@@ -463,10 +467,15 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
     private static DbTreeNode ForeignKeyFolder() =>
         new() { Kind = DbNodeKind.ForeignKeyFolder, Name = "Foreign Keys", HasChildren = true };
 
+    private static DbTreeNode TriggerFolder() =>
+        new() { Kind = DbNodeKind.TriggerFolder, Name = "Triggers", HasChildren = true };
+
     private static IReadOnlyList<DbTreeNode> Folders() =>
     [
         new() { Kind = DbNodeKind.TableFolder, Name = "Tables", HasChildren = true },
         new() { Kind = DbNodeKind.ViewFolder, Name = "Views", HasChildren = true },
+        new() { Kind = DbNodeKind.ProcedureFolder, Name = "Procedures", HasChildren = true },
+        new() { Kind = DbNodeKind.FunctionFolder, Name = "Functions", HasChildren = true },
         new() { Kind = DbNodeKind.SequenceFolder, Name = "Sequences", HasChildren = true }
     ];
 
@@ -809,6 +818,225 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi
 
         return nodes;
     }
+
+    // Procedures (sys.procedures, type P) and functions (scalar FN, inline/table-valued IF/TF, CLR FS/FT)
+    // are schema-scoped, like sequences. Leaf nodes: double-click opens their definition in a tab.
+    private static async Task<IReadOnlyList<DbTreeNode>> LoadRoutinesAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        bool isFunction,
+        CancellationToken ct)
+    {
+        var sql = isFunction
+            ? """
+              SELECT o.name FROM sys.objects o
+              JOIN sys.schemas s ON s.schema_id = o.schema_id
+              WHERE s.name = @schema AND o.type IN ('FN','IF','TF','FS','FT')
+              ORDER BY o.name
+              """
+            : """
+              SELECT p.name FROM sys.procedures p
+              JOIN sys.schemas s ON s.schema_id = p.schema_id
+              WHERE s.name = @schema
+              ORDER BY p.name
+              """;
+
+        var kind = isFunction ? DbNodeKind.Function : DbNodeKind.Procedure;
+        var nodes = new List<DbTreeNode>();
+        await using var connection = new SqlConnection(ConnectionStringFor(profile, Name(ancestors, DbNodeKind.Database)));
+        await connection.OpenAsync(ct);
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("schema", Name(ancestors, DbNodeKind.Schema));
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            nodes.Add(new DbTreeNode { Kind = kind, Name = reader.GetString(0) });
+        }
+
+        return nodes;
+    }
+
+    private static async Task<IReadOnlyList<DbTreeNode>> LoadTriggersAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        CancellationToken ct)
+    {
+        // parent_class = 1 restricts to DML table triggers (excludes DB/server-level triggers).
+        const string sql = """
+            SELECT t.name FROM sys.triggers t
+            WHERE t.parent_id = OBJECT_ID(@qualified) AND t.parent_class = 1
+            ORDER BY t.name
+            """;
+
+        var qualified = $"{Name(ancestors, DbNodeKind.Schema)}.{Name(ancestors, DbNodeKind.Table)}";
+        var nodes = new List<DbTreeNode>();
+        await using var connection = new SqlConnection(ConnectionStringFor(profile, Name(ancestors, DbNodeKind.Database)));
+        await connection.OpenAsync(ct);
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("qualified", qualified);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            nodes.Add(new DbTreeNode { Kind = DbNodeKind.Trigger, Name = reader.GetString(0) });
+        }
+
+        return nodes;
+    }
+
+    // View Definition: OBJECT_DEFINITION returns the CREATE text for a procedure, function, trigger or
+    // view. A trigger's name is scoped to its parent table's schema, so schema.name qualifies all cases.
+    public async Task<string?> GetObjectDefinitionAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        CancellationToken ct)
+    {
+        var qualified = $"{Name(ancestors, DbNodeKind.Schema)}.{ancestors[^1].Name}";
+        await using var connection = new SqlConnection(ConnectionStringFor(profile, Name(ancestors, DbNodeKind.Database)));
+        await connection.OpenAsync(ct);
+        await using var command = new SqlCommand("SELECT OBJECT_DEFINITION(OBJECT_ID(@qualified))", connection);
+        command.Parameters.AddWithValue("qualified", qualified);
+        return await command.ExecuteScalarAsync(ct) as string;
+    }
+
+    public async Task<IReadOnlyList<RoutineParameter>> GetRoutineParametersAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        CancellationToken ct)
+    {
+        const string sql = """
+            SELECT p.name, TYPE_NAME(p.user_type_id), p.is_output, p.parameter_id
+            FROM sys.parameters p
+            WHERE p.object_id = OBJECT_ID(@qualified)
+            ORDER BY p.parameter_id
+            """;
+
+        var qualified = $"{Name(ancestors, DbNodeKind.Schema)}.{ancestors[^1].Name}";
+        var result = new List<RoutineParameter>();
+        string? scalarReturnType = null;
+        await using var connection = new SqlConnection(ConnectionStringFor(profile, Name(ancestors, DbNodeKind.Database)));
+        await connection.OpenAsync(ct);
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("qualified", qualified);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            // parameter_id 0 is a function's scalar return type, not a callable parameter. Its presence is
+            // also the signal that distinguishes a scalar function (has it) from a table-valued one (does
+            // not) — remembered below so BuildCallStatement picks SELECT f(…) vs SELECT * FROM f(…).
+            if (reader.GetInt32(3) == 0)
+            {
+                scalarReturnType = reader.IsDBNull(1) ? "sql_variant" : reader.GetString(1);
+                continue;
+            }
+
+            var name = reader.GetString(0).TrimStart('@');
+            var type = reader.IsDBNull(1) ? "sql_variant" : reader.GetString(1);
+            result.Add(new RoutineParameter(name, type, reader.GetBoolean(2), Default: null));
+        }
+
+        // A procedure always returns an int status code; a scalar function returns its single value. Both
+        // are surfaced as a captured output (Return Value); a table-valued function has none, which is how
+        // BuildCallStatement tells the two function shapes apart.
+        if (ancestors[^1].Kind == DbNodeKind.Procedure)
+        {
+            result.Add(new RoutineParameter(ReturnValueName, "int", IsOutput: true, Default: null));
+        }
+        else if (scalarReturnType is not null)
+        {
+            result.Add(new RoutineParameter(ReturnValueName, scalarReturnType, IsOutput: true, Default: null));
+        }
+
+        return result;
+    }
+
+    private const string ReturnValueName = "Return Value";
+
+    public SqlStatement BuildCallStatement(
+        IReadOnlyList<DbNodeRef> ancestors,
+        IReadOnlyList<RoutineParameter> parameters,
+        IReadOnlyDictionary<string, string?> inputValues)
+    {
+        var schema = Name(ancestors, DbNodeKind.Schema);
+        var qualified = $"{Dialect.QuoteIdentifier(schema)}.{Dialect.QuoteIdentifier(ancestors[^1].Name)}";
+        var inputs = parameters.Where(p => !p.IsOutput).ToList();
+
+        if (ancestors[^1].Kind == DbNodeKind.Function)
+        {
+            var args = string.Join(", ", inputs.Select(p => FormatValue(p, inputValues)));
+            // Scalar functions carry a synthetic return output (SELECT f(…) yields the value as a column);
+            // table-valued functions have none and must be projected with SELECT * FROM f(…).
+            return parameters.Any(p => p.IsOutput)
+                ? new SqlStatement($"SELECT {qualified}({args}) AS [Result];", [])
+                : new SqlStatement($"SELECT * FROM {qualified}({args});", []);
+        }
+
+        // Procedure: DECLARE the OUT variables + return code, EXEC with OUTPUT, then a trailing SELECT
+        // captures them so they render as an ordinary result set once the user runs the script.
+        var outputs = parameters.Where(p => p.IsOutput && p.Name != ReturnValueName).ToList();
+        var hasReturn = parameters.Any(p => p.Name == ReturnValueName);
+
+        var script = new StringBuilder();
+        foreach (var o in outputs)
+        {
+            script.AppendLine($"DECLARE {LocalVar(o.Name)} {o.Type};");
+        }
+
+        if (hasReturn)
+        {
+            script.AppendLine("DECLARE @return_value INT;");
+        }
+
+        var execArgs = parameters
+            .Where(p => p.Name != ReturnValueName)
+            .Select(p => p.IsOutput
+                ? $"@{p.Name} = {LocalVar(p.Name)} OUTPUT"
+                : $"@{p.Name} = {FormatValue(p, inputValues)}")
+            .ToList();
+
+        var exec = hasReturn ? $"EXEC @return_value = {qualified}" : $"EXEC {qualified}";
+        if (execArgs.Count > 0)
+        {
+            exec += " " + string.Join(", ", execArgs);
+        }
+
+        script.AppendLine(exec + ";");
+
+        var selects = new List<string>();
+        if (hasReturn)
+        {
+            selects.Add("@return_value AS [Return Value]");
+        }
+
+        selects.AddRange(outputs.Select(o => $"{LocalVar(o.Name)} AS {Dialect.QuoteIdentifier(o.Name)}"));
+        if (selects.Count > 0)
+        {
+            script.AppendLine($"SELECT {string.Join(", ", selects)};");
+        }
+
+        return new SqlStatement(script.ToString(), []);
+    }
+
+    // A distinct local variable name so "EXEC proc @p = @out_p OUTPUT" never aliases the parameter itself.
+    private static string LocalVar(string paramName) => "@out_" + paramName;
+
+    private static string FormatValue(RoutineParameter parameter, IReadOnlyDictionary<string, string?> values)
+    {
+        var raw = values.TryGetValue(parameter.Name, out var v) ? v : null;
+        if (string.IsNullOrEmpty(raw))
+        {
+            return "NULL";
+        }
+
+        return NeedsQuote(parameter.Type) ? "'" + raw.Replace("'", "''") + "'" : raw;
+    }
+
+    private static bool NeedsQuote(string type) => type.ToLowerInvariant() switch
+    {
+        "char" or "varchar" or "nchar" or "nvarchar" or "text" or "ntext"
+            or "date" or "time" or "datetime" or "datetime2" or "smalldatetime" or "datetimeoffset"
+            or "uniqueidentifier" or "xml" => true,
+        _ => false
+    };
 
     // Re-point the connection at another database on the same server; host/credentials stay intact.
     private static string ConnectionStringFor(ConnectionProfile profile, string database) =>

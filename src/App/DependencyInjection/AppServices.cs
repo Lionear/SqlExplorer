@@ -165,6 +165,9 @@ public static class AppServices
         services.AddTransient<ToolDialogViewModel>();
         services.AddSingleton<Func<ToolDialogViewModel>>(sp => sp.GetRequiredService<ToolDialogViewModel>);
 
+        services.AddTransient<RoutineParametersDialogViewModel>();
+        services.AddSingleton<Func<RoutineParametersDialogViewModel>>(sp => sp.GetRequiredService<RoutineParametersDialogViewModel>);
+
         services.AddTransient<MainViewModel>();
 
         var provider = services.BuildServiceProvider();

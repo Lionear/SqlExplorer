@@ -237,12 +237,13 @@ public sealed class SqliteProvider : IDbProvider
             DbNodeKind.TableFolder => await LoadObjectsAsync(profile, isView: false, ct),
             DbNodeKind.ViewFolder => await LoadObjectsAsync(profile, isView: true, ct),
             DbNodeKind.SequenceFolder => await LoadSequencesAsync(profile, ct),
-            // Tables carry extra "Indexes"/"Foreign Keys" folders; views have neither.
-            DbNodeKind.Table => [ColumnFolder(), IndexFolder(), ForeignKeyFolder()],
+            // Tables carry extra "Indexes"/"Foreign Keys"/"Triggers" folders; views have none.
+            DbNodeKind.Table => [ColumnFolder(), IndexFolder(), ForeignKeyFolder(), TriggerFolder()],
             DbNodeKind.ColumnFolder => await LoadColumnsAsync(profile, Name(ancestors, DbNodeKind.Table), ct),
             DbNodeKind.View => await LoadColumnsAsync(profile, ancestors[^1].Name, ct),
             DbNodeKind.IndexFolder => await LoadIndexesAsync(profile, Name(ancestors, DbNodeKind.Table), ct),
             DbNodeKind.ForeignKeyFolder => await LoadForeignKeysAsync(profile, Name(ancestors, DbNodeKind.Table), ct),
+            DbNodeKind.TriggerFolder => await LoadTriggersAsync(profile, Name(ancestors, DbNodeKind.Table), ct),
             _ => []
         };
     }
@@ -263,6 +264,52 @@ public sealed class SqliteProvider : IDbProvider
 
     private static DbTreeNode ForeignKeyFolder() =>
         new() { Kind = DbNodeKind.ForeignKeyFolder, Name = "Foreign Keys", HasChildren = true };
+
+    private static DbTreeNode TriggerFolder() =>
+        new() { Kind = DbNodeKind.TriggerFolder, Name = "Triggers", HasChildren = true };
+
+    // SQLite is triggers-only for the Programmability group — no stored procedures or functions exist.
+    private static async Task<IReadOnlyList<DbTreeNode>> LoadTriggersAsync(
+        ConnectionProfile profile,
+        string tableName,
+        CancellationToken ct)
+    {
+        const string sql = "SELECT name FROM sqlite_schema WHERE type = 'trigger' AND tbl_name = @table ORDER BY name";
+
+        var nodes = new List<DbTreeNode>();
+        await using var connection = new SqliteConnection(profile.ConnectionString);
+        await connection.OpenAsync(ct);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("@table", tableName);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            nodes.Add(new DbTreeNode { Kind = DbNodeKind.Trigger, Name = reader.GetString(0) });
+        }
+
+        return nodes;
+    }
+
+    // View Definition: a trigger's full CREATE text is already stored verbatim in sqlite_schema.sql,
+    // so no reconstruction is needed. Only triggers are introspectable on SQLite.
+    public async Task<string?> GetObjectDefinitionAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        CancellationToken ct)
+    {
+        if (ancestors[^1].Kind != DbNodeKind.Trigger)
+        {
+            return null;
+        }
+
+        await using var connection = new SqliteConnection(profile.ConnectionString);
+        await connection.OpenAsync(ct);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT sql FROM sqlite_schema WHERE type = 'trigger' AND name = @name";
+        command.Parameters.AddWithValue("@name", ancestors[^1].Name);
+        return await command.ExecuteScalarAsync(ct) as string;
+    }
 
     private static string Name(IReadOnlyList<DbNodeRef> ancestors, DbNodeKind kind) =>
         ancestors.First(a => a.Kind == kind).Name;

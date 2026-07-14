@@ -2,6 +2,7 @@ using Lionear.SqlExplorer.Sdk.Branding;
 using Lionear.SqlExplorer.Sdk.Connections;
 using Lionear.SqlExplorer.Sdk.Ddl;
 using Lionear.SqlExplorer.Sdk.Query;
+using Lionear.SqlExplorer.Sdk.Routines;
 using Lionear.SqlExplorer.Sdk.Schema;
 
 namespace Lionear.SqlExplorer.Sdk;
@@ -160,4 +161,42 @@ public interface IDbProvider
     /// existing grid infrastructure.
     /// </summary>
     Task<QueryResult> ExplainAsync(ConnectionProfile profile, string sql, CancellationToken ct);
+
+    /// <summary>
+    /// The CREATE/definition text of the object at <paramref name="ancestors"/> (a procedure, function,
+    /// view or trigger), for the "View Definition" action that opens it in a normal editable query tab.
+    /// Returns <c>null</c> when the provider cannot supply a definition for that node (the default) — the
+    /// same "null = not supported" convention as <see cref="ParseConnectionString"/>.
+    /// </summary>
+    Task<string?> GetObjectDefinitionAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        CancellationToken ct) => Task.FromResult<string?>(null);
+
+    /// <summary>
+    /// The parameters of the procedure/function at <paramref name="ancestors"/>, for the routine
+    /// "Execute…" dialog. Output/return values are surfaced as <see cref="RoutineParameter.IsOutput"/>
+    /// rows. Empty (the default) means "no parameters" — the host then skips the dialog and generates
+    /// the call directly.
+    /// </summary>
+    Task<IReadOnlyList<RoutineParameter>> GetRoutineParametersAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        CancellationToken ct) => Task.FromResult<IReadOnlyList<RoutineParameter>>([]);
+
+    /// <summary>
+    /// Build a dialect-specific script that calls the procedure/function at <paramref name="ancestors"/>.
+    /// <paramref name="parameters"/> is the full parameter list from <see cref="GetRoutineParametersAsync"/>
+    /// (the host already has it, so the provider need not re-introspect to know types/output flags);
+    /// <paramref name="inputValues"/> holds the user-entered values for the IN parameters, keyed by
+    /// <see cref="RoutineParameter.Name"/>. The script captures any OUT parameters / return value in a
+    /// trailing SELECT so they appear as an ordinary result set when the user runs it — no separate
+    /// execute machinery. The host opens the returned text in an editable tab; the user presses Run. Only
+    /// reached for providers that expose Procedure/Function nodes, so the default throws.
+    /// </summary>
+    SqlStatement BuildCallStatement(
+        IReadOnlyList<DbNodeRef> ancestors,
+        IReadOnlyList<RoutineParameter> parameters,
+        IReadOnlyDictionary<string, string?> inputValues) =>
+        throw new NotSupportedException("This provider does not support executing routines.");
 }

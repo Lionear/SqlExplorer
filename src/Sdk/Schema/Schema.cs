@@ -53,7 +53,25 @@ public enum DbNodeKind
 
     /// <summary>A grouping node under a table that holds its columns (SSMS/DBeaver-style "Columns" folder),
     /// so a table's columns don't sit alongside its Indexes/Foreign Keys folders.</summary>
-    ColumnFolder
+    ColumnFolder,
+
+    /// <summary>Grouping node under a schema/database that holds its stored procedures.</summary>
+    ProcedureFolder,
+
+    /// <summary>A single stored procedure; runnable via the routine "Execute…" flow.</summary>
+    Procedure,
+
+    /// <summary>Grouping node under a schema/database that holds its functions.</summary>
+    FunctionFolder,
+
+    /// <summary>A single function; runnable via the routine "Execute…" flow.</summary>
+    Function,
+
+    /// <summary>Grouping node under a table that holds its triggers.</summary>
+    TriggerFolder,
+
+    /// <summary>A single trigger on a table (or, for SQLite, a view). Definition-only — not runnable.</summary>
+    Trigger
 }
 
 /// <summary>

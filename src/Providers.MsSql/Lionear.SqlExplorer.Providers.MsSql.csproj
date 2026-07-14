@@ -35,6 +35,7 @@
     <Using Include="Lionear.SqlExplorer.Sdk.Schema" />
     <Using Include="Lionear.SqlExplorer.Sdk.Query" />
     <Using Include="Lionear.SqlExplorer.Sdk.Ddl" />
+    <Using Include="Lionear.SqlExplorer.Sdk.Routines" />
     <Using Include="Lionear.SqlExplorer.Sdk.Branding" />
     <Using Include="Lionear.SqlExplorer.Sdk.Ui" />
   </ItemGroup>

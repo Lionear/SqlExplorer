@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Text;
 using Lionear.SqlExplorer.Sdk;
 using MySqlConnector;
 
@@ -31,7 +32,11 @@ public sealed class MySqlProvider : IDbProvider
             Server = Value(values, "host") ?? "localhost",
             Database = Value(values, "database"),
             UserID = Value(values, "username"),
-            Password = Value(values, "password")
+            Password = Value(values, "password"),
+            // MySqlConnector otherwise treats every @name in ad-hoc SQL as a parameter placeholder, which
+            // breaks session variables (@out1) — needed for the routine "Execute…" OUT-capture script and
+            // generally expected in a SQL editor (SET @x := …; SELECT @x;).
+            AllowUserVariables = true
         };
 
         if (uint.TryParse(Value(values, "port"), out var port))
@@ -186,8 +191,11 @@ public sealed class MySqlProvider : IDbProvider
             DbNodeKind.Database => Folders(),
             DbNodeKind.TableFolder => await LoadRelationsAsync(profile, ancestors, isView: false, ct),
             DbNodeKind.ViewFolder => await LoadRelationsAsync(profile, ancestors, isView: true, ct),
-            // Tables carry extra "Indexes"/"Foreign Keys" folders; views have neither.
-            DbNodeKind.Table => [ColumnFolder(), IndexFolder(), ForeignKeyFolder()],
+            DbNodeKind.ProcedureFolder => await LoadRoutinesAsync(profile, ancestors, isFunction: false, ct),
+            DbNodeKind.FunctionFolder => await LoadRoutinesAsync(profile, ancestors, isFunction: true, ct),
+            DbNodeKind.TriggerFolder => await LoadTriggersAsync(profile, ancestors, ct),
+            // Tables carry extra "Indexes"/"Foreign Keys"/"Triggers" folders; views have none.
+            DbNodeKind.Table => [ColumnFolder(), IndexFolder(), ForeignKeyFolder(), TriggerFolder()],
             DbNodeKind.ColumnFolder => await LoadColumnsAsync(profile, ancestors.Take(ancestors.Count - 1).ToList(), ct),
             DbNodeKind.View => await LoadColumnsAsync(profile, ancestors, ct),
             DbNodeKind.IndexFolder => await LoadIndexesAsync(profile, ancestors, ct),
@@ -199,7 +207,9 @@ public sealed class MySqlProvider : IDbProvider
     private static IReadOnlyList<DbTreeNode> Folders() =>
     [
         new() { Kind = DbNodeKind.TableFolder, Name = "Tables", HasChildren = true },
-        new() { Kind = DbNodeKind.ViewFolder, Name = "Views", HasChildren = true }
+        new() { Kind = DbNodeKind.ViewFolder, Name = "Views", HasChildren = true },
+        new() { Kind = DbNodeKind.ProcedureFolder, Name = "Procedures", HasChildren = true },
+        new() { Kind = DbNodeKind.FunctionFolder, Name = "Functions", HasChildren = true }
     ];
 
     private static DbTreeNode ColumnFolder() =>
@@ -210,6 +220,9 @@ public sealed class MySqlProvider : IDbProvider
 
     private static DbTreeNode ForeignKeyFolder() =>
         new() { Kind = DbNodeKind.ForeignKeyFolder, Name = "Foreign Keys", HasChildren = true };
+
+    private static DbTreeNode TriggerFolder() =>
+        new() { Kind = DbNodeKind.TriggerFolder, Name = "Triggers", HasChildren = true };
 
     private static readonly HashSet<string> SystemSchemas =
         new(StringComparer.OrdinalIgnoreCase) { "information_schema", "mysql", "performance_schema", "sys" };
@@ -427,6 +440,187 @@ public sealed class MySqlProvider : IDbProvider
 
         return nodes;
     }
+
+    // Procedures and functions are database-scoped (MySQL's database == schema). Leaf nodes.
+    private static async Task<IReadOnlyList<DbTreeNode>> LoadRoutinesAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        bool isFunction,
+        CancellationToken ct)
+    {
+        const string sql = """
+            SELECT ROUTINE_NAME FROM information_schema.ROUTINES
+            WHERE ROUTINE_SCHEMA = @db AND ROUTINE_TYPE = @type
+            ORDER BY ROUTINE_NAME
+            """;
+
+        var kind = isFunction ? DbNodeKind.Function : DbNodeKind.Procedure;
+        var nodes = new List<DbTreeNode>();
+        await using var connection = new MySqlConnection(profile.ConnectionString);
+        await connection.OpenAsync(ct);
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("db", Name(ancestors, DbNodeKind.Database));
+        command.Parameters.AddWithValue("type", isFunction ? "FUNCTION" : "PROCEDURE");
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            nodes.Add(new DbTreeNode { Kind = kind, Name = reader.GetString(0) });
+        }
+
+        return nodes;
+    }
+
+    private static async Task<IReadOnlyList<DbTreeNode>> LoadTriggersAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        CancellationToken ct)
+    {
+        const string sql = """
+            SELECT TRIGGER_NAME FROM information_schema.TRIGGERS
+            WHERE TRIGGER_SCHEMA = @db AND EVENT_OBJECT_TABLE = @table
+            ORDER BY TRIGGER_NAME
+            """;
+
+        var nodes = new List<DbTreeNode>();
+        await using var connection = new MySqlConnection(profile.ConnectionString);
+        await connection.OpenAsync(ct);
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("db", Name(ancestors, DbNodeKind.Database));
+        command.Parameters.AddWithValue("table", Name(ancestors, DbNodeKind.Table));
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            nodes.Add(new DbTreeNode { Kind = DbNodeKind.Trigger, Name = reader.GetString(0) });
+        }
+
+        return nodes;
+    }
+
+    // View Definition: SHOW CREATE PROCEDURE/FUNCTION/TRIGGER — roundtrip-safe (includes the CREATE
+    // header, unlike ROUTINE_DEFINITION). The CREATE text is column ordinal 2 for all three forms.
+    public async Task<string?> GetObjectDefinitionAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        CancellationToken ct)
+    {
+        var what = ancestors[^1].Kind switch
+        {
+            DbNodeKind.Procedure => "PROCEDURE",
+            DbNodeKind.Function => "FUNCTION",
+            DbNodeKind.Trigger => "TRIGGER",
+            _ => null
+        };
+
+        if (what is null)
+        {
+            return null;
+        }
+
+        var db = Name(ancestors, DbNodeKind.Database);
+        var qualified = $"{Dialect.QuoteIdentifier(db)}.{Dialect.QuoteIdentifier(ancestors[^1].Name)}";
+        await using var connection = new MySqlConnection(ConnectionStringFor(profile, db));
+        await connection.OpenAsync(ct);
+        await using var command = new MySqlCommand($"SHOW CREATE {what} {qualified}", connection);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        return await reader.ReadAsync(ct) && !reader.IsDBNull(2) ? reader.GetString(2) : null;
+    }
+
+    public async Task<IReadOnlyList<RoutineParameter>> GetRoutineParametersAsync(
+        ConnectionProfile profile,
+        IReadOnlyList<DbNodeRef> ancestors,
+        CancellationToken ct)
+    {
+        // ORDINAL_POSITION 0 is a function's return value (no name/mode) — excluded. ROUTINE_TYPE
+        // disambiguates a procedure and function that share a name in the same database.
+        const string sql = """
+            SELECT PARAMETER_NAME, DATA_TYPE, PARAMETER_MODE
+            FROM information_schema.PARAMETERS
+            WHERE SPECIFIC_SCHEMA = @db AND SPECIFIC_NAME = @name
+              AND ROUTINE_TYPE = @type AND ORDINAL_POSITION > 0
+            ORDER BY ORDINAL_POSITION
+            """;
+
+        var isProcedure = ancestors[^1].Kind == DbNodeKind.Procedure;
+        var result = new List<RoutineParameter>();
+        await using var connection = new MySqlConnection(ConnectionStringFor(profile, Name(ancestors, DbNodeKind.Database)));
+        await connection.OpenAsync(ct);
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("db", Name(ancestors, DbNodeKind.Database));
+        command.Parameters.AddWithValue("name", ancestors[^1].Name);
+        command.Parameters.AddWithValue("type", isProcedure ? "PROCEDURE" : "FUNCTION");
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        var index = 0;
+        while (await reader.ReadAsync(ct))
+        {
+            index++;
+            var name = reader.IsDBNull(0) ? $"p{index}" : reader.GetString(0);
+            var type = reader.GetString(1);
+            var mode = reader.IsDBNull(2) ? "IN" : reader.GetString(2);
+            // MySQL requires OUT and INOUT arguments to be session variables (a literal errors), so both
+            // are captured as outputs. INOUT loses its input value in v1 (starts NULL) — a known limitation.
+            var isOutput = mode.Equals("OUT", StringComparison.OrdinalIgnoreCase)
+                || mode.Equals("INOUT", StringComparison.OrdinalIgnoreCase);
+            result.Add(new RoutineParameter(name, type, isOutput, Default: null));
+        }
+
+        return result;
+    }
+
+    public SqlStatement BuildCallStatement(
+        IReadOnlyList<DbNodeRef> ancestors,
+        IReadOnlyList<RoutineParameter> parameters,
+        IReadOnlyDictionary<string, string?> inputValues)
+    {
+        var db = Name(ancestors, DbNodeKind.Database);
+        var qualified = $"{Dialect.QuoteIdentifier(db)}.{Dialect.QuoteIdentifier(ancestors[^1].Name)}";
+
+        if (ancestors[^1].Kind == DbNodeKind.Function)
+        {
+            // MySQL functions take only IN parameters; the return value is the SELECT's column.
+            var args = string.Join(", ", parameters.Select(p => FormatValue(p, inputValues)));
+            return new SqlStatement($"SELECT {qualified}({args}) AS {Dialect.QuoteIdentifier("Result")};", []);
+        }
+
+        // Procedure: OUT/INOUT arguments must be session variables — SET them to NULL, CALL with the
+        // variable, then a trailing SELECT reads them back as a result set.
+        var outputs = parameters.Where(p => p.IsOutput).ToList();
+        var script = new StringBuilder();
+        foreach (var o in outputs)
+        {
+            script.AppendLine($"SET {SessionVar(o.Name)} = NULL;");
+        }
+
+        var callArgs = parameters.Select(p => p.IsOutput ? SessionVar(p.Name) : FormatValue(p, inputValues));
+        script.AppendLine($"CALL {qualified}({string.Join(", ", callArgs)});");
+
+        if (outputs.Count > 0)
+        {
+            var selects = outputs.Select(o => $"{SessionVar(o.Name)} AS {Dialect.QuoteIdentifier(o.Name)}");
+            script.AppendLine($"SELECT {string.Join(", ", selects)};");
+        }
+
+        return new SqlStatement(script.ToString(), []);
+    }
+
+    private static string SessionVar(string paramName) => "@" + paramName;
+
+    private static string FormatValue(RoutineParameter parameter, IReadOnlyDictionary<string, string?> values)
+    {
+        var raw = values.TryGetValue(parameter.Name, out var v) ? v : null;
+        if (string.IsNullOrEmpty(raw))
+        {
+            return "NULL";
+        }
+
+        return NeedsQuote(parameter.Type) ? "'" + raw.Replace("'", "''") + "'" : raw;
+    }
+
+    private static bool NeedsQuote(string type) => type.ToLowerInvariant() switch
+    {
+        "tinyint" or "smallint" or "mediumint" or "int" or "integer" or "bigint"
+            or "decimal" or "numeric" or "float" or "double" or "bit" => false,
+        _ => true
+    };
 
     private static string Name(IReadOnlyList<DbNodeRef> ancestors, DbNodeKind kind) =>
         ancestors.First(a => a.Kind == kind).Name;

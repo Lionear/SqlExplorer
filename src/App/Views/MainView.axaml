@@ -126,6 +126,10 @@
                   <MenuItem Header="DELETE" Command="{Binding GenerateSqlCommand}" CommandParameter="Delete" />
                   <MenuItem Header="COUNT(*)" Command="{Binding GenerateSqlCommand}" CommandParameter="Count" />
                 </MenuItem>
+                <MenuItem Header="{Binding Loc[ViewDefinition]}" Command="{Binding ViewDefinitionCommand}"
+                          IsVisible="{Binding SelectedNode.CanViewDefinition, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[ExecuteRoutine]}" Command="{Binding ExecuteRoutineCommand}"
+                          IsVisible="{Binding SelectedNode.CanExecuteRoutine, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[CopyName]}" Command="{Binding CopyNameCommand}"
                           IsVisible="{Binding SelectedNode.IsCopyable, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[CopyQualifiedName]}" Command="{Binding CopyQualifiedNameCommand}"

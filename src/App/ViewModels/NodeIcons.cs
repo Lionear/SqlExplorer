@@ -54,6 +54,18 @@ public static class NodeIcons
     public static readonly Geometry Object =
         Parse("M8,3 L13,8 L8,13 L3,8 Z");
 
+    // Box with a play triangle → a stored procedure (a runnable block).
+    public static readonly Geometry Procedure =
+        Parse("M3.5,4 H12.5 V12 H3.5 Z M6.3,6.5 L9.7,8 L6.3,9.5 Z");
+
+    // Parentheses with a mid-bar → a function ƒ().
+    public static readonly Geometry Function =
+        Parse("M6.5,3.5 C4.8,5.2 4.8,10.8 6.5,12.5 M9.5,3.5 C11.2,5.2 11.2,10.8 9.5,12.5 M6.8,8 H9.2");
+
+    // Lightning bolt → a trigger (fires on an event).
+    public static readonly Geometry Trigger =
+        Parse("M9.2,2.5 L4.8,8.5 H7.4 L6.8,13.5 L11.2,7 H8.6 Z");
+
     // --- Toolbar action glyphs (Connection Manager). Same stroked 16x16 style as the node icons. ---
 
     // Plus → new connection.
@@ -108,6 +120,9 @@ public static class NodeIcons
         DbNodeKind.ViewFolder => Folder,
         DbNodeKind.IndexFolder => Folder,
         DbNodeKind.SequenceFolder => Folder,
+        DbNodeKind.ProcedureFolder => Folder,
+        DbNodeKind.FunctionFolder => Folder,
+        DbNodeKind.TriggerFolder => Folder,
         DbNodeKind.Group => Folder,
         DbNodeKind.DatabaseFolder => Folder,
         DbNodeKind.ColumnFolder => Folder,
@@ -116,6 +131,9 @@ public static class NodeIcons
         DbNodeKind.Column => Column,
         DbNodeKind.Index => Index,
         DbNodeKind.Sequence => Sequence,
+        DbNodeKind.Procedure => Procedure,
+        DbNodeKind.Function => Function,
+        DbNodeKind.Trigger => Trigger,
         DbNodeKind.Object => Object,
         _ => Connection
     };

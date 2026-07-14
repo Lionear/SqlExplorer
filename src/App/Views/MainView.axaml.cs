@@ -114,6 +114,17 @@ public partial class MainView : UserControl
 
             e.Handled = true;
         }
+        // Double left-click a procedure/function/trigger opens its definition in a tab (same suppress as above).
+        else if (props.IsLeftButtonPressed && e.ClickCount == 2 && node.CanViewDefinition)
+        {
+            _viewModel.SelectedNode = node;
+            if (_viewModel.ViewDefinitionCommand.CanExecute(null))
+            {
+                _viewModel.ViewDefinitionCommand.Execute(null);
+            }
+
+            e.Handled = true;
+        }
     }
 
     // Double-click a connection root: (re)connect. (Table/view browse is handled on pointer-press above,
@@ -261,6 +272,7 @@ public partial class MainView : UserControl
             _viewModel.ExportFileRequested = WriteExportFileAsync;
             _viewModel.SettingsDialogRequested = ShowSettingsDialogAsync;
             _viewModel.ToolDialogRequested = ShowToolDialogAsync;
+            _viewModel.RoutineParametersRequested = ShowRoutineParametersDialogAsync;
             _viewModel.PluginStoreRequested = ShowPluginStoreAsync;
             _viewModel.RestartRequested = () => { AppRestart.Restart(); return Task.CompletedTask; };
             _viewModel.ConfirmRequested = ShowConfirmAsync;
@@ -412,6 +424,17 @@ public partial class MainView : UserControl
         }
 
         var dialog = new ToolDialog { DataContext = dialogViewModel };
+        await dialog.ShowDialog(owner);
+    }
+
+    private async Task ShowRoutineParametersDialogAsync(RoutineParametersDialogViewModel dialogViewModel)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+
+        var dialog = new RoutineParametersDialog { DataContext = dialogViewModel };
         await dialog.ShowDialog(owner);
     }
 

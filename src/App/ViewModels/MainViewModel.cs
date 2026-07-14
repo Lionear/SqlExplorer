@@ -48,6 +48,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly Core.Plugins.PluginCatalogService _pluginCatalog;
     private readonly IToolRegistry _tools;
     private readonly Func<ToolDialogViewModel> _toolDialogFactory;
+    private readonly Func<RoutineParametersDialogViewModel> _routineParamsDialogFactory;
     private readonly IAppSettingsStore _settingsStore;
     private readonly IOpenTabsStore _openTabsStore;
 
@@ -91,6 +92,7 @@ public partial class MainViewModel : ViewModelBase
         Func<SettingsViewModel> settingsDialogFactory,
         IToolRegistry tools,
         Func<ToolDialogViewModel> toolDialogFactory,
+        Func<RoutineParametersDialogViewModel> routineParamsDialogFactory,
         Func<PluginStoreViewModel> pluginStoreFactory,
         Core.Plugins.PluginCatalogService pluginCatalog,
         IAppSettingsStore settingsStore,
@@ -109,6 +111,7 @@ public partial class MainViewModel : ViewModelBase
         _settingsDialogFactory = settingsDialogFactory;
         _tools = tools;
         _toolDialogFactory = toolDialogFactory;
+        _routineParamsDialogFactory = routineParamsDialogFactory;
         _pluginStoreFactory = pluginStoreFactory;
         _pluginCatalog = pluginCatalog;
         _settingsStore = settingsStore;
@@ -1326,6 +1329,88 @@ public partial class MainViewModel : ViewModelBase
         AddDocument(document);
         await document.LoadPageAsync(ct);
     }
+
+    // View Definition (double-click or context menu) on a procedure/function/trigger: fetch its CREATE
+    // text and open it in a normal editable query tab — same mechanism as browse, no new viewer.
+    [RelayCommand]
+    private async Task ViewDefinitionAsync(CancellationToken ct)
+    {
+        if (SelectedNode is not { CanViewDefinition: true } node || node.Connection is not { } connection)
+        {
+            return;
+        }
+
+        try
+        {
+            var provider = _providers.Get(connection.ProviderId);
+            var profile = _connections.Resolve(connection, node.DatabaseName);
+            var definition = await provider.GetObjectDefinitionAsync(profile, node.NodePath, ct);
+            if (string.IsNullOrWhiteSpace(definition))
+            {
+                ReportError(connection.Name, Loc["DefinitionUnavailable"]);
+                return;
+            }
+
+            OpenDefinitionTab(connection, definition, node.Name);
+        }
+        catch (Exception ex)
+        {
+            ReportError(connection.Name, ex.Message);
+        }
+    }
+
+    // Execute… on a procedure/function: collect IN parameter values (skipping the dialog when there are
+    // none), then generate a call script and open it in a tab WITHOUT running it — the user presses Run.
+    [RelayCommand]
+    private async Task ExecuteRoutineAsync(CancellationToken ct)
+    {
+        if (SelectedNode is not { CanExecuteRoutine: true } node || node.Connection is not { } connection)
+        {
+            return;
+        }
+
+        try
+        {
+            var provider = _providers.Get(connection.ProviderId);
+            var profile = _connections.Resolve(connection, node.DatabaseName);
+            var parameters = await provider.GetRoutineParametersAsync(profile, node.NodePath, ct);
+
+            IReadOnlyDictionary<string, string?> values = new Dictionary<string, string?>();
+            if (parameters.Any(p => !p.IsOutput) && RoutineParametersRequested is not null)
+            {
+                var dialog = _routineParamsDialogFactory();
+                dialog.Configure(node.Name, parameters);
+                await RoutineParametersRequested(dialog);
+                if (!dialog.Confirmed)
+                {
+                    return;
+                }
+
+                values = dialog.Values;
+            }
+
+            var statement = provider.BuildCallStatement(node.NodePath, parameters, values);
+            OpenDefinitionTab(connection, statement.Text, node.Name);
+        }
+        catch (Exception ex)
+        {
+            ReportError(connection.Name, ex.Message);
+        }
+    }
+
+    // Open generated SQL (a definition or a routine call) in a fresh, editable query tab titled after the
+    // object, so the user can inspect/edit and run it themselves.
+    private void OpenDefinitionTab(SavedConnection connection, string sql, string title)
+    {
+        var document = NewDocument();
+        document.InitQuery(connection);
+        document.Sql = sql;
+        document.Title = title;
+        AddDocument(document);
+    }
+
+    /// <summary>Set by the view so the VM can show the routine-parameter dialog before generating a call.</summary>
+    public Func<RoutineParametersDialogViewModel, Task>? RoutineParametersRequested { get; set; }
 
     [RelayCommand]
     private async Task CloseTab(DocumentViewModel? document)
