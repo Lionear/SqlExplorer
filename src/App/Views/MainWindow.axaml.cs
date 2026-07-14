@@ -170,11 +170,56 @@ public partial class MainWindow : Window
         Body.RestoreSidebarWidth(settings.SidebarWidth);
     }
 
+    private bool _forceClose;
+
     protected override void OnClosing(WindowClosingEventArgs e)
     {
+        // Ask for confirmation first, unless the user turned it off (or already confirmed this close).
+        if (!_forceClose && _settingsStore is { } store && store.Load().ConfirmOnExit)
+        {
+            e.Cancel = true;
+            _ = ConfirmExitAsync(store);
+            return;
+        }
+
         PersistLayout();
         (DataContext as MainViewModel)?.PersistOpenTabs();
         base.OnClosing(e);
+    }
+
+    private async Task ConfirmExitAsync(IAppSettingsStore store)
+    {
+        var loc = (DataContext as MainViewModel)?.Loc;
+        var dialog = new ExitConfirmDialog(
+            loc?["ExitConfirmTitle"] ?? "Quit",
+            loc?["ExitConfirmMessage"] ?? "Are you sure you want to quit?",
+            loc?["ExitConfirmQuit"] ?? "Quit",
+            loc?["Cancel"] ?? "Cancel",
+            loc?["ExitConfirmAlways"] ?? "Always quit without asking");
+
+        var confirmed = await dialog.ShowDialog<bool>(this);
+        if (!confirmed)
+        {
+            return;
+        }
+
+        // "Always" ticked → stop asking from now on (persist immediately, before the real close).
+        if (dialog.Always)
+        {
+            var settings = store.Load();
+            settings.ConfirmOnExit = false;
+            try
+            {
+                store.Save(settings);
+            }
+            catch (Exception)
+            {
+                // Never block quitting on a failed preference write.
+            }
+        }
+
+        _forceClose = true;
+        Close();
     }
 
     private void PersistLayout()

@@ -96,7 +96,21 @@
                      ShowLineNumbers="True"
                      WordWrap="{Binding EditorWordWrap}"
                      Padding="4"
-                     FontFamily="Cascadia Code,Consolas,Menlo,monospace" />
+                     FontFamily="Cascadia Code,Consolas,Menlo,monospace">
+        <ae:TextEditor.ContextMenu>
+          <ContextMenu>
+            <MenuItem Header="{Binding Loc[Cut]}" Click="OnEditorCutClick" />
+            <MenuItem Header="{Binding Loc[Copy]}" Click="OnEditorCopyClick" />
+            <MenuItem Header="{Binding Loc[Paste]}" Click="OnEditorPasteClick" />
+            <MenuItem Header="{Binding Loc[SelectAll]}" Click="OnEditorSelectAllClick" />
+            <Separator />
+            <MenuItem Header="{Binding Loc[GenerateGuid]}">
+              <MenuItem Header="{Binding Loc[GuidV4]}" Click="OnGenerateGuidV4Click" />
+              <MenuItem Header="{Binding Loc[GuidV7]}" Click="OnGenerateGuidV7Click" />
+            </MenuItem>
+          </ContextMenu>
+        </ae:TextEditor.ContextMenu>
+      </ae:TextEditor>
     </Border>
 
     <!-- Row 2 is intentionally empty (Auto → 0 height): execution outcomes now surface only in the
@@ -159,12 +173,17 @@
           <ContextMenu>
             <MenuItem Header="{Binding Loc[SetNull]}" Click="OnSetNullClick"
                       IsVisible="{Binding IsResultEditable}" />
+            <MenuItem Header="{Binding Loc[GenerateGuid]}" IsVisible="{Binding IsResultEditable}">
+              <MenuItem Header="{Binding Loc[GuidV4]}" Click="OnGridGuidV4Click" />
+              <MenuItem Header="{Binding Loc[GuidV7]}" Click="OnGridGuidV7Click" />
+            </MenuItem>
             <MenuItem Header="{Binding Loc[CopyCell]}" Click="OnCopyCellClick" />
             <MenuItem Header="{Binding Loc[Copy]}" Click="OnCopyClick" />
             <MenuItem Header="{Binding Loc[CopyWithHeaders]}" Click="OnCopyWithHeadersClick" />
             <Separator />
             <MenuItem Header="{Binding Loc[CopyAsCsv]}" Click="OnCopyAsCsvClick" />
             <MenuItem Header="{Binding Loc[CopyAsMarkdown]}" Click="OnCopyAsMarkdownClick" />
+            <MenuItem Header="{Binding Loc[CopyAsHtml]}" Click="OnCopyAsHtmlClick" />
             <MenuItem Header="{Binding Loc[CopyAsInsert]}" Click="OnCopyAsInsertClick" />
           </ContextMenu>
         </DataGrid.ContextMenu>

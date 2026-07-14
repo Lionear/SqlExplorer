@@ -63,6 +63,9 @@ public partial class SettingsViewModel : ViewModelBase
     private bool _showSystemDatabases;
 
     [ObservableProperty]
+    private bool _confirmOnExit;
+
+    [ObservableProperty]
     private PluginSettingsItem? _selectedPlugin;
 
     public SettingsViewModel(
@@ -127,6 +130,7 @@ public partial class SettingsViewModel : ViewModelBase
         ConfirmBeforeSave = settings.ConfirmBeforeSave;
         RestoreTabsOnStartup = settings.RestoreTabsOnStartup;
         ShowSystemDatabases = settings.ShowSystemDatabases;
+        ConfirmOnExit = settings.ConfirmOnExit;
     }
 
     // A plugin (provider or tool) gets a tree entry only if it declares fields (Route A) or a custom
@@ -251,6 +255,7 @@ public partial class SettingsViewModel : ViewModelBase
         ConfirmBeforeSave = defaults.ConfirmBeforeSave;
         RestoreTabsOnStartup = defaults.RestoreTabsOnStartup;
         ShowSystemDatabases = defaults.ShowSystemDatabases;
+        ConfirmOnExit = defaults.ConfirmOnExit;
 
         // Keyboard shortcuts reset to their factory bindings too.
         foreach (var shortcut in _allShortcuts)
@@ -285,6 +290,7 @@ public partial class SettingsViewModel : ViewModelBase
         settings.ConfirmBeforeSave = ConfirmBeforeSave;
         settings.RestoreTabsOnStartup = RestoreTabsOnStartup;
         settings.ShowSystemDatabases = ShowSystemDatabases;
+        settings.ConfirmOnExit = ConfirmOnExit;
         _store.Save(settings);
 
         // Plugin settings live in their own file, keyed by plugin id.

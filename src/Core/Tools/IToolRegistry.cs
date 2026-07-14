@@ -35,10 +35,12 @@ public sealed class ToolRegistry : IToolRegistry
             return false;
         }
 
-        // The connection root has no node kind; it's targeted only via IncludeConnectionRoot.
+        // The connection root has no node kind; it's targeted via IncludeConnectionRoot (all providers) or
+        // ConnectionRootProviderIds (schema-less engines whose root is the database, e.g. SQLite).
         if (nodeKind is null)
         {
-            return target.IncludeConnectionRoot;
+            return target.IncludeConnectionRoot
+                || target.ConnectionRootProviderIds is { } roots && roots.Contains(providerId, StringComparer.Ordinal);
         }
 
         return target.NodeKinds is not { } kinds || kinds.Contains(nodeKind.Value);

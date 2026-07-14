@@ -23,8 +23,9 @@ public sealed class UniversalBackupTool : IToolPlugin, IPluginSettings
 
     public ProviderIcon? Icon { get; } = ProviderIconLoader.Load(typeof(UniversalBackupTool), "💾");
 
-    // Offered on a Database node (not the connection root — that would ambiguously mean "every database").
-    public ToolTarget Target { get; } = new(NodeKinds: [DbNodeKind.Database]);
+    // Offered on a Database node — plus the SQLite connection root, whose single file IS the database
+    // (SQLite has no Database node). Not other providers' roots, where it would mean "every database".
+    public ToolTarget Target { get; } = new(NodeKinds: [DbNodeKind.Database], ConnectionRootProviderIds: ["sqlite"]);
 
     public IReadOnlyList<ToolField> Fields { get; } =
     [
@@ -45,7 +46,8 @@ public sealed class UniversalBackupTool : IToolPlugin, IPluginSettings
         IProgress<ToolProgress> progress,
         CancellationToken ct)
     {
-        var databaseName = context.Profile.Database ?? context.Node?.Name ?? "backup";
+        // SQLite runs on the connection root (no Database node): fall back to the connection name.
+        var databaseName = context.Profile.Database ?? context.Node?.Name ?? context.Profile.Name;
         var filePath = ResolveTargetPath(inputs.GetValueOrDefault("filePath"), context, databaseName, progress);
         var passphrase = inputs.GetValueOrDefault("passphrase");
 

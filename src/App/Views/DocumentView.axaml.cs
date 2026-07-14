@@ -291,6 +291,72 @@ public partial class DocumentView : UserControl
 
     private void OnCopyAsInsertClick(object? sender, RoutedEventArgs e) => _ = CopyResultAsync(ExportFormat.Sql);
 
+    private void OnCopyAsHtmlClick(object? sender, RoutedEventArgs e) => _ = CopyResultAsync(ExportFormat.Html);
+
+    // SQL-editor context menu: standard edit actions (AvaloniaEdit ships no default menu) …
+    private void OnEditorCutClick(object? sender, RoutedEventArgs e) => _sqlEditor?.Cut();
+
+    private void OnEditorCopyClick(object? sender, RoutedEventArgs e) => _sqlEditor?.Copy();
+
+    private void OnEditorPasteClick(object? sender, RoutedEventArgs e) => _sqlEditor?.Paste();
+
+    private void OnEditorSelectAllClick(object? sender, RoutedEventArgs e) => _sqlEditor?.SelectAll();
+
+    // … plus Generate GUID: insert a fresh v4 (random) or v7 (time-ordered) GUID at the caret,
+    // replacing any current selection.
+    private void OnGenerateGuidV4Click(object? sender, RoutedEventArgs e) => InsertGuid(Guid.NewGuid());
+
+    private void OnGenerateGuidV7Click(object? sender, RoutedEventArgs e) => InsertGuid(Guid.CreateVersion7());
+
+    private void InsertGuid(Guid guid)
+    {
+        if (_sqlEditor is null)
+        {
+            return;
+        }
+
+        var text = guid.ToString();
+        var selection = _sqlEditor.TextArea.Selection;
+        if (!selection.IsEmpty)
+        {
+            selection.ReplaceSelectionWithText(text);
+        }
+        else
+        {
+            _sqlEditor.Document.Insert(_sqlEditor.CaretOffset, text);
+        }
+
+        _sqlEditor.Focus();
+    }
+
+    // Grid-cell Generate GUID: set the current column of each selected row (or the right-clicked cell's
+    // row) to a fresh, unique GUID. Editable grids only (menu item is hidden otherwise).
+    private void OnGridGuidV4Click(object? sender, RoutedEventArgs e) => SetCellsGuid(version7: false);
+
+    private void OnGridGuidV7Click(object? sender, RoutedEventArgs e) => SetCellsGuid(version7: true);
+
+    private void SetCellsGuid(bool version7)
+    {
+        if (_viewModel is not { IsResultEditable: true } || _resultsGrid is null)
+        {
+            return;
+        }
+
+        var rows = _resultsGrid.SelectedItems.OfType<EditableRow>().ToList();
+        if (rows.Count == 0 && _currentRow is not null)
+        {
+            rows.Add(_currentRow);
+        }
+
+        foreach (var row in rows)
+        {
+            if (_currentColumnIndex >= 0 && _currentColumnIndex < row.Cells.Count)
+            {
+                row[_currentColumnIndex] = (version7 ? Guid.CreateVersion7() : Guid.NewGuid()).ToString();
+            }
+        }
+    }
+
     // Same selection-or-whole-result source as "Export…", straight to the clipboard instead of a file.
     private async Task CopyResultAsync(ExportFormat format)
     {

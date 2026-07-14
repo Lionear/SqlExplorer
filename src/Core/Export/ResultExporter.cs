@@ -116,6 +116,41 @@ public static class ResultExporter
     private static string FormatMarkdownValue(object? value) =>
         value is null or DBNull ? "" : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? "";
 
+    /// <summary>An HTML <c>&lt;table&gt;</c> for pasting into rich-text targets (email, docs, chat). Column
+    /// names are the header row; every cell is HTML-escaped.</summary>
+    public static string ToHtml(IReadOnlyList<ResultColumn> columns, IEnumerable<object?[]> rows)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("<table>");
+        sb.Append("  <thead><tr>");
+        foreach (var c in columns)
+        {
+            sb.Append("<th>").Append(HtmlEscape(c.Name)).Append("</th>");
+        }
+
+        sb.AppendLine("</tr></thead>");
+        sb.AppendLine("  <tbody>");
+        foreach (var row in rows)
+        {
+            sb.Append("    <tr>");
+            for (var i = 0; i < columns.Count; i++)
+            {
+                var value = i < row.Length ? row[i] : null;
+                sb.Append("<td>").Append(HtmlEscape(value is null or DBNull
+                    ? "" : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? "")).Append("</td>");
+            }
+
+            sb.AppendLine("</tr>");
+        }
+
+        sb.AppendLine("  </tbody>");
+        sb.AppendLine("</table>");
+        return sb.ToString();
+    }
+
+    private static string HtmlEscape(string value) => value
+        .Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
+
     // A table row is one line of Markdown source — an embedded "|" would end the cell early, and a
     // newline would end the row early, so both get replaced rather than escaped.
     private static string MarkdownCell(string value) =>

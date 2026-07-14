@@ -34,7 +34,8 @@ public enum ExportFormat
     Csv,
     Json,
     Sql,
-    Markdown
+    Markdown,
+    Html
 }
 
 /// <summary>One column's inline browse-filter box; empty <see cref="Value"/> means "no filter".</summary>
@@ -279,6 +280,7 @@ public partial class DocumentViewModel : ViewModelBase
             ExportFormat.Json => ResultExporter.ToJson(editable.Columns, raw),
             ExportFormat.Sql => ResultExporter.ToSqlInserts(editable.Columns, raw, _providers.Get(Connection.ProviderId).Dialect, Connection.ProviderId, ExportTableName(editable)),
             ExportFormat.Markdown => ResultExporter.ToMarkdown(editable.Columns, raw),
+            ExportFormat.Html => ResultExporter.ToHtml(editable.Columns, raw),
             _ => string.Empty
         };
     }

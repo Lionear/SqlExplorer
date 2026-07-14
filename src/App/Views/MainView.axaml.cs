@@ -95,10 +95,13 @@ public partial class MainView : UserControl
 
         var props = e.GetCurrentPoint(sender as Visual).Properties;
 
-        // Right-click selects the node under the cursor so the context menu targets it.
+        // Right-click selects the node under the cursor so the context menu targets it. Set the VM's
+        // SelectedNode directly (not only item.IsSelected) so it's updated synchronously before the
+        // context menu's bindings (CanShowProperties, ApplicableTools, …) evaluate.
         if (props.IsRightButtonPressed)
         {
             item.IsSelected = true;
+            _viewModel.SelectedNode = node;
             return;
         }
 

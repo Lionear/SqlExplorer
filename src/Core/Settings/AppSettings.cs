@@ -53,4 +53,8 @@ public sealed class AppSettings
     /// <summary>Whether engine-managed system databases (SQL Server's master/msdb, MySQL's mysql/sys, …)
     /// are shown in the schema tree.</summary>
     public bool ShowSystemDatabases { get; set; }
+
+    /// <summary>Whether closing the app asks for confirmation first. Cleared when the user ticks
+    /// "always close without asking" in the exit dialog.</summary>
+    public bool ConfirmOnExit { get; set; } = true;
 }

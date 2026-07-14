@@ -414,6 +414,21 @@
   <data name="ConfirmBeforeSave" xml:space="preserve">
     <value>Toon een controlevenster vóór het opslaan van wijzigingen</value>
   </data>
+  <data name="ConfirmOnExit" xml:space="preserve">
+    <value>Vraag om bevestiging bij afsluiten</value>
+  </data>
+  <data name="ExitConfirmTitle" xml:space="preserve">
+    <value>Afsluiten</value>
+  </data>
+  <data name="ExitConfirmMessage" xml:space="preserve">
+    <value>Weet je zeker dat je Lionear SQL Explorer wilt afsluiten?</value>
+  </data>
+  <data name="ExitConfirmQuit" xml:space="preserve">
+    <value>Afsluiten</value>
+  </data>
+  <data name="ExitConfirmAlways" xml:space="preserve">
+    <value>Altijd afsluiten zonder te vragen</value>
+  </data>
   <data name="Startup" xml:space="preserve">
     <value>Opstarten</value>
   </data>
@@ -458,6 +473,9 @@
   </data>
   <data name="CopyAsMarkdown" xml:space="preserve">
     <value>Kopiëren als Markdown</value>
+  </data>
+  <data name="CopyAsHtml" xml:space="preserve">
+    <value>Kopiëren als HTML</value>
   </data>
   <data name="CopyAsInsert" xml:space="preserve">
     <value>Kopiëren als INSERT</value>
@@ -542,6 +560,24 @@
   </data>
   <data name="Copy" xml:space="preserve">
     <value>Kopiëren</value>
+  </data>
+  <data name="Cut" xml:space="preserve">
+    <value>Knippen</value>
+  </data>
+  <data name="Paste" xml:space="preserve">
+    <value>Plakken</value>
+  </data>
+  <data name="SelectAll" xml:space="preserve">
+    <value>Alles selecteren</value>
+  </data>
+  <data name="GenerateGuid" xml:space="preserve">
+    <value>GUID genereren</value>
+  </data>
+  <data name="GuidV4" xml:space="preserve">
+    <value>v4 (willekeurig)</value>
+  </data>
+  <data name="GuidV7" xml:space="preserve">
+    <value>v7 (tijd-geordend)</value>
   </data>
   <data name="CopyAll" xml:space="preserve">
     <value>Alles kopiëren</value>
