@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Avalonia.Threading;
 using Lionear.SqlExplorer.Core.Completion;
 using Lionear.SqlExplorer.Core.Connections;
 using Lionear.SqlExplorer.Core.Editing;
@@ -17,6 +18,7 @@ using Lionear.SqlExplorer.Core.Schema;
 using Lionear.SqlExplorer.Core.Settings;
 using Lionear.SqlExplorer.Core.Sql;
 using Lionear.SqlExplorer.Sdk;
+using Lionear.SqlExplorer.Sdk.Ui;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -25,8 +27,13 @@ namespace Lionear.SqlExplorer.App.ViewModels;
 public enum DocumentMode
 {
     Query,
-    Browse
+    Browse,
+    Monitor
 }
+
+/// <summary>One entry in the Activity Monitor's auto-refresh interval dropdown. <see cref="Seconds"/> 0
+/// means "Off" (manual refresh only).</summary>
+public sealed record RefreshOption(string Label, int Seconds);
 
 /// <summary>Export text format — mirrors the three <see cref="ResultExporter"/> methods.</summary>
 public enum ExportFormat
@@ -247,6 +254,8 @@ public partial class DocumentViewModel : ViewModelBase
 
     public bool IsBrowseMode => Mode == DocumentMode.Browse;
 
+    public bool IsMonitorMode => Mode == DocumentMode.Monitor;
+
     // A connection flagged read-only (safe mode) blocks the editable-grid save-flow entirely, even when
     // the result would otherwise map back to a single keyed table — this guards against accidental writes
     // (e.g. on production). Free DML typed in a query tab is out of scope for the MVP.
@@ -255,6 +264,10 @@ public partial class DocumentViewModel : ViewModelBase
     public string? ReadOnlyReason => Connection is { ReadOnly: true }
         ? Loc["ReadOnlyConnection"]
         : Editable?.ReadOnlyReason;
+
+    /// <summary>The Add/Delete/Save/Discard/Export edit toolbar shows for a real result set, but never in
+    /// monitor mode — those are write actions, and the live sessions grid is read-only.</summary>
+    public bool ShowEditToolbar => !IsMonitorMode && Editable is not null;
 
     public bool CanPrevPage => IsBrowseMode && Page > 0;
 
@@ -356,6 +369,406 @@ public partial class DocumentViewModel : ViewModelBase
         AvailableConnections = [connection];
         Connection = connection;
         Title = table;
+    }
+
+    // ── Activity Monitor ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Which session-list column identifies a row for Kill/Cancel (provider-declared), and the
+    /// session id of the monitor's own polling connection — used to leave that row visible but with
+    /// Kill/Cancel disabled. Both captured at <see cref="InitMonitor"/>.</summary>
+    private string _sessionIdColumn = string.Empty;
+
+    private string? _currentSessionId;
+
+    private bool _monitorSupportsCancel;
+
+    private bool _monitorRefreshing;
+
+    private DispatcherTimer? _refreshTimer;
+
+    // The latest sessions snapshot, kept so a click-sort (and the persisted sort across auto-refreshes)
+    // can re-render without another round-trip. Monitor sort is client-side and reuses the browse
+    // _sortColumn/_sortDescending fields — a document is only ever one mode, never both.
+    private QueryResult? _lastSessions;
+
+    /// <summary>True when this provider offers the soft "Cancel Query…" action (Postgres/MySQL) — false on
+    /// SQL Server, whose KILL is always hard. Drives the Cancel row-action's visibility.</summary>
+    public bool MonitorSupportsCancel => _monitorSupportsCancel;
+
+    /// <summary>The auto-refresh interval choices for the monitor toolbar. Off = manual refresh only.</summary>
+    public IReadOnlyList<RefreshOption> RefreshOptions { get; private set; } = [];
+
+    [ObservableProperty]
+    private RefreshOption? _selectedRefreshOption;
+
+    public void InitMonitor(SavedConnection connection)
+    {
+        Mode = DocumentMode.Monitor;
+        // Same "seed AvailableConnections with the exact instance" guard as InitBrowse: the query
+        // connection-switcher combo is collapsed here but still realized, and would otherwise coerce
+        // Connection to null.
+        AvailableConnections = [connection];
+        Connection = connection;
+        Title = Loc.Get("ActivityMonitorTab", connection.Name);
+
+        var provider = _providers.Get(connection.ProviderId);
+        _sessionIdColumn = provider.SessionIdColumn;
+        _monitorSupportsCancel = provider.SupportsCancelQuery;
+        OnPropertyChanged(nameof(MonitorSupportsCancel));
+
+        RefreshOptions =
+        [
+            new RefreshOption(Loc["RefreshOff"], 0),
+            new RefreshOption("5s", 5),
+            new RefreshOption("10s", 10),
+            new RefreshOption("30s", 30)
+        ];
+        OnPropertyChanged(nameof(RefreshOptions));
+        // Rick's decision #2: auto-refresh on by default at 5s. Setting the property starts the timer.
+        SelectedRefreshOption = RefreshOptions[1];
+    }
+
+    /// <summary>True when this is the monitor tab for the given connection (avoids duplicate tabs).</summary>
+    public bool MatchesMonitor(string connectionId) => IsMonitorMode && Connection.Id == connectionId;
+
+    // Reconfigure the auto-refresh timer whenever the interval changes: Off stops it, any interval
+    // (re)starts it. Never touched outside monitor mode (the property is only ever set in InitMonitor).
+    partial void OnSelectedRefreshOptionChanged(RefreshOption? value)
+    {
+        if (!IsMonitorMode)
+        {
+            return;
+        }
+
+        _refreshTimer ??= new DispatcherTimer();
+        _refreshTimer.Stop();
+        _refreshTimer.Tick -= OnRefreshTick;
+
+        if (value is { Seconds: > 0 } option)
+        {
+            _refreshTimer.Interval = TimeSpan.FromSeconds(option.Seconds);
+            _refreshTimer.Tick += OnRefreshTick;
+            _refreshTimer.Start();
+        }
+
+        // Load immediately on the first configuration (tab open) and on every interval change, so the
+        // grid never sits empty waiting for the first tick.
+        _ = RefreshMonitorAsync();
+    }
+
+    private void OnRefreshTick(object? sender, EventArgs e) => _ = RefreshMonitorAsync();
+
+    [RelayCommand]
+    private Task RefreshMonitor() => RefreshMonitorAsync();
+
+    // One monitor refresh: pull the live sessions as an ordinary result set (rendered by the shared grid)
+    // and remember which row is our own connection. Guarded against overlap so a slow query can't stack up
+    // behind the timer. Auto-refresh stays silent in the Output panel (a report every 5s would spam it);
+    // only genuine failures surface.
+    private async Task RefreshMonitorAsync(CancellationToken ct = default)
+    {
+        if (_monitorRefreshing)
+        {
+            return;
+        }
+
+        _monitorRefreshing = true;
+        try
+        {
+            var provider = _providers.Get(Connection.ProviderId);
+            var profile = _connections.Resolve(Connection, _database);
+            var snapshot = await provider.GetActiveSessionsAsync(profile, ct);
+            _currentSessionId = snapshot.CurrentSessionId;
+            _lastRowCount = snapshot.Sessions.Rows.Count;
+            _lastSessions = snapshot.Sessions;
+            RenderSessions();
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer refresh (or a close) superseded this one — nothing to report.
+        }
+        catch (Exception ex)
+        {
+            ReportFailure(ex.Message);
+        }
+        finally
+        {
+            _monitorRefreshing = false;
+        }
+    }
+
+    // Re-render the current sessions, applying the active client-side sort. Called after every refresh
+    // (so the sort persists across auto-refreshes) and on a header click (so it re-sorts with no round-trip).
+    private void RenderSessions()
+    {
+        if (_lastSessions is not { } sessions)
+        {
+            return;
+        }
+
+        var sorted = new QueryResult
+        {
+            Columns = sessions.Columns,
+            Rows = SortSessionRows(sessions),
+            RecordsAffected = sessions.RecordsAffected,
+            Elapsed = sessions.Elapsed
+        };
+        SetResultSets([new ResultSetTab("Sessions", EditableResultSet.From(sorted))]);
+    }
+
+    private IReadOnlyList<object?[]> SortSessionRows(QueryResult sessions)
+    {
+        if (_sortColumn is null)
+        {
+            return sessions.Rows;
+        }
+
+        var index = -1;
+        for (var i = 0; i < sessions.Columns.Count; i++)
+        {
+            if (sessions.Columns[i].Name == _sortColumn)
+            {
+                index = i;
+                break;
+            }
+        }
+
+        if (index < 0)
+        {
+            return sessions.Rows;
+        }
+
+        var ordered = sessions.Rows.OrderBy(row => row[index], MonitorCellComparer.Instance).ToList();
+        if (_sortDescending)
+        {
+            ordered.Reverse();
+        }
+
+        return ordered;
+    }
+
+    /// <summary>Cycle the client-side monitor sort on a column (unsorted → asc → desc → unsorted) and
+    /// re-render in place — the session list is already materialised, so no query runs.</summary>
+    public void SortMonitorBy(string column)
+    {
+        if (!IsMonitorMode)
+        {
+            return;
+        }
+
+        if (_sortColumn != column)
+        {
+            _sortColumn = column;
+            _sortDescending = false;
+        }
+        else if (!_sortDescending)
+        {
+            _sortDescending = true;
+        }
+        else
+        {
+            _sortColumn = null;
+            _sortDescending = false;
+        }
+
+        RenderSessions();
+    }
+
+    // Sort session cells numerically when both parse as numbers (session_id/pid/cpu_time), else as text;
+    // nulls sort last. Ascending order; the caller reverses for descending.
+    private sealed class MonitorCellComparer : IComparer<object?>
+    {
+        public static readonly MonitorCellComparer Instance = new();
+
+        public int Compare(object? x, object? y)
+        {
+            if (x is null or DBNull)
+            {
+                return y is null or DBNull ? 0 : 1;
+            }
+
+            if (y is null or DBNull)
+            {
+                return -1;
+            }
+
+            var sx = Convert.ToString(x, CultureInfo.InvariantCulture) ?? string.Empty;
+            var sy = Convert.ToString(y, CultureInfo.InvariantCulture) ?? string.Empty;
+            if (decimal.TryParse(sx, NumberStyles.Any, CultureInfo.InvariantCulture, out var nx)
+                && decimal.TryParse(sy, NumberStyles.Any, CultureInfo.InvariantCulture, out var ny))
+            {
+                return nx.CompareTo(ny);
+            }
+
+            return string.Compare(sx, sy, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>The session id of <paramref name="row"/> (the provider-declared id column), or null when the
+    /// column can't be resolved — used by the view for the Kill/Cancel row actions.</summary>
+    public string? SessionIdOf(EditableRow row)
+    {
+        if (Editable is not { } editable || _sessionIdColumn.Length == 0)
+        {
+            return null;
+        }
+
+        for (var i = 0; i < editable.Columns.Count; i++)
+        {
+            if (editable.Columns[i].Name == _sessionIdColumn)
+            {
+                return Convert.ToString(row.CurrentAt(i), CultureInfo.InvariantCulture);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>True when <paramref name="row"/> is the monitor's own polling connection — Kill/Cancel are
+    /// disabled on it so you can't shoot down the tab that's doing the polling.</summary>
+    public bool IsOwnSession(EditableRow row) =>
+        _currentSessionId is { } current && SessionIdOf(row) == current;
+
+    /// <summary>Hard kill (close the whole connection) of the session under <paramref name="row"/>, after a
+    /// destructive confirm. No-op on the monitor's own row.</summary>
+    public Task KillSessionAsync(EditableRow row) => ActOnSessionAsync(row, hard: true);
+
+    /// <summary>Soft cancel (abort just the running statement) of the session under <paramref name="row"/>,
+    /// after a confirm. Only meaningful when <see cref="MonitorSupportsCancel"/> is true.</summary>
+    public Task CancelQueryAsync(EditableRow row) => ActOnSessionAsync(row, hard: false);
+
+    /// <summary>Set by the view so a destructive Kill/Cancel can confirm first (title, message → proceed?).</summary>
+    public Func<string, string, Task<bool>>? ConfirmRequested { get; set; }
+
+    private async Task ActOnSessionAsync(EditableRow row, bool hard)
+    {
+        if (!IsMonitorMode || IsOwnSession(row) || SessionIdOf(row) is not { Length: > 0 } id)
+        {
+            return;
+        }
+
+        if (!hard && !_monitorSupportsCancel)
+        {
+            return;
+        }
+
+        var title = hard ? Loc["ConfirmKillSessionTitle"] : Loc["ConfirmCancelQueryTitle"];
+        var message = Loc.Get(hard ? "ConfirmKillSession" : "ConfirmCancelQuery", id);
+        if (ConfirmRequested is not null && !await ConfirmRequested(title, message))
+        {
+            return;
+        }
+
+        try
+        {
+            var provider = _providers.Get(Connection.ProviderId);
+            var profile = _connections.Resolve(Connection, _database);
+            if (hard)
+            {
+                await provider.KillSessionAsync(profile, id, CancellationToken.None);
+                Report(OutputLevel.Info, Loc.Get("SessionKilled", id));
+            }
+            else
+            {
+                await provider.CancelQueryAsync(profile, id, CancellationToken.None);
+                Report(OutputLevel.Info, Loc.Get("QueryCancelledSession", id));
+            }
+
+            await RefreshMonitorAsync();
+        }
+        catch (Exception ex)
+        {
+            ReportFailure(ex.Message);
+        }
+    }
+
+    // ── Cell actions (provider-owned dialogs on a recognised cell) ───────────────────────────────────
+
+    /// <summary>Set by the view so a cell action can show its provider-owned dialog in the shared chrome.</summary>
+    public Func<NodeInfoDialogViewModel, Task>? CellActionRequested { get; set; }
+
+    /// <summary>True when the provider recognises the cell at <paramref name="columnIndex"/> in
+    /// <paramref name="row"/> as actionable (e.g. MSSQL's blocking_session_id &gt; 0) — the view renders it
+    /// as a link. Cheap and side-effect-free; called per cell while building the grid.</summary>
+    public bool HasCellAction(int columnIndex, EditableRow row)
+    {
+        if (_providers.Get(Connection.ProviderId) is not ICustomCellActionUi ui
+            || BuildCellActionContext(columnIndex, row) is not { } context)
+        {
+            return false;
+        }
+
+        try
+        {
+            return ui.HasCellAction(context);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Open the provider-owned dialog for the cell at <paramref name="columnIndex"/> in
+    /// <paramref name="row"/>. The dialog queries (and may act on) its own live data; when it closes, a
+    /// monitor tab refreshes so a kill done inside it is reflected.</summary>
+    public async Task OpenCellActionAsync(int columnIndex, EditableRow row)
+    {
+        if (_providers.Get(Connection.ProviderId) is not ICustomCellActionUi ui
+            || BuildCellActionContext(columnIndex, row) is not { } context
+            || CellActionRequested is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!ui.HasCellAction(context))
+            {
+                return;
+            }
+
+            var view = ui.CreateCellActionView(context);
+            await CellActionRequested(new NodeInfoDialogViewModel(ui.CellActionTitle(context), view, Loc));
+        }
+        catch (Exception ex)
+        {
+            ReportFailure(ex.Message);
+        }
+
+        if (IsMonitorMode)
+        {
+            await RefreshMonitorAsync();
+        }
+    }
+
+    private CellActionContext? BuildCellActionContext(int columnIndex, EditableRow row)
+    {
+        if (Editable is not { } editable || columnIndex < 0 || columnIndex >= editable.Columns.Count)
+        {
+            return null;
+        }
+
+        var values = new Dictionary<string, object?>(editable.Columns.Count);
+        for (var i = 0; i < editable.Columns.Count; i++)
+        {
+            values[editable.Columns[i].Name] = row.CurrentAt(i);
+        }
+
+        var provider = _providers.Get(Connection.ProviderId);
+        var profile = _connections.Resolve(Connection, _database);
+        return new CellActionContext(profile, provider, editable.Columns[columnIndex].Name, row.CurrentAt(columnIndex), values);
+    }
+
+    /// <summary>Stop and release the auto-refresh timer — called when the monitor tab closes so it doesn't
+    /// keep polling in the background.</summary>
+    public void StopMonitor()
+    {
+        if (_refreshTimer is not null)
+        {
+            _refreshTimer.Stop();
+            _refreshTimer.Tick -= OnRefreshTick;
+            _refreshTimer = null;
+        }
     }
 
     // Query-tab connection switch (InitQuery counts as the first one): refresh the tab title and the
@@ -1053,6 +1466,7 @@ public partial class DocumentViewModel : ViewModelBase
 
     partial void OnEditableChanged(EditableResultSet? value)
     {
+        OnPropertyChanged(nameof(ShowEditToolbar));
         AddRowCommand.NotifyCanExecuteChanged();
         DeleteRowCommand.NotifyCanExecuteChanged();
         SaveCommand.NotifyCanExecuteChanged();

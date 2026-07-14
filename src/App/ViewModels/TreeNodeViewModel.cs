@@ -170,6 +170,10 @@ public partial class TreeNodeViewModel : ViewModelBase
     public bool CanShowProperties => _provider is ICustomNodeInfoUi info
         && NodeKind is { } kind && info.HasInfoFor(new DbNodeRef(kind, Name));
 
+    /// <summary>"Activity Monitor…" is offered on a connection root whose provider exposes live sessions
+    /// (SQL Server/Postgres/MySQL; not SQLite). A connection-wide action, so it sits on the root node.</summary>
+    public bool CanShowActivityMonitor => IsConnectionNode && _provider is { SupportsActivityMonitor: true };
+
     public bool IsCopyable => IsTableOrView || IsColumn
         || NodeKind is DbNodeKind.Index or DbNodeKind.Sequence or DbNodeKind.Object;
 

@@ -132,6 +132,42 @@
   <data name="ExecuteRoutine" xml:space="preserve">
     <value>Execute…</value>
   </data>
+  <data name="ActivityMonitor" xml:space="preserve">
+    <value>Activity monitor…</value>
+  </data>
+  <data name="ActivityMonitorTab" xml:space="preserve">
+    <value>Activity Monitor — {0}</value>
+  </data>
+  <data name="AutoRefresh" xml:space="preserve">
+    <value>Auto-refresh</value>
+  </data>
+  <data name="RefreshOff" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="KillSession" xml:space="preserve">
+    <value>Kill session…</value>
+  </data>
+  <data name="CancelQuery" xml:space="preserve">
+    <value>Cancel query…</value>
+  </data>
+  <data name="ConfirmKillSessionTitle" xml:space="preserve">
+    <value>Kill session</value>
+  </data>
+  <data name="ConfirmKillSession" xml:space="preserve">
+    <value>Kill session {0}? This closes its connection.</value>
+  </data>
+  <data name="ConfirmCancelQueryTitle" xml:space="preserve">
+    <value>Cancel query</value>
+  </data>
+  <data name="ConfirmCancelQuery" xml:space="preserve">
+    <value>Cancel the running query on session {0}?</value>
+  </data>
+  <data name="SessionKilled" xml:space="preserve">
+    <value>Session {0} killed.</value>
+  </data>
+  <data name="QueryCancelledSession" xml:space="preserve">
+    <value>Query on session {0} cancelled.</value>
+  </data>
   <data name="OpenInEditor" xml:space="preserve">
     <value>Open in editor</value>
   </data>

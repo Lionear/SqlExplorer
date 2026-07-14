@@ -132,6 +132,42 @@
   <data name="ExecuteRoutine" xml:space="preserve">
     <value>Uitvoeren…</value>
   </data>
+  <data name="ActivityMonitor" xml:space="preserve">
+    <value>Activiteitenmonitor…</value>
+  </data>
+  <data name="ActivityMonitorTab" xml:space="preserve">
+    <value>Activiteitenmonitor — {0}</value>
+  </data>
+  <data name="AutoRefresh" xml:space="preserve">
+    <value>Auto-verversen</value>
+  </data>
+  <data name="RefreshOff" xml:space="preserve">
+    <value>Uit</value>
+  </data>
+  <data name="KillSession" xml:space="preserve">
+    <value>Sessie beëindigen…</value>
+  </data>
+  <data name="CancelQuery" xml:space="preserve">
+    <value>Query annuleren…</value>
+  </data>
+  <data name="ConfirmKillSessionTitle" xml:space="preserve">
+    <value>Sessie beëindigen</value>
+  </data>
+  <data name="ConfirmKillSession" xml:space="preserve">
+    <value>Sessie {0} beëindigen? Dit sluit de verbinding.</value>
+  </data>
+  <data name="ConfirmCancelQueryTitle" xml:space="preserve">
+    <value>Query annuleren</value>
+  </data>
+  <data name="ConfirmCancelQuery" xml:space="preserve">
+    <value>De lopende query op sessie {0} annuleren?</value>
+  </data>
+  <data name="SessionKilled" xml:space="preserve">
+    <value>Sessie {0} beëindigd.</value>
+  </data>
+  <data name="QueryCancelledSession" xml:space="preserve">
+    <value>Query op sessie {0} geannuleerd.</value>
+  </data>
   <data name="OpenInEditor" xml:space="preserve">
     <value>Openen in editor</value>
   </data>

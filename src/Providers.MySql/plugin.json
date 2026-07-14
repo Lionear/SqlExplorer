@@ -4,6 +4,6 @@
   "type": "provider",
   "name": "MySQL / MariaDB",
   "version": "1.0.0",
-  "hostApiVersion": 17,
+  "hostApiVersion": 18,
   "entryAssembly": "Lionear.SqlExplorer.Providers.MySql.dll"
 }

@@ -157,6 +157,9 @@
                 <Separator IsVisible="{Binding SelectedNode.CanShowProperties, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[Properties]}" Command="{Binding ShowPropertiesCommand}"
                           IsVisible="{Binding SelectedNode.CanShowProperties, FallbackValue=False}" />
+                <Separator IsVisible="{Binding SelectedNode.CanShowActivityMonitor, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[ActivityMonitor]}" Command="{Binding ActivityMonitorCommand}"
+                          IsVisible="{Binding SelectedNode.CanShowActivityMonitor, FallbackValue=False}" />
               </ContextMenu>
             </TreeView.ContextMenu>
             <TreeView.ItemTemplate>

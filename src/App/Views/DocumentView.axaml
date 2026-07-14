@@ -87,6 +87,22 @@
       </ItemsControl>
     </StackPanel>
 
+    <!-- Row 0 (monitor): manual Refresh + auto-refresh interval. The grid below is the live sessions list. -->
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8"
+                VerticalAlignment="Center" IsVisible="{Binding IsMonitorMode}">
+      <Button Content="{Binding Loc[Refresh]}" Command="{Binding RefreshMonitorCommand}" />
+      <TextBlock Text="{Binding Loc[AutoRefresh]}" VerticalAlignment="Center"
+                 Foreground="{DynamicResource CatTextSecondaryBrush}" />
+      <ComboBox MinWidth="90" ItemsSource="{Binding RefreshOptions}"
+                SelectedItem="{Binding SelectedRefreshOption}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Label}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+    </StackPanel>
+
     <!-- Row 1: SQL editor (query mode only; the row is collapsed for browse in code-behind). -->
     <Border Grid.Row="1" IsVisible="{Binding IsQueryMode}"
             Background="{DynamicResource CatWindowBgBrush}"
@@ -119,7 +135,7 @@
     <!-- Row 3: edit toolbar + pending-changes bar (shared by both modes). -->
     <Grid Grid.Row="3" Margin="0,0,0,8"
           ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto"
-          IsVisible="{Binding Editable, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+          IsVisible="{Binding ShowEditToolbar}">
       <Button Grid.Column="0" Margin="0,0,8,0"
               Content="{Binding Loc[AddRow]}" Command="{Binding AddRowCommand}" />
       <Button Grid.Column="1" Margin="0,0,8,0"
@@ -170,7 +186,15 @@
         <DataGrid.ContextMenu>
           <!-- Copies the current selection, or the whole result set if nothing is selected — same
                source/fallback as the "Export…" button, just to the clipboard instead of a file. -->
-          <ContextMenu>
+          <ContextMenu Opening="OnGridContextMenuOpening">
+            <!-- Monitor row actions: Kill is always offered (hard), Cancel only where the engine has a
+                 soft variant (Postgres/MySQL). Both get disabled on the monitor's own session in the
+                 Opening handler so the polling tab can't shoot itself down. -->
+            <MenuItem x:Name="KillSessionItem" Header="{Binding Loc[KillSession]}" Click="OnKillSessionClick"
+                      IsVisible="{Binding IsMonitorMode}" />
+            <MenuItem x:Name="CancelQueryItem" Header="{Binding Loc[CancelQuery]}" Click="OnCancelQueryClick"
+                      IsVisible="{Binding MonitorSupportsCancel}" />
+            <Separator IsVisible="{Binding IsMonitorMode}" />
             <MenuItem Header="{Binding Loc[SetNull]}" Click="OnSetNullClick"
                       IsVisible="{Binding IsResultEditable}" />
             <MenuItem Header="{Binding Loc[GenerateGuid]}" IsVisible="{Binding IsResultEditable}">

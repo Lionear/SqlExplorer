@@ -1349,6 +1349,28 @@ public partial class MainViewModel : ViewModelBase
         await document.LoadPageAsync(ct);
     }
 
+    // Activity Monitor on a connection root: open (or focus) the live-sessions tab for that connection.
+    // The tab starts its own auto-refresh (default 5s) as soon as it opens (DocumentViewModel.InitMonitor).
+    [RelayCommand]
+    private void ActivityMonitor()
+    {
+        if (SelectedNode is not { CanShowActivityMonitor: true } node || node.Connection is not { } connection)
+        {
+            return;
+        }
+
+        var existing = Documents.FirstOrDefault(d => d.MatchesMonitor(connection.Id));
+        if (existing is not null)
+        {
+            SelectedDocument = existing;
+            return;
+        }
+
+        var document = NewDocument();
+        document.InitMonitor(connection);
+        AddDocument(document);
+    }
+
     // View Definition (double-click or context menu) on a procedure/function/trigger: fetch its CREATE
     // text and open it in a normal editable query tab — same mechanism as browse, no new viewer.
     [RelayCommand]
@@ -1537,6 +1559,12 @@ public partial class MainViewModel : ViewModelBase
 
     private void RemoveTab(DocumentViewModel document)
     {
+        // A monitor tab polls on a background timer — stop it so a closed tab doesn't keep querying.
+        if (document.IsMonitorMode)
+        {
+            document.StopMonitor();
+        }
+
         // Remember closed query tabs so Ctrl+Shift+T can bring them back (browse tabs reopen from the tree).
         if (document.IsQueryMode && document.Connection is { } connection)
         {

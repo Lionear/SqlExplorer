@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using Lionear.SqlExplorer.Sdk;
 using MySqlConnector;
@@ -760,5 +761,55 @@ public sealed class MySqlProvider : IDbProvider
         }
 
         return names;
+    }
+
+    // Activity Monitor. information_schema.PROCESSLIST (same data as SHOW FULL PROCESSLIST, but a real
+    // result set); CONNECTION_ID() gives this connection's own id for the visible-but-disabled guard.
+    // MySQL separates KILL (hard, drops the connection) from KILL QUERY (soft, aborts just the statement).
+    public bool SupportsActivityMonitor => true;
+
+    public string SessionIdColumn => "Id";
+
+    public bool SupportsCancelQuery => true;
+
+    public async Task<ActiveSessionSnapshot> GetActiveSessionsAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        const string sql = """
+            SELECT ID AS Id, USER AS User, HOST AS Host, DB AS db, COMMAND AS Command,
+                   TIME AS Time, STATE AS State, INFO AS Info
+            FROM information_schema.PROCESSLIST
+            ORDER BY ID
+            """;
+
+        var stopwatch = Stopwatch.StartNew();
+        await using var connection = await OpenAsync(profile, ct);
+
+        string? currentId;
+        await using (var id = new MySqlCommand("SELECT CONNECTION_ID()", connection))
+        {
+            currentId = (await id.ExecuteScalarAsync(ct))?.ToString();
+        }
+
+        await using var command = new MySqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        var result = await ReadResultAsync(reader, stopwatch, ct);
+        return new ActiveSessionSnapshot(result, currentId);
+    }
+
+    public Task KillSessionAsync(ConnectionProfile profile, string sessionId, CancellationToken ct) =>
+        RunKillAsync(profile, $"KILL {ParseId(sessionId)}", ct);
+
+    public Task CancelQueryAsync(ConnectionProfile profile, string sessionId, CancellationToken ct) =>
+        RunKillAsync(profile, $"KILL QUERY {ParseId(sessionId)}", ct);
+
+    // MySQL's KILL takes no parameter marker, so the id is parsed to a long first — it can then only ever
+    // be an integer in the statement text.
+    private static long ParseId(string sessionId) => long.Parse(sessionId, CultureInfo.InvariantCulture);
+
+    private static async Task RunKillAsync(ConnectionProfile profile, string sql, CancellationToken ct)
+    {
+        await using var connection = await OpenAsync(profile, ct);
+        await using var command = new MySqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync(ct);
     }
 }

@@ -8,6 +8,8 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.Markup.Xaml.MarkupExtensions;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using AvaloniaEdit;
 using AvaloniaEdit.CodeCompletion;
@@ -82,15 +84,25 @@ public partial class DocumentView : UserControl
     // table — not client-sort the current page. Cancel the built-in sort and drive the VM instead.
     private async void OnGridSorting(object? sender, DataGridColumnEventArgs e)
     {
-        if (_viewModel is not { IsBrowseMode: true } vm)
+        // Browse sorts server-side (whole table, ORDER BY); monitor sorts the materialised list
+        // client-side. Either way the built-in DataGrid sort is bypassed.
+        if (_viewModel is { IsBrowseMode: true } browse)
         {
-            return;
+            e.Handled = true;
+            if (e.Column.Tag is string baseColumn)
+            {
+                await browse.SortByAsync(baseColumn);
+            }
         }
-
-        e.Handled = true;
-        if (e.Column.Tag is string baseColumn)
+        else if (_viewModel is { IsMonitorMode: true } monitor)
         {
-            await vm.SortByAsync(baseColumn);
+            e.Handled = true;
+            if (e.Column.Tag is string column)
+            {
+                // Defer past this Sorting event: SortMonitorBy rebuilds the grid columns, which must not
+                // happen while the DataGrid is mid-sort (browse gets this deferral for free via its await).
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => monitor.SortMonitorBy(column));
+            }
         }
     }
 
@@ -147,15 +159,19 @@ public partial class DocumentView : UserControl
 
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.SaveReviewRequested = ShowSaveReviewAsync;
+        _viewModel.ConfirmRequested = ShowConfirmAsync;
+        _viewModel.CellActionRequested = ShowCellActionDialogAsync;
 
         // The TabControl reuses one DocumentView across tabs (swapping DataContext), so the SQL
         // editor row must be set BOTH ways: collapsed for browse, restored for query. Otherwise a
         // browse tab collapses the row and every later query tab shows no SQL pane.
         if (this.FindControl<Grid>("RootGrid") is { } grid)
         {
-            grid.RowDefinitions[1].Height = _viewModel.IsBrowseMode
-                ? new GridLength(0)
-                : new GridLength(2, GridUnitType.Star);
+            // The SQL editor row only belongs to query mode — collapse it for browse AND monitor so the
+            // grid isn't pushed down under a tall empty gap.
+            grid.RowDefinitions[1].Height = _viewModel.IsQueryMode
+                ? new GridLength(2, GridUnitType.Star)
+                : new GridLength(0);
         }
 
         if (_sqlEditor is not null && _viewModel.EditorFontSize is { } fontSize)
@@ -245,6 +261,77 @@ public partial class DocumentView : UserControl
         {
             row[_currentColumnIndex] = null;
         }
+    }
+
+    // Monitor row actions. The right-click that opens the context menu also fires OnCellPointerPressed,
+    // so _currentRow is the row under the cursor. Kill/Cancel confirm (destructive) inside the VM.
+    private void OnKillSessionClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel is not null && _currentRow is not null)
+        {
+            _ = _viewModel.KillSessionAsync(_currentRow);
+        }
+    }
+
+    private void OnCancelQueryClick(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel is not null && _currentRow is not null)
+        {
+            _ = _viewModel.CancelQueryAsync(_currentRow);
+        }
+    }
+
+    // Leave the monitor's own polling session visible but with Kill/Cancel disabled (Rick's decision #3),
+    // so you can't shoot down the very connection driving the refresh.
+    private void OnGridContextMenuOpening(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_viewModel is not { IsMonitorMode: true } || sender is not ContextMenu menu)
+        {
+            return;
+        }
+
+        var enabled = _currentRow is not null && !_viewModel.IsOwnSession(_currentRow);
+        foreach (var item in menu.Items.OfType<MenuItem>())
+        {
+            if (item.Name is "KillSessionItem" or "CancelQueryItem")
+            {
+                item.IsEnabled = enabled;
+            }
+        }
+    }
+
+    // Show a provider-owned cell-action dialog (e.g. MSSQL's blocking-session view) in the shared chrome.
+    private async Task ShowCellActionDialogAsync(NodeInfoDialogViewModel dialogViewModel)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+
+        var dialog = new NodeInfoDialog { DataContext = dialogViewModel };
+        await dialog.ShowDialog(owner);
+    }
+
+    // A link cell (provider-declared action) was clicked: open its dialog. The Tag carries the column index
+    // and the button's DataContext is the row.
+    private void OnCellActionClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: int index, DataContext: EditableRow row } && _viewModel is not null)
+        {
+            _ = _viewModel.OpenCellActionAsync(index, row);
+        }
+    }
+
+    // Yes/no confirmation for a destructive monitor action; Yes → true, No/closed → false.
+    private async Task<bool> ShowConfirmAsync(string title, string message)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner || _viewModel is null)
+        {
+            return false;
+        }
+
+        var dialog = new ConfirmDialog(title, message, _viewModel.Loc["Yes"], _viewModel.Loc["No"]);
+        return await dialog.ShowDialog<bool>(owner);
     }
 
     private void OnCopyCellClick(object? sender, RoutedEventArgs e) => _ = CopyCellAsync();
@@ -615,11 +702,14 @@ public partial class DocumentView : UserControl
         }
 
         var browse = _viewModel!.IsBrowseMode;
+        var monitor = _viewModel.IsMonitorMode;
         for (var i = 0; i < editable.Columns.Count; i++)
         {
             var column = editable.Columns[i];
             var baseName = column.BaseColumn ?? column.Name;
-            var sortable = browse && column.BaseColumn is not null;
+            // Browse sorts on the base column (server-side); monitor sorts any column by its display name
+            // (client-side). Both drive the same header-arrow + Tag path below.
+            var sortable = (browse && column.BaseColumn is not null) || monitor;
 
             // Show the active sort direction with an arrow in the header (the built-in sort glyph is
             // bypassed since we sort server-side).
@@ -652,26 +742,59 @@ public partial class DocumentView : UserControl
         _viewModel?.UpdateAggregation([]);
     }
 
-    private static IDataTemplate BuildCellTemplate(int index) =>
-        new FuncDataTemplate<EditableRow>((_, _) =>
+    // Per-row template: a cell the provider marks actionable (ICustomCellActionUi — e.g. MSSQL's
+    // blocking_session_id > 0) renders as a clickable link; every other cell is the plain value.
+    private IDataTemplate BuildCellTemplate(int index) =>
+        new FuncDataTemplate<EditableRow>((row, _) =>
+            row is not null && _viewModel?.HasCellAction(index, row) == true
+                ? BuildActionCell(index)
+                : BuildTextCell(index));
+
+    private static Control BuildTextCell(int index)
+    {
+        var text = new TextBlock
         {
-            var text = new TextBlock
-            {
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(12, 0, 12, 0)
-            };
-            // NULL shows as a faded "NULL" marker so it can't be confused with an empty string.
-            text.Bind(TextBlock.TextProperty, new Binding($"Cells[{index}].Value") { Converter = NullCellTextConverter.Instance });
-            text.Bind(Visual.OpacityProperty, new Binding($"Cells[{index}].Value") { Converter = NullCellOpacityConverter.Instance });
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(12, 0, 12, 0)
+        };
+        // NULL shows as a faded "NULL" marker so it can't be confused with an empty string.
+        text.Bind(TextBlock.TextProperty, new Binding($"Cells[{index}].Value") { Converter = NullCellTextConverter.Instance });
+        text.Bind(Visual.OpacityProperty, new Binding($"Cells[{index}].Value") { Converter = NullCellOpacityConverter.Instance });
 
-            var border = new Border { Child = text };
-            border.Bind(Border.BackgroundProperty, new Binding($"Cells[{index}].IsModified")
-            {
-                Converter = ModifiedCellBrushConverter.Instance
-            });
-
-            return border;
+        var border = new Border { Child = text };
+        border.Bind(Border.BackgroundProperty, new Binding($"Cells[{index}].IsModified")
+        {
+            Converter = ModifiedCellBrushConverter.Instance
         });
+
+        return border;
+    }
+
+    private Control BuildActionCell(int index)
+    {
+        var text = new TextBlock
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            TextDecorations = TextDecorations.Underline
+        };
+        text.Bind(TextBlock.TextProperty, new Binding($"Cells[{index}].Value") { Converter = NullCellTextConverter.Instance });
+        text[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("CatAccentBrush");
+
+        var button = new Button
+        {
+            Tag = index,
+            Content = text,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(12, 0),
+            Cursor = new Cursor(StandardCursorType.Hand),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        button.Click += OnCellActionClick;
+        return button;
+    }
 
     private static IDataTemplate BuildCellEditingTemplate(int index) =>
         new FuncDataTemplate<EditableRow>((_, _) =>

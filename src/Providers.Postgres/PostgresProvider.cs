@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Globalization;
 using Lionear.SqlExplorer.Sdk;
 using Npgsql;
 
@@ -980,5 +981,58 @@ public sealed class PostgresProvider : IDbProvider
         }
 
         return names;
+    }
+
+    // Activity Monitor. pg_stat_activity, one row per backend; the connection's own pid comes from
+    // pg_backend_pid() so the host can leave it visible-but-disabled. Postgres separates a soft cancel
+    // (pg_cancel_backend — abort the running statement) from a hard terminate (pg_terminate_backend).
+    public bool SupportsActivityMonitor => true;
+
+    public string SessionIdColumn => "pid";
+
+    public bool SupportsCancelQuery => true;
+
+    public async Task<ActiveSessionSnapshot> GetActiveSessionsAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        const string sql = """
+            SELECT pid, usename, datname, client_addr, state, wait_event_type, wait_event,
+                   query, query_start, backend_start
+            FROM pg_stat_activity
+            WHERE backend_type = 'client backend'
+            ORDER BY pid
+            """;
+
+        var stopwatch = Stopwatch.StartNew();
+        await using var connection = await OpenAsync(profile, ct);
+
+        string? currentId;
+        await using (var pid = new NpgsqlCommand("SELECT pg_backend_pid()", connection))
+        {
+            currentId = (await pid.ExecuteScalarAsync(ct))?.ToString();
+        }
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        var result = await ReadResultAsync(reader, stopwatch, ct);
+        return new ActiveSessionSnapshot(result, currentId);
+    }
+
+    public Task KillSessionAsync(ConnectionProfile profile, string sessionId, CancellationToken ct) =>
+        RunBackendActionAsync(profile, "pg_terminate_backend", sessionId, ct);
+
+    public Task CancelQueryAsync(ConnectionProfile profile, string sessionId, CancellationToken ct) =>
+        RunBackendActionAsync(profile, "pg_cancel_backend", sessionId, ct);
+
+    // pid is a parameter (not string-interpolated) so the value can only ever be an integer bind, and
+    // the same call shape serves both the hard terminate and the soft cancel.
+    private static async Task RunBackendActionAsync(ConnectionProfile profile, string function, string sessionId, CancellationToken ct)
+    {
+        var pid = int.Parse(sessionId, CultureInfo.InvariantCulture);
+        await using var connection = await OpenAsync(profile, ct);
+        await using var command = new NpgsqlCommand($"SELECT {function}($1)", connection)
+        {
+            Parameters = { new NpgsqlParameter { Value = pid } }
+        };
+        await command.ExecuteNonQueryAsync(ct);
     }
 }

@@ -53,7 +53,14 @@ public static class ProviderHostApi
     //                   user runs. Roadmap Fase 4: browse/execute procedures/functions/triggers.
     // v17 (2026-07-14): added DbTreeNode.Count (int?) — grouping folders (Tables/Views/Procedures/…) carry
     //                   their child count, shown inline as "Tables (22)" without expanding. Additive.
-    public const int Version = 17;
+    // v18 (2026-07-14): added Activity Monitor to IDbProvider (all default not-supported):
+    //                   SupportsActivityMonitor + GetActiveSessionsAsync (ActiveSessionSnapshot: sessions
+    //                   QueryResult + current session id for the own-session guard) + SessionIdColumn +
+    //                   KillSessionAsync (hard) + SupportsCancelQuery + CancelQueryAsync (soft). Live
+    //                   sessions/queries screen per connection, third DocumentMode.Monitor reusing the
+    //                   grid/tab infra. Postgres/MySQL support Cancel (pg_cancel_backend / KILL QUERY),
+    //                   MSSQL is Kill-only, SQLite unsupported. Roadmap "Activity Monitor" (plan #2 of 4).
+    public const int Version = 18;
 
     /// <summary>True when this host can load a plugin built for <paramref name="pluginVersion"/>.</summary>
     public static bool IsCompatible(int pluginVersion) => pluginVersion == Version;

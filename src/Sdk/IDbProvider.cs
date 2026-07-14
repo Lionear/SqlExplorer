@@ -199,4 +199,49 @@ public interface IDbProvider
         IReadOnlyList<RoutineParameter> parameters,
         IReadOnlyDictionary<string, string?> inputValues) =>
         throw new NotSupportedException("This provider does not support executing routines.");
+
+    /// <summary>
+    /// True when this provider exposes an Activity Monitor (live server sessions/queries) — gates the
+    /// "Activity Monitor…" action on a connection root. False (the default) for engines with no
+    /// server-process model, e.g. SQLite. Same "false = not supported" convention as
+    /// <see cref="ParseConnectionString"/>.
+    /// </summary>
+    bool SupportsActivityMonitor => false;
+
+    /// <summary>
+    /// One Activity-Monitor refresh: the engine's live sessions/queries as an ordinary result set plus
+    /// the id of the session that produced this snapshot (see <see cref="ActiveSessionSnapshot"/>). The
+    /// column set is the provider's own — the host doesn't interpret it beyond <see cref="SessionIdColumn"/>.
+    /// Only reached when <see cref="SupportsActivityMonitor"/> is true, so the default throws.
+    /// </summary>
+    Task<ActiveSessionSnapshot> GetActiveSessionsAsync(ConnectionProfile profile, CancellationToken ct) =>
+        throw new NotSupportedException("This provider does not support the activity monitor.");
+
+    /// <summary>
+    /// Which <see cref="GetActiveSessionsAsync"/> column identifies a row for Kill/Cancel — the host
+    /// reads this cell's value and passes it back as <c>sessionId</c>, without needing to understand the
+    /// rest of the (per-engine) column set. Empty when the monitor is unsupported.
+    /// </summary>
+    string SessionIdColumn => string.Empty;
+
+    /// <summary>
+    /// Hard kill: terminate the whole session/connection identified by <paramref name="sessionId"/>.
+    /// Always present where <see cref="SupportsActivityMonitor"/> is true; the default throws.
+    /// </summary>
+    Task KillSessionAsync(ConnectionProfile profile, string sessionId, CancellationToken ct) =>
+        throw new NotSupportedException("This provider does not support the activity monitor.");
+
+    /// <summary>
+    /// True when the engine can cancel just the running statement without dropping the connection
+    /// (Postgres <c>pg_cancel_backend</c>, MySQL <c>KILL QUERY</c>). False (the default) — e.g. SQL
+    /// Server, whose <c>KILL</c> is always hard — hides the "Cancel Query…" row action.
+    /// </summary>
+    bool SupportsCancelQuery => false;
+
+    /// <summary>
+    /// Soft cancel: abort only the running statement on <paramref name="sessionId"/>, leaving the
+    /// connection open. Only reached when <see cref="SupportsCancelQuery"/> is true, so the default throws.
+    /// </summary>
+    Task CancelQueryAsync(ConnectionProfile profile, string sessionId, CancellationToken ct) =>
+        throw new NotSupportedException("This provider does not support cancelling a query.");
 }
