@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using SqlExplorer.Core.Connections;
 using SqlExplorer.Core.History;
+using SqlExplorer.Core.Logging;
 using SqlExplorer.Core.Providers;
 using SqlExplorer.Sdk.Mcp;
 using SqlExplorer.Sdk.Schema;
@@ -19,6 +20,7 @@ public sealed class McpHost(
     ConnectionService connections,
     IDbProviderRegistry providers,
     IQueryHistoryStore history,
+    IQueryLog queryLog,
     Func<string, string?> getSetting,
     Action<string> audit) : IMcpHost
 {
@@ -158,8 +160,9 @@ public sealed class McpHost(
         return new McpQueryResult(columns, rows, rows.Count, durationMs, truncated);
     }
 
-    private void AppendHistory(SavedConnection connection, string sql, int rowCount, bool success, string? error, long durationMs) =>
-        history.Append(new QueryHistoryEntry
+    private void AppendHistory(SavedConnection connection, string sql, int rowCount, bool success, string? error, long durationMs)
+    {
+        var entry = new QueryHistoryEntry
         {
             Id = Guid.NewGuid().ToString("N"),
             TimestampUtc = DateTime.UtcNow,
@@ -172,5 +175,8 @@ public sealed class McpHost(
             Success = success,
             Error = error,
             Source = QueryHistorySource.Ai
-        });
+        };
+        history.Append(entry);
+        queryLog.Record(entry); // No-op unless logging + the AI/MCP source are enabled.
+    }
 }

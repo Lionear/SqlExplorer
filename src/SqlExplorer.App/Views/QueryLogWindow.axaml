@@ -1,0 +1,86 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SqlExplorer.App.Views.QueryLogWindow"
+        Title="{Binding Loc[QueryLogTitle]}"
+        Width="1200" Height="760" MinWidth="720" MinHeight="440"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Toolbar -->
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" Margin="12,10" ColumnSpacing="8">
+      <TextBox Grid.Column="0" Text="{Binding Search}"
+               Watermark="{Binding Loc[QueryLogSearch]}" MinWidth="200" />
+      <ComboBox Grid.Column="1" SelectedIndex="{Binding SourceFilter, Mode=TwoWay}" MinWidth="130">
+        <ComboBoxItem Content="{Binding Loc[QueryLogSourceAll]}" />
+        <ComboBoxItem Content="{Binding Loc[QueryLogSourceApp]}" />
+        <ComboBoxItem Content="{Binding Loc[QueryLogSourceAi]}" />
+      </ComboBox>
+      <ComboBox Grid.Column="2" SelectedIndex="{Binding StatusFilter, Mode=TwoWay}" MinWidth="120">
+        <ComboBoxItem Content="{Binding Loc[QueryLogStatusAll]}" />
+        <ComboBoxItem Content="{Binding Loc[QueryLogStatusSuccess]}" />
+        <ComboBoxItem Content="{Binding Loc[QueryLogStatusError]}" />
+      </ComboBox>
+      <Button Grid.Column="3" Content="{Binding Loc[QueryLogExport]}" Click="OnExportClick" />
+      <Button Grid.Column="4" Content="{Binding Loc[QueryLogClear]}" Command="{Binding ClearCommand}" />
+    </Grid>
+
+    <!-- Table + detail -->
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="12,0">
+      <Border Grid.Column="0" BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1" CornerRadius="4">
+        <DataGrid ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}"
+                  IsReadOnly="True" GridLinesVisibility="Horizontal"
+                  CanUserResizeColumns="True" CanUserSortColumns="False">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="{Binding Loc[QueryLogColTime]}" Binding="{Binding Time}" Width="150" />
+            <DataGridTextColumn Header="{Binding Loc[QueryLogColSource]}" Binding="{Binding Source}" Width="95" />
+            <DataGridTextColumn Header="{Binding Loc[QueryLogColConnection]}" Binding="{Binding Connection}" Width="140" />
+            <DataGridTextColumn Header="{Binding Loc[QueryLogColSql]}" Binding="{Binding SqlOneLine}" Width="*" />
+            <DataGridTextColumn Header="{Binding Loc[QueryLogColDuration]}" Binding="{Binding Duration}" Width="90" />
+            <DataGridTextColumn Header="{Binding Loc[QueryLogColRows]}" Binding="{Binding Rows}" Width="80" />
+            <DataGridTextColumn Header="{Binding Loc[QueryLogColStatus]}" Binding="{Binding Status}" Width="90" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </Border>
+
+      <!-- Detail of selected entry -->
+      <Border Grid.Column="1" Width="330" Margin="10,0,0,0"
+              BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1" CornerRadius="4"
+              IsVisible="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <ScrollViewer>
+          <StackPanel Margin="14" Spacing="6" DataContext="{Binding SelectedEntry}">
+            <TextBlock Text="{Binding Time}" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="3">
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="Source" Opacity="0.6" />
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Source}" />
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="Connection" Opacity="0.6" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Connection}" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="2" Grid.Column="0" Text="Duration" Opacity="0.6" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Duration}" />
+              <TextBlock Grid.Row="3" Grid.Column="0" Text="Rows" Opacity="0.6" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Rows}" />
+              <TextBlock Grid.Row="4" Grid.Column="0" Text="Status" Opacity="0.6" />
+              <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Status}" />
+            </Grid>
+
+            <TextBlock Text="{Binding $parent[Window].DataContext.Loc[QueryLogColSql]}"
+                       Opacity="0.6" Margin="0,8,0,0" />
+            <TextBox Text="{Binding Sql}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                     FontFamily="Cascadia Code,Consolas,Menlo,monospace" FontSize="12" MinHeight="90" MaxHeight="220" />
+
+            <TextBlock Text="{Binding Error}" Foreground="#F0B4B4" TextWrapping="Wrap"
+                       IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,4,0,0" />
+
+            <Button Content="{Binding $parent[Window].DataContext.Loc[QueryLogCopySql]}"
+                    Click="OnCopySqlClick" HorizontalAlignment="Left" Margin="0,8,0,0" />
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <!-- Footer -->
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="12,8">
+      <TextBlock Grid.Column="0" Text="{Binding Summary}" Opacity="0.7" VerticalAlignment="Center" />
+      <Button Grid.Column="1" Classes="Accent" Content="{Binding Loc[Close]}" Click="OnCloseClick" IsCancel="True" />
+    </Grid>
+  </Grid>
+</Window>

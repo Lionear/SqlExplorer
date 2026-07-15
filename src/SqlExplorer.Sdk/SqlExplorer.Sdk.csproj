@@ -7,6 +7,15 @@
          changes are expensive (Notes.md §4.1). Folders group the surface (Connections/, Schema/, Query/,
          Ddl/, Ui/); the base contract stays UI-neutral. -->
     <Description>Lionear SQL Explorer — plugin extensibility contract.</Description>
+    <!-- Pinned independent of the app's own release version (CI passes -p:Version=<nightly/release> to
+         `dotnet publish`, which propagates through project references to every assembly built in that
+         graph, this one included). ProviderLoadContext shares this exact assembly across the plugin/host
+         ALC boundary by simple name — if the host's baked-in AssemblyVersion drifted with every release
+         while a plugin built standalone (no -p:Version) keeps referencing the SDK's default 1.0.0.0, the
+         host can no longer satisfy that reference and plugin loading fails with a FileNotFoundException.
+         Bump this only for an intentional breaking change to the SDK contract, mirroring ProviderHostApi/
+         ToolHostApi's own versioning. -->
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>

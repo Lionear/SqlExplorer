@@ -63,6 +63,22 @@ public sealed class AppSettings
     /// available from the tray menu and File &gt; Exit. Off by default.</summary>
     public bool CloseToTray { get; set; }
 
+    // ── Query log (opt-in audit log, separate from the always-on re-run history) ─────────────────────
+
+    /// <summary>Master switch for the query log. Off by default — nothing is written until enabled.</summary>
+    public bool QueryLogEnabled { get; set; }
+
+    /// <summary>Log queries executed from the application (user-issued). Combined with
+    /// <see cref="QueryLogMcp"/> under <see cref="QueryLogEnabled"/> this lets the user record only the
+    /// app, only MCP, or both.</summary>
+    public bool QueryLogApp { get; set; } = true;
+
+    /// <summary>Log queries executed by AI clients over the MCP server.</summary>
+    public bool QueryLogMcp { get; set; } = true;
+
+    /// <summary>Size at which the JSONL log rotates to a single <c>.1</c> backup (megabytes).</summary>
+    public int QueryLogMaxSizeMb { get; set; } = 10;
+
     // ── MCP server (top-level; the host owns the server, plugins only contribute tools) ──────────────
 
     /// <summary>Master switch for the MCP server. Off by default — no listener until the user turns it on.</summary>

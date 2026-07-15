@@ -37,6 +37,7 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly IToolRegistry _tools;
     private readonly KeymapService _keymap;
     private readonly Mcp.Hosting.McpService _mcp;
+    private readonly Core.Logging.IQueryLog _queryLog;
     private readonly List<ShortcutItem> _allShortcuts = [];
 
     [ObservableProperty]
@@ -68,6 +69,16 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _closeToTray;
+
+    // ── Query log ────────────────────────────────────────────────────────────────────────────────────
+    [ObservableProperty]
+    private bool _queryLogEnabled;
+
+    [ObservableProperty]
+    private bool _queryLogApp;
+
+    [ObservableProperty]
+    private bool _queryLogMcp;
 
     [ObservableProperty]
     private PluginSettingsItem? _selectedPlugin;
@@ -110,6 +121,7 @@ public partial class SettingsViewModel : ViewModelBase
         IToolRegistry tools,
         KeymapService keymap,
         Mcp.Hosting.McpService mcp,
+        Core.Logging.IQueryLog queryLog,
         ILocalizer localizer)
     {
         _store = store;
@@ -118,6 +130,7 @@ public partial class SettingsViewModel : ViewModelBase
         _tools = tools;
         _keymap = keymap;
         _mcp = mcp;
+        _queryLog = queryLog;
         Loc = localizer;
 
         Categories =
@@ -126,6 +139,7 @@ public partial class SettingsViewModel : ViewModelBase
             new SettingsCategory("Appearance", localizer["SettingsAppearance"], NodeIcons.SettingsAppearance),
             new SettingsCategory("Editor", localizer["SettingsEditor"], NodeIcons.SettingsEditor),
             new SettingsCategory("Query", localizer["SettingsQuery"], NodeIcons.SettingsQuery),
+            new SettingsCategory("QueryLog", localizer["SettingsQueryLog"], NodeIcons.SettingsQuery),
             new SettingsCategory("Keyboard", localizer["SettingsKeyboard"], NodeIcons.SettingsKeyboard),
             new SettingsCategory("Mcp", localizer["SettingsMcp"], NodeIcons.SettingsPlugins),
             new SettingsCategory("Plugins", localizer["SettingsPlugins"], NodeIcons.SettingsPlugins),
@@ -170,6 +184,9 @@ public partial class SettingsViewModel : ViewModelBase
         ShowSystemDatabases = settings.ShowSystemDatabases;
         ConfirmOnExit = settings.ConfirmOnExit;
         CloseToTray = settings.CloseToTray;
+        QueryLogEnabled = settings.QueryLogEnabled;
+        QueryLogApp = settings.QueryLogApp;
+        QueryLogMcp = settings.QueryLogMcp;
         McpEnabled = settings.McpEnabled;
         McpPort = settings.McpPort;
         McpRequireAuth = settings.McpRequireAuth;
@@ -302,6 +319,9 @@ public partial class SettingsViewModel : ViewModelBase
         ShowSystemDatabases = defaults.ShowSystemDatabases;
         ConfirmOnExit = defaults.ConfirmOnExit;
         CloseToTray = defaults.CloseToTray;
+        QueryLogEnabled = defaults.QueryLogEnabled;
+        QueryLogApp = defaults.QueryLogApp;
+        QueryLogMcp = defaults.QueryLogMcp;
         // MCP: reset the tunables but keep an existing token (regenerate is an explicit action).
         McpEnabled = defaults.McpEnabled;
         McpPort = defaults.McpPort;
@@ -344,6 +364,9 @@ public partial class SettingsViewModel : ViewModelBase
         settings.ShowSystemDatabases = ShowSystemDatabases;
         settings.ConfirmOnExit = ConfirmOnExit;
         settings.CloseToTray = CloseToTray;
+        settings.QueryLogEnabled = QueryLogEnabled;
+        settings.QueryLogApp = QueryLogApp;
+        settings.QueryLogMcp = QueryLogMcp;
         // Generate a token on enabling auth if none is set yet, so the field is never empty when required.
         if (McpEnabled && McpRequireAuth && string.IsNullOrEmpty(McpToken))
         {
@@ -360,6 +383,9 @@ public partial class SettingsViewModel : ViewModelBase
 
         // Apply MCP changes immediately (start/stop/restart the server with the new settings).
         _ = _mcp.ApplyAsync();
+
+        // Apply the query-log policy immediately so toggling it takes effect without a restart.
+        _queryLog.Configure(QueryLogEnabled, QueryLogApp, QueryLogMcp);
 
         // Plugin settings live in their own file, keyed by plugin id.
         foreach (var plugin in Plugins)

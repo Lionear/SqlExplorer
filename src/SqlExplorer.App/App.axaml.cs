@@ -37,6 +37,10 @@ public partial class App : Application
             services.GetRequiredService<ILocalizer>().SetCulture(CultureInfo.GetCultureInfo(language));
         }
 
+        // Apply the saved query-log policy before any query can run (SettingsViewModel re-applies on save).
+        services.GetRequiredService<Core.Logging.IQueryLog>()
+            .Configure(settings.QueryLogEnabled, settings.QueryLogApp, settings.QueryLogMcp);
+
         var viewModel = services.GetRequiredService<MainViewModel>();
         var keymap = services.GetRequiredService<KeymapService>();
 
@@ -51,7 +55,15 @@ public partial class App : Application
                 // the window's close button hides or quits is governed by the CloseToTray setting, which
                 // MainWindow reads live on each close. Quit from here or File > Exit routes through
                 // desktop.Shutdown(), which closes with CloseReason=ApplicationShutdown (a real quit).
-                _trayIcon = BuildTrayIcon(desktop, mainWindow, services.GetRequiredService<ILocalizer>());
+                // Opening the log from the tray surfaces the window first (it may be hidden), then runs the
+                // same command the menu uses — which shows the non-modal, single-instance Query Log window.
+                void OpenQueryLog()
+                {
+                    ShowWindow(mainWindow);
+                    (mainWindow.DataContext as MainViewModel)?.OpenQueryLogCommand.Execute(null);
+                }
+
+                _trayIcon = BuildTrayIcon(desktop, mainWindow, services.GetRequiredService<ILocalizer>(), OpenQueryLog);
 
                 // Single-instance listener: a second launch (e.g. clicking the app again while it's hidden
                 // in the tray) signals us here instead of opening a new window. Marshal onto the UI thread.
@@ -89,16 +101,20 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private static TrayIcon BuildTrayIcon(IClassicDesktopStyleApplicationLifetime desktop, Window window, ILocalizer loc)
+    private static TrayIcon BuildTrayIcon(IClassicDesktopStyleApplicationLifetime desktop, Window window, ILocalizer loc, Action openQueryLog)
     {
         var show = new NativeMenuItem(loc["TrayShow"]);
         show.Click += (_, _) => ShowWindow(window);
+
+        var queryLog = new NativeMenuItem(loc["QueryLogMenu"]);
+        queryLog.Click += (_, _) => openQueryLog();
 
         var quit = new NativeMenuItem(loc["Exit"]);
         quit.Click += (_, _) => desktop.Shutdown();
 
         var menu = new NativeMenu();
         menu.Add(show);
+        menu.Add(queryLog);
         menu.Add(new NativeMenuItemSeparator());
         menu.Add(quit);
 

@@ -13,6 +13,7 @@ using SqlExplorer.Core.Export;
 using SqlExplorer.Core.Formatting;
 using SqlExplorer.Core.History;
 using SqlExplorer.Core.Localization;
+using SqlExplorer.Core.Logging;
 using SqlExplorer.Core.Providers;
 using SqlExplorer.Core.Schema;
 using SqlExplorer.Core.Settings;
@@ -79,6 +80,7 @@ public partial class DocumentViewModel : ViewModelBase
     private readonly ConnectionService _connections;
     private readonly ISqlFormatter _formatter;
     private readonly IQueryHistoryStore _history;
+    private readonly IQueryLog _queryLog;
     private readonly ISchemaCache _schemaCache;
 
     private string? _database;
@@ -194,6 +196,7 @@ public partial class DocumentViewModel : ViewModelBase
         ConnectionService connections,
         ISqlFormatter formatter,
         IQueryHistoryStore history,
+        IQueryLog queryLog,
         ISchemaCache schemaCache,
         IAppSettingsStore settingsStore,
         ILocalizer localizer)
@@ -202,6 +205,7 @@ public partial class DocumentViewModel : ViewModelBase
         _connections = connections;
         _formatter = formatter;
         _history = history;
+        _queryLog = queryLog;
         _schemaCache = schemaCache;
         _settingsStore = settingsStore;
         Loc = localizer;
@@ -1176,8 +1180,9 @@ public partial class DocumentViewModel : ViewModelBase
         }
     });
 
-    private void AppendHistory(string sql, QueryHistoryKind kind, long durationMs, int rowCount, bool success, string? error) =>
-        _history.Append(new QueryHistoryEntry
+    private void AppendHistory(string sql, QueryHistoryKind kind, long durationMs, int rowCount, bool success, string? error)
+    {
+        var entry = new QueryHistoryEntry
         {
             Id = Guid.NewGuid().ToString("N"),
             TimestampUtc = DateTime.UtcNow,
@@ -1189,7 +1194,10 @@ public partial class DocumentViewModel : ViewModelBase
             RowCount = rowCount,
             Success = success,
             Error = error
-        });
+        };
+        _history.Append(entry);
+        _queryLog.Record(entry); // No-op unless logging + the application source are enabled.
+    }
 
     /// <summary>Show a clicked cell's full value in the viewer panel, resolving the column name by index.</summary>
     public void ShowCell(int columnIndex, object? value)

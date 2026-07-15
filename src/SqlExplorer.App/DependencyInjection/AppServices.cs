@@ -3,6 +3,7 @@ using SqlExplorer.App.ViewModels;
 using SqlExplorer.Core.Connections;
 using SqlExplorer.Core.Formatting;
 using SqlExplorer.Core.History;
+using SqlExplorer.Core.Logging;
 using SqlExplorer.Core.Localization;
 using SqlExplorer.Core.Mcp;
 using SqlExplorer.Core.Plugins;
@@ -145,6 +146,10 @@ public static class AppServices
 
         // Query history (searchable, re-runnable) beside connections.json.
         services.AddSingleton<IQueryHistoryStore>(new JsonQueryHistoryStore());
+        // Opt-in query log (audit): append-only JSONL, policy applied at startup / on settings save.
+        services.AddSingleton<IQueryLog>(new JsonlQueryLogStore());
+        services.AddTransient<QueryLogViewModel>();
+        services.AddSingleton<Func<QueryLogViewModel>>(sp => sp.GetRequiredService<QueryLogViewModel>);
         services.AddSingleton<IOpenTabsStore>(new JsonOpenTabsStore());
         services.AddSingleton<ConnectionService>();
 
@@ -216,6 +221,7 @@ public static class AppServices
                 sp.GetRequiredService<ConnectionService>(),
                 sp.GetRequiredService<IDbProviderRegistry>(),
                 sp.GetRequiredService<IQueryHistoryStore>(),
+                sp.GetRequiredService<IQueryLog>(),
                 GetSetting,
                 Audit);
 

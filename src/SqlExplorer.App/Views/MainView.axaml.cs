@@ -279,6 +279,7 @@ public partial class MainView : UserControl
             _viewModel.RoutineParametersRequested = ShowRoutineParametersDialogAsync;
             _viewModel.NodeInfoRequested = ShowNodeInfoDialogAsync;
             _viewModel.PluginStoreRequested = ShowPluginStoreAsync;
+            _viewModel.QueryLogRequested = ShowQueryLogAsync;
             _viewModel.RestartRequested = () => { AppRestart.Restart(); return Task.CompletedTask; };
             _viewModel.ConfirmRequested = ShowConfirmAsync;
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -474,6 +475,34 @@ public partial class MainView : UserControl
 
         var dialog = new PluginStoreWindow { DataContext = dialogViewModel };
         await dialog.ShowDialog(owner);
+    }
+
+    // The Query Log is non-modal so it can stay open while the app is used, and single-instance so the menu
+    // (or the tray) just brings the existing window to the front instead of stacking copies.
+    private QueryLogWindow? _queryLogWindow;
+
+    private Task ShowQueryLogAsync(QueryLogViewModel dialogViewModel)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (_queryLogWindow is { } existing)
+        {
+            existing.Activate();
+            return Task.CompletedTask;
+        }
+
+        var window = new QueryLogWindow { DataContext = dialogViewModel };
+        window.Closed += (_, _) =>
+        {
+            (window.DataContext as IDisposable)?.Dispose(); // detach from IQueryLog.Changed
+            _queryLogWindow = null;
+        };
+        _queryLogWindow = window;
+        window.Show(owner);
+        return Task.CompletedTask;
     }
 
     private async Task CopyToClipboardAsync(string text)

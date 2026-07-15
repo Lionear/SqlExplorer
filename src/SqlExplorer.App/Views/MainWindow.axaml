@@ -38,6 +38,7 @@
       <NativeMenuItem Header="{Binding Loc[MenuTools]}">
         <NativeMenuItem.Menu>
           <NativeMenu>
+            <NativeMenuItem Header="{Binding Loc[QueryLogMenu]}" Command="{Binding OpenQueryLogCommand}" />
             <NativeMenuItem Header="{Binding Loc[PluginStoreMenu]}" Command="{Binding OpenPluginStoreCommand}" />
           </NativeMenu>
         </NativeMenuItem.Menu>
@@ -65,6 +66,7 @@
         <MenuItem Header="{Binding Loc[Preferences]}" Command="{Binding OpenSettingsCommand}" />
       </MenuItem>
       <MenuItem Header="{Binding Loc[MenuTools]}">
+        <MenuItem Header="{Binding Loc[QueryLogMenu]}" Command="{Binding OpenQueryLogCommand}" />
         <MenuItem Header="{Binding Loc[PluginStoreMenu]}" Command="{Binding OpenPluginStoreCommand}" />
       </MenuItem>
       <MenuItem Header="{Binding Loc[MenuHelp]}">

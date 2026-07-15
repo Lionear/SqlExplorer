@@ -14,6 +14,7 @@ using SqlExplorer.Core.Formatting;
 using SqlExplorer.Core.History;
 using SqlExplorer.Core.Import;
 using SqlExplorer.Core.Localization;
+using SqlExplorer.Core.Logging;
 using SqlExplorer.Core.Providers;
 using SqlExplorer.Core.Schema;
 using SqlExplorer.Core.Session;
@@ -38,6 +39,8 @@ public partial class MainViewModel : ViewModelBase
     private readonly ISqlFormatter _formatter;
     private readonly ConnectionService _connections;
     private readonly IQueryHistoryStore _history;
+    private readonly IQueryLog _queryLog;
+    private readonly Func<QueryLogViewModel> _queryLogFactory;
     private readonly ISchemaCache _schemaCache;
     private readonly Func<ConnectionManagerViewModel> _connectionManagerFactory;
     private readonly Func<CreateObjectDialogViewModel> _createDialogFactory;
@@ -85,6 +88,8 @@ public partial class MainViewModel : ViewModelBase
         ISqlFormatter formatter,
         ConnectionService connections,
         IQueryHistoryStore history,
+        IQueryLog queryLog,
+        Func<QueryLogViewModel> queryLogFactory,
         ISchemaCache schemaCache,
         Func<ConnectionManagerViewModel> connectionManagerFactory,
         Func<CreateObjectDialogViewModel> createDialogFactory,
@@ -105,6 +110,8 @@ public partial class MainViewModel : ViewModelBase
         _formatter = formatter;
         _connections = connections;
         _history = history;
+        _queryLog = queryLog;
+        _queryLogFactory = queryLogFactory;
         _schemaCache = schemaCache;
         _connectionManagerFactory = connectionManagerFactory;
         _createDialogFactory = createDialogFactory;
@@ -1810,6 +1817,20 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Set by the view so the VM can show the Query Log window.</summary>
+    public Func<QueryLogViewModel, Task>? QueryLogRequested { get; set; }
+
+    [RelayCommand]
+    private async Task OpenQueryLogAsync()
+    {
+        if (QueryLogRequested is null)
+        {
+            return;
+        }
+
+        await QueryLogRequested(_queryLogFactory());
+    }
+
     /// <summary>Set by the view so the VM can show the Plugin Store window.</summary>
     public Func<PluginStoreViewModel, Task>? PluginStoreRequested { get; set; }
 
@@ -1841,7 +1862,7 @@ public partial class MainViewModel : ViewModelBase
 
     private DocumentViewModel NewDocument()
     {
-        var document = new DocumentViewModel(_providers, _connections, _formatter, _history, _schemaCache, _settingsStore, Loc);
+        var document = new DocumentViewModel(_providers, _connections, _formatter, _history, _queryLog, _schemaCache, _settingsStore, Loc);
         // Surface every execution outcome (row counts, cancellations, failures) in the shared Output panel.
         document.Reported += (level, message) => ReportOutput(level, document.Connection?.Name, message);
         return document;

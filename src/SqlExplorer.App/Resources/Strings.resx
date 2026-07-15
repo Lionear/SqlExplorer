@@ -534,6 +534,87 @@
   <data name="CloseToTrayHint" xml:space="preserve">
     <value>The close button hides the window and keeps the app running in the background (e.g. the MCP server). Quit from the tray icon or File &gt; Exit.</value>
   </data>
+  <data name="QueryLogMenu" xml:space="preserve">
+    <value>Query Log…</value>
+  </data>
+  <data name="SettingsQueryLog" xml:space="preserve">
+    <value>Query Log</value>
+  </data>
+  <data name="QueryLogDesc" xml:space="preserve">
+    <value>Record executed queries to an on-disk audit log you can browse, filter and export. Separate from the always-on query history.</value>
+  </data>
+  <data name="QueryLogEnabledLabel" xml:space="preserve">
+    <value>Enable query logging</value>
+  </data>
+  <data name="QueryLogSources" xml:space="preserve">
+    <value>Log sources</value>
+  </data>
+  <data name="QueryLogAppLabel" xml:space="preserve">
+    <value>Application queries</value>
+  </data>
+  <data name="QueryLogMcpLabel" xml:space="preserve">
+    <value>AI / MCP queries</value>
+  </data>
+  <data name="QueryLogHint" xml:space="preserve">
+    <value>Only the SQL and timing/outcome are stored — never result rows or connection secrets. The log rotates automatically at its size limit.</value>
+  </data>
+  <data name="QueryLogTitle" xml:space="preserve">
+    <value>Query Log</value>
+  </data>
+  <data name="QueryLogSearch" xml:space="preserve">
+    <value>Search SQL or connection…</value>
+  </data>
+  <data name="QueryLogSourceAll" xml:space="preserve">
+    <value>All sources</value>
+  </data>
+  <data name="QueryLogSourceApp" xml:space="preserve">
+    <value>Application</value>
+  </data>
+  <data name="QueryLogSourceAi" xml:space="preserve">
+    <value>AI / MCP</value>
+  </data>
+  <data name="QueryLogStatusAll" xml:space="preserve">
+    <value>All statuses</value>
+  </data>
+  <data name="QueryLogStatusSuccess" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="QueryLogStatusError" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="QueryLogExport" xml:space="preserve">
+    <value>Export…</value>
+  </data>
+  <data name="QueryLogClear" xml:space="preserve">
+    <value>Clear log</value>
+  </data>
+  <data name="QueryLogCopySql" xml:space="preserve">
+    <value>Copy SQL</value>
+  </data>
+  <data name="QueryLogColTime" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="QueryLogColSource" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="QueryLogColConnection" xml:space="preserve">
+    <value>Connection</value>
+  </data>
+  <data name="QueryLogColSql" xml:space="preserve">
+    <value>SQL</value>
+  </data>
+  <data name="QueryLogColDuration" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="QueryLogColRows" xml:space="preserve">
+    <value>Rows</value>
+  </data>
+  <data name="QueryLogColStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="QueryLogSummary" xml:space="preserve">
+    <value>{0} entries</value>
+  </data>
   <data name="ExitConfirmTitle" xml:space="preserve">
     <value>Quit</value>
   </data>

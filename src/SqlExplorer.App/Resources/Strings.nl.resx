@@ -534,6 +534,87 @@
   <data name="CloseToTrayHint" xml:space="preserve">
     <value>De sluitknop verbergt het venster en houdt de app op de achtergrond actief (bijv. de MCP-server). Afsluiten via het systeemvak-icoon of Bestand &gt; Afsluiten.</value>
   </data>
+  <data name="QueryLogMenu" xml:space="preserve">
+    <value>Query-log…</value>
+  </data>
+  <data name="SettingsQueryLog" xml:space="preserve">
+    <value>Query-log</value>
+  </data>
+  <data name="QueryLogDesc" xml:space="preserve">
+    <value>Log uitgevoerde queries naar een audit-logbestand dat je kunt bekijken, filteren en exporteren. Los van de altijd-aan query-geschiedenis.</value>
+  </data>
+  <data name="QueryLogEnabledLabel" xml:space="preserve">
+    <value>Query-logging inschakelen</value>
+  </data>
+  <data name="QueryLogSources" xml:space="preserve">
+    <value>Bronnen loggen</value>
+  </data>
+  <data name="QueryLogAppLabel" xml:space="preserve">
+    <value>Queries vanuit de applicatie</value>
+  </data>
+  <data name="QueryLogMcpLabel" xml:space="preserve">
+    <value>AI-/MCP-queries</value>
+  </data>
+  <data name="QueryLogHint" xml:space="preserve">
+    <value>Alleen de SQL en timing/uitkomst worden bewaard — nooit resultaatrijen of connection-secrets. Het log roteert automatisch bij de groottelimiet.</value>
+  </data>
+  <data name="QueryLogTitle" xml:space="preserve">
+    <value>Query-log</value>
+  </data>
+  <data name="QueryLogSearch" xml:space="preserve">
+    <value>Zoek in SQL of connectie…</value>
+  </data>
+  <data name="QueryLogSourceAll" xml:space="preserve">
+    <value>Alle bronnen</value>
+  </data>
+  <data name="QueryLogSourceApp" xml:space="preserve">
+    <value>Applicatie</value>
+  </data>
+  <data name="QueryLogSourceAi" xml:space="preserve">
+    <value>AI / MCP</value>
+  </data>
+  <data name="QueryLogStatusAll" xml:space="preserve">
+    <value>Alle statussen</value>
+  </data>
+  <data name="QueryLogStatusSuccess" xml:space="preserve">
+    <value>Gelukt</value>
+  </data>
+  <data name="QueryLogStatusError" xml:space="preserve">
+    <value>Fout</value>
+  </data>
+  <data name="QueryLogExport" xml:space="preserve">
+    <value>Exporteren…</value>
+  </data>
+  <data name="QueryLogClear" xml:space="preserve">
+    <value>Log wissen</value>
+  </data>
+  <data name="QueryLogCopySql" xml:space="preserve">
+    <value>SQL kopiëren</value>
+  </data>
+  <data name="QueryLogColTime" xml:space="preserve">
+    <value>Tijd</value>
+  </data>
+  <data name="QueryLogColSource" xml:space="preserve">
+    <value>Bron</value>
+  </data>
+  <data name="QueryLogColConnection" xml:space="preserve">
+    <value>Connectie</value>
+  </data>
+  <data name="QueryLogColSql" xml:space="preserve">
+    <value>SQL</value>
+  </data>
+  <data name="QueryLogColDuration" xml:space="preserve">
+    <value>Duur</value>
+  </data>
+  <data name="QueryLogColRows" xml:space="preserve">
+    <value>Rijen</value>
+  </data>
+  <data name="QueryLogColStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="QueryLogSummary" xml:space="preserve">
+    <value>{0} vermeldingen</value>
+  </data>
   <data name="ExitConfirmTitle" xml:space="preserve">
     <value>Afsluiten</value>
   </data>

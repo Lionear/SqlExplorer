@@ -124,6 +124,26 @@
           <CheckBox Content="{Binding Loc[ConfirmBeforeSave]}" IsChecked="{Binding ConfirmBeforeSave}" Margin="0,6,0,0" />
         </StackPanel>
 
+        <!-- Query Log -->
+        <StackPanel Spacing="8" MaxWidth="560" HorizontalAlignment="Left"
+                    IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=QueryLog}">
+          <TextBlock Text="{Binding Loc[SettingsQueryLog]}" FontSize="14" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding Loc[QueryLogDesc]}" FontSize="12" TextWrapping="Wrap"
+                     Foreground="{DynamicResource CatTextSecondaryBrush}" />
+
+          <CheckBox Content="{Binding Loc[QueryLogEnabledLabel]}" IsChecked="{Binding QueryLogEnabled}" Margin="0,6,0,0" />
+
+          <TextBlock Text="{Binding Loc[QueryLogSources]}" FontWeight="SemiBold" Margin="0,4,0,0"
+                     IsEnabled="{Binding QueryLogEnabled}" />
+          <CheckBox Content="{Binding Loc[QueryLogAppLabel]}" IsChecked="{Binding QueryLogApp}"
+                    IsEnabled="{Binding QueryLogEnabled}" Margin="12,0,0,0" />
+          <CheckBox Content="{Binding Loc[QueryLogMcpLabel]}" IsChecked="{Binding QueryLogMcp}"
+                    IsEnabled="{Binding QueryLogEnabled}" Margin="12,0,0,0" />
+
+          <TextBlock Text="{Binding Loc[QueryLogHint]}" FontSize="11" TextWrapping="Wrap"
+                     Foreground="{DynamicResource CatTextFaintBrush}" Margin="0,4,0,0" />
+        </StackPanel>
+
         <!-- Keyboard -->
         <Grid RowDefinitions="Auto,Auto,Auto,*"
               IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Keyboard}">
