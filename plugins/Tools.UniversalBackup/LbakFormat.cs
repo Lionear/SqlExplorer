@@ -8,6 +8,20 @@ namespace SqlExplorer.Tools.UniversalBackup;
 /// <summary>One backed-up column's definition (schema half of a table).</summary>
 public sealed record BackupColumn(string Name, string DeclaredType, bool Nullable, bool PrimaryKey);
 
+/// <summary>Non-table object kinds carried in the v3 object section (schema-only; their DDL text).</summary>
+public enum LbakObjectKind : byte
+{
+    View = 0,
+    Procedure = 1,
+    Function = 2,
+    Trigger = 3
+}
+
+/// <summary>One non-table object in a v3 backup: its kind, name and the raw CREATE text from
+/// <see cref="SqlExplorer.Sdk.IDbProvider.GetObjectDefinitionAsync"/>. <see cref="ParentTable"/> is set for
+/// a trigger (the table/view it hangs on), empty otherwise.</summary>
+public sealed record BackupObject(LbakObjectKind Kind, string SchemaName, string Name, string ParentTable, string Definition);
+
 /// <summary>One materialised table (v1 read path only). v2 restore streams rows through
 /// <see cref="ILbakVisitor"/> instead of building this in memory.</summary>
 public sealed record BackupTable(string SchemaName, string TableName, IReadOnlyList<BackupColumn> Columns, IReadOnlyList<object?[]> Rows);
@@ -21,7 +35,10 @@ public sealed record LbakMeta(
     string AppVersion,
     int TableCount,
     bool Encrypted,
-    int FormatVersion);
+    int FormatVersion,
+    int ViewCount = 0,
+    int RoutineCount = 0,
+    int TriggerCount = 0);
 
 /// <summary>Restore-side sink for a streamed v2 payload: one <see cref="OnTableAsync"/> per table, then
 /// one <see cref="OnRowAsync"/> per row. A row's cells must be read in order and any LOB stream fully
@@ -30,6 +47,10 @@ public interface ILbakVisitor
 {
     Task OnTableAsync(BackupTable tableHeader, CancellationToken ct);   // tableHeader.Rows is always empty
     Task OnRowAsync(ILbakRow row, CancellationToken ct);
+
+    /// <summary>One non-table object from the v3 object section, replayed after all tables. Default no-op so
+    /// a visitor that only cares about table data need not implement it.</summary>
+    Task OnObjectAsync(BackupObject obj, CancellationToken ct) => Task.CompletedTask;
 }
 
 /// <summary>One row handed to an <see cref="ILbakVisitor"/>. Cells align with the table header's columns.</summary>
@@ -89,7 +110,7 @@ public static class LbakFormat
         }
 
         var file = File.Create(path);
-        WriteHeader(file, meta with { Encrypted = encrypted, FormatVersion = 2 }, salt, baseNonce);
+        WriteHeader(file, meta with { Encrypted = encrypted, FormatVersion = 3 }, salt, baseNonce);
 
         Stream crypto = encrypted ? ChunkedGcm.CreateWriter(file, key!, baseNonce) : file;
         var gzip = new GZipStream(crypto, CompressionLevel.Optimal);
@@ -101,7 +122,7 @@ public static class LbakFormat
         var metaJson = JsonSerializer.SerializeToUtf8Bytes(meta);
         using var w = new BinaryWriter(s, Encoding.UTF8, leaveOpen: true);
         w.Write(Magic);
-        w.Write((byte)2);
+        w.Write((byte)meta.FormatVersion);
         w.Write((byte)(meta.Encrypted ? FlagEncrypted : 0));
         w.Write(salt);
         w.Write(baseNonce);
@@ -155,6 +176,19 @@ public static class LbakFormat
                 var row = new StreamingRow(r, header.Columns.Count);
                 await visitor.OnRowAsync(row, ct);
                 row.DrainRemaining(); // ensure the reader sits at the row boundary even if a cell was skipped
+            }
+        }
+
+        // v3 object section (views/procedures/functions/triggers), replayed after all table data.
+        if (version >= 3)
+        {
+            var objectCount = r.ReadInt32();
+            for (var i = 0; i < objectCount; i++)
+            {
+                ct.ThrowIfCancellationRequested();
+                var obj = new BackupObject(
+                    (LbakObjectKind)r.ReadByte(), r.ReadString(), r.ReadString(), r.ReadString(), r.ReadString());
+                await visitor.OnObjectAsync(obj, ct);
             }
         }
     }

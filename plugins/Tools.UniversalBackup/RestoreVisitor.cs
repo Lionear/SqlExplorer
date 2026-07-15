@@ -17,6 +17,7 @@ internal sealed class RestoreVisitor(ToolExecutionContext context, IProgress<Too
     private string _columnList = string.Empty;
     private int[] _keep = [];
     private readonly List<object?[]> _batch = [];
+    private readonly List<BackupObject> _objects = [];
     private long _inserted;
 
     public async Task OnTableAsync(BackupTable header, CancellationToken ct)
@@ -96,7 +97,46 @@ internal sealed class RestoreVisitor(ToolExecutionContext context, IProgress<Too
         }
     }
 
-    public Task FinishAsync(CancellationToken ct) => FlushBatchAsync(ct);
+    // Buffer non-table objects; they're replayed after all table data (they may reference tables).
+    public Task OnObjectAsync(BackupObject obj, CancellationToken ct)
+    {
+        _objects.Add(obj);
+        return Task.CompletedTask;
+    }
+
+    public async Task FinishAsync(CancellationToken ct)
+    {
+        await FlushBatchAsync(ct);
+        await ReplayObjectsAsync(ct);
+    }
+
+    // Replay object DDL best-effort in dependency-friendly order (views → functions → procedures →
+    // triggers). No topological sort within a kind (a view-on-view chain can still fail) — an object that
+    // fails (already exists, unmet dependency) is logged and skipped, the rest continue.
+    private async Task ReplayObjectsAsync(CancellationToken ct)
+    {
+        foreach (var obj in _objects.OrderBy(ReplayOrder))
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                await context.Provider.ExecuteDdlAsync(context.Profile, obj.Definition, ct);
+                progress.Report(new ToolProgress(context.Localizer.Get("restore.progress.objectDone", obj.Name)));
+            }
+            catch (Exception ex)
+            {
+                progress.Report(new ToolProgress(context.Localizer.Get("restore.progress.objectFailed", obj.Name, ex.Message)));
+            }
+        }
+    }
+
+    private static int ReplayOrder(BackupObject obj) => obj.Kind switch
+    {
+        LbakObjectKind.View => 0,
+        LbakObjectKind.Function => 1,
+        LbakObjectKind.Procedure => 2,
+        _ => 3 // Trigger last (depends on tables/views existing)
+    };
 
     private async Task InsertStreamingRowAsync(object?[] values, List<LobSpool> lobs, CancellationToken ct)
     {

@@ -37,8 +37,8 @@
   <Grid ColumnDefinitions="280,Auto,*">
 
     <!-- ============ Left: folder + connection tree ============ -->
-    <Border Grid.Column="0" Background="{DynamicResource CatPanelBgBrush}"
-            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,0,1,0">
+    <Border Grid.Column="0" Background="{DynamicResource SEPanelBgBrush}"
+            BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="0,0,1,0">
       <Grid RowDefinitions="Auto,*,Auto">
 
         <!-- Toolbar: filter + add/duplicate/delete -->
@@ -49,28 +49,28 @@
                   ToolTip.Tip="{Binding Loc[NewConnection]}"
                   Command="{Binding NewConnectionCommand}">
             <Path Width="14" Height="14" Data="{x:Static vm:NodeIcons.Plus}"
-                  Stroke="{DynamicResource CatTextSecondaryBrush}" StrokeThickness="1.4"
+                  Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.4"
                   StrokeJoin="Round" StrokeLineCap="Round" />
           </Button>
           <Button Grid.Column="2" Classes="Subtle" Padding="7,5"
                   ToolTip.Tip="{Binding Loc[NewFolder]}"
                   Command="{Binding NewFolderCommand}">
             <Path Width="14" Height="14" Data="{x:Static vm:NodeIcons.FolderPlus}"
-                  Stroke="{DynamicResource CatTextSecondaryBrush}" StrokeThickness="1.4"
+                  Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.4"
                   StrokeJoin="Round" StrokeLineCap="Round" />
           </Button>
           <Button Grid.Column="3" Classes="Subtle" Padding="7,5"
                   ToolTip.Tip="{Binding Loc[DuplicateConnection]}"
                   Command="{Binding DuplicateConnectionCommand}">
             <Path Width="14" Height="14" Data="{x:Static vm:NodeIcons.Duplicate}"
-                  Stroke="{DynamicResource CatTextSecondaryBrush}" StrokeThickness="1.4"
+                  Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.4"
                   StrokeJoin="Round" StrokeLineCap="Round" />
           </Button>
           <Button Grid.Column="4" Classes="Subtle" Padding="7,5"
                   ToolTip.Tip="{Binding Loc[Delete]}"
                   Command="{Binding DeleteConnectionCommand}">
             <Path Width="14" Height="14" Data="{x:Static vm:NodeIcons.Trash}"
-                  Stroke="{DynamicResource CatTextSecondaryBrush}" StrokeThickness="1.4"
+                  Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.4"
                   StrokeJoin="Round" StrokeLineCap="Round" />
           </Button>
         </Grid>
@@ -93,11 +93,11 @@
                           Background="{Binding ColorBrush}" IsVisible="{Binding HasColor}" />
                   <Path Width="16" Height="16" VerticalAlignment="Center"
                         Data="{Binding Icon}"
-                        Stroke="{DynamicResource CatTextSecondaryBrush}" StrokeThickness="1.3"
+                        Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.3"
                         StrokeJoin="Round" StrokeLineCap="Round" />
                   <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                   <TextBlock Text="{Binding ConnectionCount}" VerticalAlignment="Center"
-                             FontSize="11" Foreground="{DynamicResource CatTextFaintBrush}"
+                             FontSize="11" Foreground="{DynamicResource SETextFaintBrush}"
                              IsVisible="{Binding IsFolder}" />
                 </StackPanel>
               </Border>
@@ -105,10 +105,10 @@
           </TreeView.ItemTemplate>
         </TreeView>
 
-        <Border Grid.Row="2" BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,1,0,0"
+        <Border Grid.Row="2" BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="0,1,0,0"
                 Padding="10,6">
           <TextBlock Text="{Binding Summary}" FontSize="11"
-                     Foreground="{DynamicResource CatTextFaintBrush}" />
+                     Foreground="{DynamicResource SETextFaintBrush}" />
         </Border>
       </Grid>
     </Border>
@@ -121,25 +121,25 @@
       <!-- Empty state -->
       <TextBlock IsVisible="{Binding IsEmptyPane}"
                  HorizontalAlignment="Center" VerticalAlignment="Center"
-                 Foreground="{DynamicResource CatTextFaintBrush}"
+                 Foreground="{DynamicResource SETextFaintBrush}"
                  Text="{Binding Loc[ManagerEmptyHint]}" />
 
       <!-- Folder detail -->
       <StackPanel IsVisible="{Binding IsFolderPane}" Margin="22" Spacing="4">
         <TextBlock Text="{Binding FolderName}" FontSize="15"
-                   Foreground="{DynamicResource CatTextPrimaryBrush}" Margin="0,0,0,10" />
-        <TextBlock Text="{Binding Loc[FolderName]}" Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                   Foreground="{DynamicResource SETextPrimaryBrush}" Margin="0,0,0,10" />
+        <TextBlock Text="{Binding Loc[FolderName]}" Foreground="{DynamicResource SETextSecondaryBrush}" />
         <TextBox Text="{Binding FolderName}" HorizontalAlignment="Stretch" />
         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,16,0,0">
           <Button Classes="Subtle" Content="{Binding Loc[DeleteFolder]}"
-                  Foreground="{DynamicResource CatStatusErrorBrush}"
+                  Foreground="{DynamicResource SEStatusErrorBrush}"
                   Command="{Binding DeleteFolderCommand}" />
           <Button Classes="Accent" Content="{Binding Loc[Save]}"
                   Command="{Binding RenameFolderCommand}" />
         </StackPanel>
         <TextBlock Text="{Binding Loc[FolderDeleteNote]}" TextWrapping="Wrap" MaxWidth="420"
                    HorizontalAlignment="Left" FontSize="11.5" Margin="0,18,0,0"
-                   Foreground="{DynamicResource CatTextFaintBrush}" />
+                   Foreground="{DynamicResource SETextFaintBrush}" />
       </StackPanel>
 
       <!-- Connection detail (reuses the ConnectionDialogViewModel form) -->
@@ -203,9 +203,9 @@
                     <Panel Width="24" Height="24">
                       <Ellipse Width="20" Height="20"
                                Fill="{Binding Value, Converter={x:Static conv:HexBrushConverter.Instance}}"
-                               Stroke="{DynamicResource CatHairlineBrush}" StrokeThickness="1" />
+                               Stroke="{DynamicResource SEHairlineBrush}" StrokeThickness="1" />
                       <Ellipse Width="24" Height="24" StrokeThickness="2"
-                               Stroke="{DynamicResource CatAccentBrush}"
+                               Stroke="{DynamicResource SEAccentBrush}"
                                IsVisible="{Binding IsSelected}" />
                     </Panel>
                   </Button>
@@ -220,7 +220,7 @@
             <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding AiAccessModes}"
                       SelectedItem="{Binding AiAccess}" />
             <TextBlock Text="{Binding Loc[AiAccessHint]}" FontSize="11" TextWrapping="Wrap"
-                       Foreground="{DynamicResource CatTextFaintBrush}" />
+                       Foreground="{DynamicResource SETextFaintBrush}" />
 
             <!-- Extra visible step before granting AI write access. -->
             <Border IsVisible="{Binding ShowAiWriteWarning}" Margin="0,2,0,0"
@@ -230,24 +230,24 @@
 
             <CheckBox IsChecked="{Binding ExcludeFromMcp}" Content="{Binding Loc[ExcludeFromMcp]}" Margin="0,4,0,0" />
             <TextBlock Text="{Binding Loc[ExcludeFromMcpHint]}" FontSize="11" TextWrapping="Wrap"
-                       Foreground="{DynamicResource CatTextFaintBrush}" />
+                       Foreground="{DynamicResource SETextFaintBrush}" />
           </StackPanel>
         </ScrollViewer>
 
         <!-- Action bar: Test lives on the detail VM; Save/Duplicate/Delete/Discard are manager commands. -->
-        <Border Grid.Row="1" Background="{DynamicResource CatToolbarBgBrush}"
-                BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,1,0,0"
+        <Border Grid.Row="1" Background="{DynamicResource SEToolbarBgBrush}"
+                BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="0,1,0,0"
                 Padding="16,10">
           <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto">
             <Button Grid.Column="0" Content="{Binding Loc[Test]}" Command="{Binding Detail.TestCommand}" />
             <TextBlock Grid.Column="1" Text="{Binding Detail.TestResult}" Margin="10,0,0,0"
                        VerticalAlignment="Center" FontSize="11.5"
-                       Foreground="{DynamicResource CatTextFaintBrush}" />
+                       Foreground="{DynamicResource SETextFaintBrush}" />
             <Button Grid.Column="3" Classes="Subtle" Content="{Binding Loc[DuplicateConnection]}"
                     Command="{Binding DuplicateConnectionCommand}"
                     IsVisible="{Binding CanActOnConnection}" Margin="0,0,8,0" />
             <Button Grid.Column="4" Classes="Subtle" Content="{Binding Loc[Delete]}"
-                    Foreground="{DynamicResource CatStatusErrorBrush}"
+                    Foreground="{DynamicResource SEStatusErrorBrush}"
                     Command="{Binding DeleteConnectionCommand}"
                     IsVisible="{Binding CanActOnConnection}" Margin="0,0,8,0" />
             <Button Grid.Column="5" Classes="Accent" Content="{Binding Loc[Save]}"

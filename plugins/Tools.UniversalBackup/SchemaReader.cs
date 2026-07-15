@@ -48,6 +48,79 @@ public static class SchemaReader
     private static bool IsContainer(DbNodeKind kind) =>
         kind is DbNodeKind.Database or DbNodeKind.SchemaFolder or DbNodeKind.Schema or DbNodeKind.TableFolder or DbNodeKind.Group;
 
+    // ── Non-table objects (v3): views / procedures / functions / triggers, schema-only ──────────────────
+
+    /// <summary>A non-table object found in the tree walk, with the path needed to resolve its definition
+    /// later. Collecting refs is cheap (no per-object definition query), so the selection tree can list
+    /// every object — including ones whose DDL turns out to be unavailable (resolved and skipped at backup).</summary>
+    public sealed record BackupObjectRef(LbakObjectKind Kind, string Schema, string Name, string ParentTable, IReadOnlyList<DbNodeRef> Path);
+
+    /// <summary>Walk the tree for non-table objects (views/procedures/functions/triggers) — names/paths only,
+    /// no definition fetch. Indexes are deliberately not collected — reconstructing CREATE INDEX needs
+    /// introspection the providers don't expose yet.</summary>
+    public static async Task<IReadOnlyList<BackupObjectRef>> CollectObjectRefsAsync(
+        IDbProvider provider, ConnectionProfile profile, DbNodeRef? start, CancellationToken ct)
+    {
+        var found = new List<BackupObjectRef>();
+        var ancestors = start is { } node ? new List<DbNodeRef> { node } : [];
+        await WalkObjectsAsync(provider, profile, ancestors, found, ct);
+        return found;
+    }
+
+    /// <summary>Resolve one object's CREATE text via <see cref="IDbProvider.GetObjectDefinitionAsync"/>.
+    /// Null = the provider can't supply a definition (e.g. an encrypted or CLR routine); the caller logs it
+    /// as skipped rather than silently dropping the object from the selection tree.</summary>
+    public static Task<string?> ResolveDefinitionAsync(
+        IDbProvider provider, ConnectionProfile profile, BackupObjectRef obj, CancellationToken ct) =>
+        provider.GetObjectDefinitionAsync(profile, obj.Path, ct);
+
+    private static async Task WalkObjectsAsync(
+        IDbProvider provider, ConnectionProfile profile, List<DbNodeRef> ancestors,
+        List<BackupObjectRef> found, CancellationToken ct)
+    {
+        var children = await provider.GetChildNodesAsync(profile, ancestors, ct);
+        foreach (var child in children)
+        {
+            ct.ThrowIfCancellationRequested();
+            var path = new List<DbNodeRef>(ancestors) { new(child.Kind, child.Name) };
+
+            if (child.Kind is DbNodeKind.View or DbNodeKind.Procedure or DbNodeKind.Function or DbNodeKind.Trigger)
+            {
+                var schema = path.FirstOrDefault(p => p.Kind == DbNodeKind.Schema)?.Name ?? string.Empty;
+                // A trigger hangs under its owning table/view — record that as the parent.
+                var parent = child.Kind == DbNodeKind.Trigger
+                    ? path.LastOrDefault(p => p.Kind is DbNodeKind.Table or DbNodeKind.View)?.Name ?? string.Empty
+                    : string.Empty;
+                found.Add(new BackupObjectRef(ObjectKind(child.Kind), schema, child.Name, parent, path));
+
+                // A view can itself carry triggers (e.g. SQLite INSTEAD OF) — descend into it too.
+                if (child.Kind == DbNodeKind.View)
+                {
+                    await WalkObjectsAsync(provider, profile, path, found, ct);
+                }
+            }
+            else if (IsObjectContainer(child.Kind))
+            {
+                await WalkObjectsAsync(provider, profile, path, found, ct);
+            }
+        }
+    }
+
+    // Descend the folders that lead to non-table objects — including into Tables, whose TriggerFolder holds
+    // the table's triggers. (The table itself isn't collected here; its data goes through CollectTablesAsync.)
+    private static bool IsObjectContainer(DbNodeKind kind) =>
+        kind is DbNodeKind.Database or DbNodeKind.SchemaFolder or DbNodeKind.Schema or DbNodeKind.Group
+            or DbNodeKind.TableFolder or DbNodeKind.ViewFolder or DbNodeKind.ProcedureFolder
+            or DbNodeKind.FunctionFolder or DbNodeKind.TriggerFolder or DbNodeKind.Table;
+
+    private static LbakObjectKind ObjectKind(DbNodeKind kind) => kind switch
+    {
+        DbNodeKind.View => LbakObjectKind.View,
+        DbNodeKind.Procedure => LbakObjectKind.Procedure,
+        DbNodeKind.Function => LbakObjectKind.Function,
+        _ => LbakObjectKind.Trigger
+    };
+
     public static async Task<IReadOnlyList<BackupColumn>> ReadColumnsAsync(
         IDbProvider provider, ConnectionProfile profile, IReadOnlyList<DbNodeRef> tablePath, CancellationToken ct)
     {

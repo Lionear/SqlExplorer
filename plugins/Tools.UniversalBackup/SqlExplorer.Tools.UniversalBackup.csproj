@@ -9,6 +9,10 @@
          the host's IDbProvider, and uses BCL crypto/compression. Private=false keeps Sdk.dll out of the
          plugin folder so the host's copy is used across the ALC boundary. -->
     <ProjectReference Include="..\..\src\SqlExplorer.Sdk\SqlExplorer.Sdk.csproj" Private="false" />
+    <!-- Route B: the Backup/Restore dialogs return Avalonia Controls (object-selection tree), so Avalonia is
+         a compile-time reference. ExcludeAssets=runtime — the host owns Avalonia and shares it across the
+         plugin ALC boundary, so the plugin must not ship its own copy. -->
+    <PackageReference Include="Avalonia" Version="12.0.5" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,6 +34,7 @@
     <Using Include="SqlExplorer.Sdk.Branding" />
     <Using Include="SqlExplorer.Sdk.Localization" />
     <Using Include="SqlExplorer.Sdk.Tools" />
+    <Using Include="SqlExplorer.Sdk.Ui" />
   </ItemGroup>
 
 </Project>

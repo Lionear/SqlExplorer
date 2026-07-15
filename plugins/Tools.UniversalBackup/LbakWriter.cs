@@ -17,6 +17,7 @@ public sealed class LbakWriter : IDisposable
     private readonly Stream _crypto;
     private readonly Stream _gzip;
     private readonly BinaryWriter _w;
+    private readonly List<BackupObject> _objects = [];
     private bool _tableOpen;
     private bool _finished;
 
@@ -53,6 +54,10 @@ public sealed class LbakWriter : IDisposable
             _tableOpen = false;
         }
     }
+
+    /// <summary>Queue a non-table object (view/procedure/function/trigger) for the v3 object section. Their
+    /// DDL is small text, so they're buffered and written after all tables on <see cref="Dispose"/>.</summary>
+    public void AddObject(BackupObject obj) => _objects.Add(obj);
 
     public void BeginRow() => _w.Write((byte)1); // a row follows
 
@@ -177,6 +182,18 @@ public sealed class LbakWriter : IDisposable
         _finished = true;
         EndTable();
         _w.Write((byte)0); // no more tables
+
+        // v3 object section: count + each object (kind, schema, name, parent, definition text).
+        _w.Write(_objects.Count);
+        foreach (var o in _objects)
+        {
+            _w.Write((byte)o.Kind);
+            _w.Write(o.SchemaName);
+            _w.Write(o.Name);
+            _w.Write(o.ParentTable);
+            _w.Write(o.Definition);
+        }
+
         _w.Flush();
         _w.Dispose();
         _gzip.Dispose();   // flushes gzip → disposes crypto (seals final chunk) → disposes file

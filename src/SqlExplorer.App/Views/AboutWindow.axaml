@@ -6,7 +6,7 @@
         CanResize="False">
   <StackPanel Margin="20" Spacing="10" HorizontalAlignment="Center">
     <TextBlock x:Name="TitleText" FontWeight="SemiBold" FontSize="16" HorizontalAlignment="Center" />
-    <TextBlock x:Name="VersionText" FontSize="12" Foreground="{DynamicResource CatTextSecondaryBrush}"
+    <TextBlock x:Name="VersionText" FontSize="12" Foreground="{DynamicResource SETextSecondaryBrush}"
                HorizontalAlignment="Center" />
     <Button x:Name="OkButton" Classes="Accent" Content="OK" Click="OnOk"
             HorizontalAlignment="Center" Margin="0,8,0,0" IsDefault="True" />

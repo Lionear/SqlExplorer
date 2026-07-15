@@ -778,7 +778,7 @@ public partial class DocumentView : UserControl
             TextDecorations = TextDecorations.Underline
         };
         text.Bind(TextBlock.TextProperty, new Binding($"Cells[{index}].Value") { Converter = NullCellTextConverter.Instance });
-        text[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("CatAccentBrush");
+        text[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("SEAccentBrush");
 
         var button = new Button
         {

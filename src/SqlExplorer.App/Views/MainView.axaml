@@ -23,7 +23,7 @@
       <Border IsVisible="{Binding PluginRestartRequired}" Background="#1FE0A33E"
               BorderBrush="#59E0A33E" BorderThickness="0,0,0,1" Padding="12,7">
         <StackPanel Orientation="Horizontal" Spacing="12">
-          <TextBlock Text="{Binding Loc[MainPluginRestartBanner]}" Foreground="{DynamicResource CatStatusWaitingBrush}"
+          <TextBlock Text="{Binding Loc[MainPluginRestartBanner]}" Foreground="{DynamicResource SEStatusWaitingBrush}"
                      FontSize="12" VerticalAlignment="Center" />
           <Button Classes="Subtle" Content="{Binding Loc[MainRestartNow]}" Command="{Binding RestartAppCommand}" />
         </StackPanel>
@@ -31,8 +31,8 @@
 
       <!-- Top toolbar: new query tab + quick actions. Language/theme live in the menu bar now;
            connection actions live in the sidebar. -->
-      <Border Background="{DynamicResource CatToolbarBgBrush}"
-              BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,0,0,1">
+      <Border Background="{DynamicResource SEToolbarBgBrush}"
+              BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="0,0,0,1">
         <StackPanel Orientation="Horizontal" Spacing="8" Margin="8,6">
           <Button Classes="Accent"
                   Content="{Binding Loc[NewQueryTab]}" Command="{Binding NewQueryTabCommand}" />
@@ -56,13 +56,13 @@
       </Grid.ColumnDefinitions>
 
       <!-- Left sidebar: one unified tree (DBeaver-style), loaded lazily on expand. -->
-      <Border Grid.Column="0" Background="{DynamicResource CatPanelBgBrush}"
-              BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,0,1,0">
+      <Border Grid.Column="0" Background="{DynamicResource SEPanelBgBrush}"
+              BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="0,0,1,0">
         <Grid RowDefinitions="Auto,*">
           <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="10,8,8,6">
             <TextBlock Grid.Column="0" Text="{Binding Loc[Connections]}"
                        FontWeight="SemiBold" FontSize="12"
-                       Foreground="{DynamicResource CatTextSecondaryBrush}" VerticalAlignment="Center" />
+                       Foreground="{DynamicResource SETextSecondaryBrush}" VerticalAlignment="Center" />
             <Button Grid.Column="1" Classes="Accent" Content="＋" Padding="8,2"
                     ToolTip.Tip="{Binding Loc[NewConnection]}"
                     Command="{Binding NewConnectionCommand}" />
@@ -181,17 +181,17 @@
                            Source="{Binding IconImage}" IsVisible="{Binding HasImageIcon}" />
                     <Path Width="16" Height="16" VerticalAlignment="Center"
                           Data="{Binding IconGeometry}"
-                          Stroke="{DynamicResource CatTextSecondaryBrush}" StrokeThickness="1.3"
+                          Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.3"
                           StrokeJoin="Round" StrokeLineCap="Round"
                           IsVisible="{Binding HasVectorIcon}" />
                     <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
                   </StackPanel>
                   <!-- Right-aligned on-disk size badge (databases/tables), DataGrip-style. -->
                   <Border Grid.Column="1" IsVisible="{Binding HasBadge}" VerticalAlignment="Center"
-                          Background="{DynamicResource CatHairlineBrush}" CornerRadius="3"
+                          Background="{DynamicResource SEHairlineBrush}" CornerRadius="3"
                           Padding="5,1" Margin="8,0,4,0">
                     <TextBlock Text="{Binding Badge}" FontSize="10.5"
-                               Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                               Foreground="{DynamicResource SETextSecondaryBrush}" />
                   </Border>
                 </Grid>
               </TreeDataTemplate>
@@ -244,7 +244,7 @@
         </TabControl>
 
         <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                   Foreground="{DynamicResource CatTextFaintBrush}"
+                   Foreground="{DynamicResource SETextFaintBrush}"
                    Text="{Binding Loc[EmptyHint]}"
                    IsVisible="{Binding SelectedDocument, Converter={x:Static conv:ObjectConverters.IsNull}}" />
         </Panel>
@@ -252,12 +252,12 @@
 
       <!-- History panel (toggled from the toolbar): search + list, double-click re-runs into a query tab. -->
       <Border Grid.Column="3" Width="300" IsVisible="{Binding IsHistoryVisible}"
-              Background="{DynamicResource CatPanelBgBrush}"
-              BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1,0,0,0">
+              Background="{DynamicResource SEPanelBgBrush}"
+              BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1,0,0,0">
         <Grid RowDefinitions="Auto,Auto,*">
           <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="10,8,8,6">
             <TextBlock Grid.Column="0" Text="{Binding Loc[History]}" FontWeight="SemiBold" FontSize="12"
-                       Foreground="{DynamicResource CatTextSecondaryBrush}" VerticalAlignment="Center" />
+                       Foreground="{DynamicResource SETextSecondaryBrush}" VerticalAlignment="Center" />
             <Button Grid.Column="1" Classes="Subtle" Padding="8,2"
                     Content="{Binding Loc[ClearHistory]}" Command="{Binding ClearHistoryCommand}" />
           </Grid>
@@ -273,13 +273,13 @@
                     <Border Grid.Column="0" Margin="0,0,6,0" VerticalAlignment="Center"
                             Background="#223574F0" CornerRadius="4" Padding="4,0"
                             IsVisible="{Binding Source, Converter={x:Static cvt:EqualsConverter.Instance}, ConverterParameter=Ai}">
-                      <TextBlock Text="AI" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource CatAccentBrush}" />
+                      <TextBlock Text="AI" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource SEAccentBrush}" />
                     </Border>
                     <TextBlock Grid.Column="1" Text="{Binding Sql}" TextWrapping="Wrap" MaxLines="2"
                                TextTrimming="CharacterEllipsis" FontSize="12"
                                FontFamily="Cascadia Code,Consolas,Menlo,monospace" />
                   </Grid>
-                  <TextBlock FontSize="10" Foreground="{DynamicResource CatTextFaintBrush}">
+                  <TextBlock FontSize="10" Foreground="{DynamicResource SETextFaintBrush}">
                     <TextBlock.Text>
                       <MultiBinding StringFormat="{}{0} · {1} rows · {2} ms">
                         <Binding Path="ConnectionName" />
@@ -303,8 +303,8 @@
     <Border Grid.Row="1" IsVisible="{Binding IsSearchVisible}"
             Background="#80000000">
       <Border Width="480" MaxHeight="420" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,50,0,0"
-              Background="{DynamicResource CatPanelBgBrush}"
-              BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1" CornerRadius="6">
+              Background="{DynamicResource SEPanelBgBrush}"
+              BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1" CornerRadius="6">
         <Grid RowDefinitions="Auto,*" Margin="10">
           <TextBox Grid.Row="0" x:Name="SearchBox" Text="{Binding SearchText}"
                     PlaceholderText="{Binding Loc[SearchObjects]}" />
@@ -316,7 +316,7 @@
                 <StackPanel Spacing="1" Margin="0,2">
                   <TextBlock Text="{Binding Display}" FontSize="13" />
                   <TextBlock Text="{Binding Subtitle}" FontSize="10"
-                             Foreground="{DynamicResource CatTextFaintBrush}" />
+                             Foreground="{DynamicResource SETextFaintBrush}" />
                 </StackPanel>
               </DataTemplate>
             </ListBox.ItemTemplate>
@@ -327,12 +327,12 @@
 
     <!-- Output/log panel (toggled from the toolbar): timestamped connection results + errors. -->
     <Border Grid.Row="2" Height="170" IsVisible="{Binding IsOutputVisible}"
-            Background="{DynamicResource CatPanelBgBrush}"
-            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,1,0,0">
+            Background="{DynamicResource SEPanelBgBrush}"
+            BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="0,1,0,0">
       <Grid RowDefinitions="Auto,*">
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="10,6,8,4">
           <TextBlock Grid.Column="0" Text="{Binding Loc[Output]}" FontWeight="SemiBold" FontSize="12"
-                     Foreground="{DynamicResource CatTextSecondaryBrush}" VerticalAlignment="Center" />
+                     Foreground="{DynamicResource SETextSecondaryBrush}" VerticalAlignment="Center" />
           <Button Grid.Column="1" Classes="Subtle" Padding="8,2"
                   Content="{Binding Loc[ClearOutput]}" Command="{Binding ClearOutputCommand}" />
         </Grid>
@@ -349,12 +349,12 @@
               <Grid ColumnDefinitions="Auto,Auto,Auto,*" Margin="0,1">
                 <TextBlock Grid.Column="0" Text="{Binding TimeText}" FontSize="11"
                            FontFamily="Cascadia Code,Consolas,Menlo,monospace"
-                           Foreground="{DynamicResource CatTextFaintBrush}" Margin="0,0,8,0" />
+                           Foreground="{DynamicResource SETextFaintBrush}" Margin="0,0,8,0" />
                 <TextBlock Grid.Column="1" Text="{Binding LevelText}" FontSize="11" FontWeight="SemiBold"
                            Width="44" Margin="0,0,8,0"
                            Foreground="{Binding IsError, Converter={x:Static cvt:OutputLevelBrushConverter.Instance}}" />
                 <TextBlock Grid.Column="2" Text="{Binding Source}" FontSize="11" Margin="0,0,8,0"
-                           Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                           Foreground="{DynamicResource SETextSecondaryBrush}" />
                 <TextBlock Grid.Column="3" Text="{Binding Message}" FontSize="11" TextWrapping="Wrap"
                            FontFamily="Cascadia Code,Consolas,Menlo,monospace" />
               </Grid>
@@ -366,18 +366,18 @@
 
     <!-- Bottom status bar: connection state dot + active connection. Execution messages live in the
          Output panel now, not here. -->
-    <Border Grid.Row="3" Background="{DynamicResource CatToolbarBgBrush}"
-            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,1,0,0">
+    <Border Grid.Row="3" Background="{DynamicResource SEToolbarBgBrush}"
+            BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="0,1,0,0">
       <Grid ColumnDefinitions="Auto,*" Margin="10,4">
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
           <Ellipse Width="8" Height="8" VerticalAlignment="Center"
-                   Fill="{DynamicResource CatStatusConnectedBrush}"
+                   Fill="{DynamicResource SEStatusConnectedBrush}"
                    IsVisible="{Binding SelectedConnection, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
           <Ellipse Width="8" Height="8" VerticalAlignment="Center"
-                   Fill="{DynamicResource CatTextFaintBrush}"
+                   Fill="{DynamicResource SETextFaintBrush}"
                    IsVisible="{Binding SelectedConnection, Converter={x:Static conv:ObjectConverters.IsNull}}" />
           <TextBlock VerticalAlignment="Center" FontSize="12"
-                     Foreground="{DynamicResource CatTextSecondaryBrush}"
+                     Foreground="{DynamicResource SETextSecondaryBrush}"
                      Text="{Binding SelectedConnection.Name, FallbackValue={x:Null}, TargetNullValue=—}" />
         </StackPanel>
       </Grid>

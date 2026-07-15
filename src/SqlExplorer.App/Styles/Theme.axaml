@@ -11,148 +11,148 @@
 
         <!-- Dark -->
         <ResourceDictionary x:Key="Dark">
-          <SolidColorBrush x:Key="CatWindowBgBrush" Color="#1E1F22" />
-          <SolidColorBrush x:Key="CatPanelBgBrush" Color="#2B2D30" />
-          <SolidColorBrush x:Key="CatSecondaryBgBrush" Color="#26282B" />
-          <SolidColorBrush x:Key="CatToolbarBgBrush" Color="#2B2D30" />
-          <SolidColorBrush x:Key="CatHairlineBrush" Color="#393B40" />
-          <SolidColorBrush x:Key="CatHoverBgBrush" Color="#2E3338" />
-          <SolidColorBrush x:Key="CatSelectionBgBrush" Color="#2E436E" />
+          <SolidColorBrush x:Key="SEWindowBgBrush" Color="#1E1F22" />
+          <SolidColorBrush x:Key="SEPanelBgBrush" Color="#2B2D30" />
+          <SolidColorBrush x:Key="SESecondaryBgBrush" Color="#26282B" />
+          <SolidColorBrush x:Key="SEToolbarBgBrush" Color="#2B2D30" />
+          <SolidColorBrush x:Key="SEHairlineBrush" Color="#393B40" />
+          <SolidColorBrush x:Key="SEHoverBgBrush" Color="#2E3338" />
+          <SolidColorBrush x:Key="SESelectionBgBrush" Color="#2E436E" />
 
-          <SolidColorBrush x:Key="CatTextPrimaryBrush" Color="#DFE1E5" />
-          <SolidColorBrush x:Key="CatTextSecondaryBrush" Color="#9DA0A8" />
-          <SolidColorBrush x:Key="CatTextFaintBrush" Color="#6F737A" />
+          <SolidColorBrush x:Key="SETextPrimaryBrush" Color="#DFE1E5" />
+          <SolidColorBrush x:Key="SETextSecondaryBrush" Color="#9DA0A8" />
+          <SolidColorBrush x:Key="SETextFaintBrush" Color="#6F737A" />
 
-          <SolidColorBrush x:Key="CatAccentBrush" Color="#3574F0" />
-          <SolidColorBrush x:Key="CatAccentHoverBrush" Color="#4A83F2" />
-          <SolidColorBrush x:Key="CatAccentPressedBrush" Color="#2C63D6" />
-          <SolidColorBrush x:Key="CatAccentFgBrush" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="SEAccentBrush" Color="#3574F0" />
+          <SolidColorBrush x:Key="SEAccentHoverBrush" Color="#4A83F2" />
+          <SolidColorBrush x:Key="SEAccentPressedBrush" Color="#2C63D6" />
+          <SolidColorBrush x:Key="SEAccentFgBrush" Color="#FFFFFF" />
 
-          <SolidColorBrush x:Key="CatStatusConnectedBrush" Color="#5AA576" />
-          <SolidColorBrush x:Key="CatStatusErrorBrush" Color="#D64545" />
-          <SolidColorBrush x:Key="CatStatusBusyBrush" Color="#3574F0" />
-          <SolidColorBrush x:Key="CatStatusWaitingBrush" Color="#E0A33E" />
+          <SolidColorBrush x:Key="SEStatusConnectedBrush" Color="#5AA576" />
+          <SolidColorBrush x:Key="SEStatusErrorBrush" Color="#D64545" />
+          <SolidColorBrush x:Key="SEStatusBusyBrush" Color="#3574F0" />
+          <SolidColorBrush x:Key="SEStatusWaitingBrush" Color="#E0A33E" />
         </ResourceDictionary>
 
         <!-- Light -->
         <ResourceDictionary x:Key="Light">
-          <SolidColorBrush x:Key="CatWindowBgBrush" Color="#FFFFFF" />
-          <SolidColorBrush x:Key="CatPanelBgBrush" Color="#F7F8FA" />
-          <SolidColorBrush x:Key="CatSecondaryBgBrush" Color="#EEF0F3" />
-          <SolidColorBrush x:Key="CatToolbarBgBrush" Color="#F0F1F3" />
-          <SolidColorBrush x:Key="CatHairlineBrush" Color="#D9DCE1" />
-          <SolidColorBrush x:Key="CatHoverBgBrush" Color="#EAEDF1" />
-          <SolidColorBrush x:Key="CatSelectionBgBrush" Color="#D4E2FC" />
+          <SolidColorBrush x:Key="SEWindowBgBrush" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="SEPanelBgBrush" Color="#F7F8FA" />
+          <SolidColorBrush x:Key="SESecondaryBgBrush" Color="#EEF0F3" />
+          <SolidColorBrush x:Key="SEToolbarBgBrush" Color="#F0F1F3" />
+          <SolidColorBrush x:Key="SEHairlineBrush" Color="#D9DCE1" />
+          <SolidColorBrush x:Key="SEHoverBgBrush" Color="#EAEDF1" />
+          <SolidColorBrush x:Key="SESelectionBgBrush" Color="#D4E2FC" />
 
-          <SolidColorBrush x:Key="CatTextPrimaryBrush" Color="#1B1D21" />
-          <SolidColorBrush x:Key="CatTextSecondaryBrush" Color="#5B616B" />
-          <SolidColorBrush x:Key="CatTextFaintBrush" Color="#8A909A" />
+          <SolidColorBrush x:Key="SETextPrimaryBrush" Color="#1B1D21" />
+          <SolidColorBrush x:Key="SETextSecondaryBrush" Color="#5B616B" />
+          <SolidColorBrush x:Key="SETextFaintBrush" Color="#8A909A" />
 
-          <SolidColorBrush x:Key="CatAccentBrush" Color="#2F6FEB" />
-          <SolidColorBrush x:Key="CatAccentHoverBrush" Color="#2560D6" />
-          <SolidColorBrush x:Key="CatAccentPressedBrush" Color="#1F53BC" />
-          <SolidColorBrush x:Key="CatAccentFgBrush" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="SEAccentBrush" Color="#2F6FEB" />
+          <SolidColorBrush x:Key="SEAccentHoverBrush" Color="#2560D6" />
+          <SolidColorBrush x:Key="SEAccentPressedBrush" Color="#1F53BC" />
+          <SolidColorBrush x:Key="SEAccentFgBrush" Color="#FFFFFF" />
 
-          <SolidColorBrush x:Key="CatStatusConnectedBrush" Color="#2E8B57" />
-          <SolidColorBrush x:Key="CatStatusErrorBrush" Color="#C4362F" />
-          <SolidColorBrush x:Key="CatStatusBusyBrush" Color="#2F6FEB" />
-          <SolidColorBrush x:Key="CatStatusWaitingBrush" Color="#B9791F" />
+          <SolidColorBrush x:Key="SEStatusConnectedBrush" Color="#2E8B57" />
+          <SolidColorBrush x:Key="SEStatusErrorBrush" Color="#C4362F" />
+          <SolidColorBrush x:Key="SEStatusBusyBrush" Color="#2F6FEB" />
+          <SolidColorBrush x:Key="SEStatusWaitingBrush" Color="#B9791F" />
         </ResourceDictionary>
 
       </ResourceDictionary.ThemeDictionaries>
 
       <!-- Variant-invariant tokens -->
-      <CornerRadius x:Key="CatControlRadius">6</CornerRadius>
-      <CornerRadius x:Key="CatPanelRadius">10</CornerRadius>
-      <Thickness x:Key="CatHairlineThickness">1</Thickness>
-      <FontFamily x:Key="CatMonoFont">Cascadia Code, Consolas, Menlo, monospace</FontFamily>
+      <CornerRadius x:Key="SEControlRadius">6</CornerRadius>
+      <CornerRadius x:Key="SEPanelRadius">10</CornerRadius>
+      <Thickness x:Key="SEHairlineThickness">1</Thickness>
+      <FontFamily x:Key="SEMonoFont">Cascadia Code, Consolas, Menlo, monospace</FontFamily>
     </ResourceDictionary>
   </Styles.Resources>
 
   <!-- Window chrome -->
   <Style Selector="Window">
-    <Setter Property="Background" Value="{DynamicResource CatWindowBgBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SEWindowBgBrush}" />
   </Style>
 
   <!-- Base text (:is so SelectableTextBlock inherits too) -->
   <Style Selector=":is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource CatTextPrimaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SETextPrimaryBrush}" />
   </Style>
 
   <!-- Buttons: flat, hairline, rounded. Accent reserved for primary actions via the class. -->
   <Style Selector="Button">
-    <Setter Property="Background" Value="{DynamicResource CatPanelBgBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource CatTextPrimaryBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource CatHairlineBrush}" />
-    <Setter Property="BorderThickness" Value="{StaticResource CatHairlineThickness}" />
-    <Setter Property="CornerRadius" Value="{StaticResource CatControlRadius}" />
+    <Setter Property="Background" Value="{DynamicResource SEPanelBgBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SETextPrimaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SEHairlineBrush}" />
+    <Setter Property="BorderThickness" Value="{StaticResource SEHairlineThickness}" />
+    <Setter Property="CornerRadius" Value="{StaticResource SEControlRadius}" />
     <Setter Property="Padding" Value="11,5" />
   </Style>
   <Style Selector="Button:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource CatHoverBgBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource CatHairlineBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SEHoverBgBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SEHairlineBrush}" />
   </Style>
   <Style Selector="Button:disabled /template/ ContentPresenter">
     <Setter Property="Opacity" Value="0.45" />
   </Style>
 
   <Style Selector="Button.Accent">
-    <Setter Property="Background" Value="{DynamicResource CatAccentBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource CatAccentFgBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource CatAccentBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SEAccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SEAccentFgBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SEAccentBrush}" />
   </Style>
   <Style Selector="Button.Accent:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource CatAccentHoverBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource CatAccentHoverBrush}" />
-    <Setter Property="TextBlock.Foreground" Value="{DynamicResource CatAccentFgBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SEAccentHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SEAccentHoverBrush}" />
+    <Setter Property="TextBlock.Foreground" Value="{DynamicResource SEAccentFgBrush}" />
   </Style>
   <Style Selector="Button.Accent:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource CatAccentPressedBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SEAccentPressedBrush}" />
   </Style>
 
   <!-- Subtle button: chromeless, text-only (toggles, footer actions) -->
   <Style Selector="Button.Subtle">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Foreground" Value="{DynamicResource CatTextSecondaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SETextSecondaryBrush}" />
     <Setter Property="Padding" Value="8,4" />
   </Style>
   <Style Selector="Button.Subtle:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource CatHoverBgBrush}" />
-    <Setter Property="TextBlock.Foreground" Value="{DynamicResource CatTextPrimaryBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SEHoverBgBrush}" />
+    <Setter Property="TextBlock.Foreground" Value="{DynamicResource SETextPrimaryBrush}" />
   </Style>
 
   <!-- ComboBox -->
   <Style Selector="ComboBox">
-    <Setter Property="Background" Value="{DynamicResource CatPanelBgBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource CatTextPrimaryBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource CatHairlineBrush}" />
-    <Setter Property="BorderThickness" Value="{StaticResource CatHairlineThickness}" />
-    <Setter Property="CornerRadius" Value="{StaticResource CatControlRadius}" />
+    <Setter Property="Background" Value="{DynamicResource SEPanelBgBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SETextPrimaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SEHairlineBrush}" />
+    <Setter Property="BorderThickness" Value="{StaticResource SEHairlineThickness}" />
+    <Setter Property="CornerRadius" Value="{StaticResource SEControlRadius}" />
     <Setter Property="Padding" Value="8,4" />
   </Style>
   <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource CatHoverBgBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SEHoverBgBrush}" />
   </Style>
   <Style Selector="ComboBoxItem:selected /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource CatSelectionBgBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SESelectionBgBrush}" />
   </Style>
 
   <!-- TextBox: input surface, accent focus ring instead of Fluent blue -->
   <Style Selector="TextBox">
-    <Setter Property="Background" Value="{DynamicResource CatSecondaryBgBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource CatTextPrimaryBrush}" />
-    <Setter Property="CaretBrush" Value="{DynamicResource CatTextPrimaryBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource CatHairlineBrush}" />
-    <Setter Property="BorderThickness" Value="{StaticResource CatHairlineThickness}" />
-    <Setter Property="CornerRadius" Value="{StaticResource CatControlRadius}" />
+    <Setter Property="Background" Value="{DynamicResource SESecondaryBgBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SETextPrimaryBrush}" />
+    <Setter Property="CaretBrush" Value="{DynamicResource SETextPrimaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SEHairlineBrush}" />
+    <Setter Property="BorderThickness" Value="{StaticResource SEHairlineThickness}" />
+    <Setter Property="CornerRadius" Value="{StaticResource SEControlRadius}" />
     <Setter Property="Padding" Value="8,6" />
   </Style>
   <Style Selector="TextBox /template/ TextBlock#PART_Watermark">
-    <Setter Property="Foreground" Value="{DynamicResource CatTextFaintBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SETextFaintBrush}" />
   </Style>
   <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
-    <Setter Property="BorderBrush" Value="{DynamicResource CatAccentBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SEAccentBrush}" />
   </Style>
 
   <!-- ListBox: flat; selected row gets a quiet panel-bg fill, not Fluent blue -->
@@ -162,13 +162,13 @@
   </Style>
   <Style Selector="ListBoxItem">
     <Setter Property="Padding" Value="6,5" />
-    <Setter Property="CornerRadius" Value="{StaticResource CatControlRadius}" />
+    <Setter Property="CornerRadius" Value="{StaticResource SEControlRadius}" />
   </Style>
   <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource CatHoverBgBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SEHoverBgBrush}" />
   </Style>
   <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource CatSelectionBgBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SESelectionBgBrush}" />
   </Style>
 
   <!-- TreeView: dense IDE rows, accent-tinted selection, quiet hover -->
@@ -176,18 +176,18 @@
     <Setter Property="Background" Value="Transparent" />
   </Style>
   <Style Selector="TreeViewItem">
-    <Setter Property="Foreground" Value="{DynamicResource CatTextPrimaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SETextPrimaryBrush}" />
     <Setter Property="MinHeight" Value="24" />
     <Setter Property="Padding" Value="4,1" />
   </Style>
   <Style Selector="TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
-    <Setter Property="Background" Value="{DynamicResource CatHoverBgBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SEHoverBgBrush}" />
   </Style>
   <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
-    <Setter Property="Background" Value="{DynamicResource CatSelectionBgBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SESelectionBgBrush}" />
   </Style>
   <Style Selector="TreeViewItem:selected:pointerover /template/ Border#PART_LayoutRoot">
-    <Setter Property="Background" Value="{DynamicResource CatSelectionBgBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SESelectionBgBrush}" />
   </Style>
 
   <!-- Tabs: flat editor tabs with an accent underline on the active tab (DataGrip-style) -->
@@ -204,7 +204,7 @@
   <!-- Document tabs read like the Result sub-tabs: flat text, no box, just an accent underline on the
        selected one (mirrors DocumentView's Button.ResultTab style). -->
   <Style Selector="TabItem">
-    <Setter Property="Foreground" Value="{DynamicResource CatTextSecondaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SETextSecondaryBrush}" />
     <Setter Property="FontSize" Value="13" />
     <Setter Property="MinHeight" Value="32" />
     <Setter Property="Padding" Value="12,6" />
@@ -217,14 +217,14 @@
     <Setter Property="CornerRadius" Value="0" />
   </Style>
   <Style Selector="TabItem:pointerover /template/ Border#PART_LayoutRoot">
-    <Setter Property="Background" Value="{DynamicResource CatHoverBgBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SEHoverBgBrush}" />
   </Style>
   <Style Selector="TabItem:selected">
-    <Setter Property="Foreground" Value="{DynamicResource CatTextPrimaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SETextPrimaryBrush}" />
   </Style>
   <Style Selector="TabItem:selected /template/ Border#PART_LayoutRoot">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="{DynamicResource CatAccentBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SEAccentBrush}" />
     <Setter Property="BorderThickness" Value="0,0,0,2" />
   </Style>
   <!-- Hide Fluent's built-in selection pipe (the short line right under the text) — the accent underline
@@ -239,30 +239,30 @@
 
   <!-- DataGrid: horizontal-only rules, compact rows, themed header with a bottom hairline -->
   <Style Selector="DataGrid">
-    <Setter Property="Background" Value="{DynamicResource CatWindowBgBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SEWindowBgBrush}" />
     <Setter Property="RowBackground" Value="Transparent" />
     <Setter Property="GridLinesVisibility" Value="Horizontal" />
-    <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource CatHairlineBrush}" />
-    <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource CatHairlineBrush}" />
+    <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource SEHairlineBrush}" />
+    <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource SEHairlineBrush}" />
     <Setter Property="RowHeight" Value="26" />
   </Style>
   <Style Selector="DataGridColumnHeader">
-    <Setter Property="Background" Value="{DynamicResource CatToolbarBgBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource CatTextSecondaryBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SEToolbarBgBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SETextSecondaryBrush}" />
     <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="BorderBrush" Value="{DynamicResource CatHairlineBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SEHairlineBrush}" />
     <Setter Property="BorderThickness" Value="0,0,1,1" />
     <Setter Property="Padding" Value="8,5" />
   </Style>
   <!-- Row-number gutter: themed frame like the column headers, wider, with faint right-aligned numbers
        and a hairline separator between rows. -->
   <Style Selector="DataGridRowHeader">
-    <Setter Property="Background" Value="{DynamicResource CatToolbarBgBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource CatTextFaintBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource CatHairlineBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SEToolbarBgBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SETextFaintBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SEHairlineBrush}" />
     <Setter Property="BorderThickness" Value="0,0,1,0" />
     <Setter Property="AreSeparatorsVisible" Value="True" />
-    <Setter Property="SeparatorBrush" Value="{DynamicResource CatHairlineBrush}" />
+    <Setter Property="SeparatorBrush" Value="{DynamicResource SEHairlineBrush}" />
     <Setter Property="MinWidth" Value="42" />
     <Setter Property="Padding" Value="10,0" />
     <Setter Property="HorizontalContentAlignment" Value="Right" />

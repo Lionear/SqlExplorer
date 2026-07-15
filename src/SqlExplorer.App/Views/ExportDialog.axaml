@@ -5,7 +5,7 @@
         WindowStartupLocation="CenterOwner">
   <StackPanel Margin="16" Spacing="10">
     <TextBlock x:Name="HeaderText" FontWeight="SemiBold" />
-    <TextBlock x:Name="RowsText" FontSize="12" Foreground="{DynamicResource CatTextSecondaryBrush}" />
+    <TextBlock x:Name="RowsText" FontSize="12" Foreground="{DynamicResource SETextSecondaryBrush}" />
 
     <StackPanel Spacing="4" Margin="0,8,0,0">
       <RadioButton x:Name="CsvOption" GroupName="ExportFormat" IsChecked="True" Content="CSV" />

@@ -11,7 +11,7 @@
     <!-- One row per PluginSettingField (Route A) — same shape/look as the connection dialog's fields. -->
     <DataTemplate x:Key="PluginFieldTemplate">
       <StackPanel Spacing="2" Margin="0,4,0,0">
-        <TextBlock Text="{Binding Label}" Foreground="{DynamicResource CatTextSecondaryBrush}" FontSize="11.5" />
+        <TextBlock Text="{Binding Label}" Foreground="{DynamicResource SETextSecondaryBrush}" FontSize="11.5" />
         <Grid ColumnDefinitions="*,Auto">
           <TextBox Grid.Column="0" Text="{Binding Value}" PlaceholderText="{Binding Watermark}"
                    IsVisible="{Binding IsText}" />
@@ -29,27 +29,27 @@
   <Window.Styles>
     <!-- Capture chip: accent while listening for keys, red outline while it clashes with another binding. -->
     <Style Selector="ctl|ShortcutCaptureBox:capturing">
-      <Setter Property="BorderBrush" Value="{DynamicResource CatAccentBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource CatAccentBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SEAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SEAccentBrush}" />
       <Setter Property="Background" Value="#223574F0" />
     </Style>
     <Style Selector="ctl|ShortcutCaptureBox.conflict">
-      <Setter Property="BorderBrush" Value="{DynamicResource CatStatusErrorBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SEStatusErrorBrush}" />
     </Style>
   </Window.Styles>
 
   <Grid ColumnDefinitions="172,*">
 
     <!-- ============ Category rail ============ -->
-    <Border Grid.Column="0" Background="{DynamicResource CatPanelBgBrush}"
-            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="0,0,1,0">
+    <Border Grid.Column="0" Background="{DynamicResource SEPanelBgBrush}"
+            BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="0,0,1,0">
       <ListBox Background="Transparent" Padding="0,8"
                ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}">
         <ListBox.ItemTemplate>
           <DataTemplate>
             <StackPanel Orientation="Horizontal" Spacing="10">
               <Path Width="16" Height="16" VerticalAlignment="Center" Data="{Binding Icon}"
-                    Stroke="{DynamicResource CatTextSecondaryBrush}" StrokeThickness="1.3"
+                    Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.3"
                     StrokeJoin="Round" StrokeLineCap="Round" />
               <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
             </StackPanel>
@@ -66,7 +66,7 @@
         <StackPanel Spacing="10"
                     IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=General}">
           <TextBlock Text="{Binding Loc[SettingsGeneralCat]}" FontSize="14" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding Loc[SettingsGeneral]}" FontSize="12" Foreground="{DynamicResource CatTextSecondaryBrush}" />
+          <TextBlock Text="{Binding Loc[SettingsGeneral]}" FontSize="12" Foreground="{DynamicResource SETextSecondaryBrush}" />
           <TextBlock Text="{Binding Loc[Language]}" FontWeight="SemiBold" Margin="0,6,0,0" />
           <StackPanel Orientation="Horizontal" Spacing="12">
             <RadioButton GroupName="Language" Content="Nederlands"
@@ -81,7 +81,7 @@
           <CheckBox Content="{Binding Loc[ConfirmOnExit]}" IsChecked="{Binding ConfirmOnExit}" />
           <CheckBox Content="{Binding Loc[CloseToTray]}" IsChecked="{Binding CloseToTray}" />
           <TextBlock Text="{Binding Loc[CloseToTrayHint]}" FontSize="11" TextWrapping="Wrap"
-                     Foreground="{DynamicResource CatTextFaintBrush}" Margin="24,0,0,0" />
+                     Foreground="{DynamicResource SETextFaintBrush}" Margin="24,0,0,0" />
           <TextBlock Text="{Binding Loc[SettingsSchemaTree]}" FontWeight="SemiBold" Margin="0,10,0,0" />
           <CheckBox Content="{Binding Loc[ShowSystemDatabases]}" IsChecked="{Binding ShowSystemDatabases}" />
         </StackPanel>
@@ -90,7 +90,7 @@
         <StackPanel Spacing="10"
                     IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Appearance}">
           <TextBlock Text="{Binding Loc[SettingsAppearance]}" FontSize="14" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding Loc[AppearanceDesc]}" FontSize="12" Foreground="{DynamicResource CatTextSecondaryBrush}" />
+          <TextBlock Text="{Binding Loc[AppearanceDesc]}" FontSize="12" Foreground="{DynamicResource SETextSecondaryBrush}" />
           <TextBlock Text="{Binding Loc[Theme]}" FontWeight="SemiBold" Margin="0,6,0,0" />
           <StackPanel Orientation="Horizontal" Spacing="12">
             <RadioButton GroupName="Theme" Content="{Binding Loc[ThemeSystem]}"
@@ -128,7 +128,7 @@
                            Value="{Binding QueryTimeoutSeconds}" />
           </Grid>
           <TextBlock Text="{Binding Loc[QueryTimeoutHint]}" FontSize="11" TextWrapping="Wrap"
-                     Foreground="{DynamicResource CatTextFaintBrush}" />
+                     Foreground="{DynamicResource SETextFaintBrush}" />
         </StackPanel>
 
         <!-- Query Log -->
@@ -136,7 +136,7 @@
                     IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=QueryLog}">
           <TextBlock Text="{Binding Loc[SettingsQueryLog]}" FontSize="14" FontWeight="SemiBold" />
           <TextBlock Text="{Binding Loc[QueryLogDesc]}" FontSize="12" TextWrapping="Wrap"
-                     Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                     Foreground="{DynamicResource SETextSecondaryBrush}" />
 
           <CheckBox Content="{Binding Loc[QueryLogEnabledLabel]}" IsChecked="{Binding QueryLogEnabled}" Margin="0,6,0,0" />
 
@@ -148,7 +148,7 @@
                     IsEnabled="{Binding QueryLogEnabled}" Margin="12,0,0,0" />
 
           <TextBlock Text="{Binding Loc[QueryLogHint]}" FontSize="11" TextWrapping="Wrap"
-                     Foreground="{DynamicResource CatTextFaintBrush}" Margin="0,4,0,0" />
+                     Foreground="{DynamicResource SETextFaintBrush}" Margin="0,4,0,0" />
         </StackPanel>
 
         <!-- Security (master password) -->
@@ -156,7 +156,7 @@
                     IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Security}">
           <TextBlock Text="{Binding Loc[SettingsSecurity]}" FontSize="14" FontWeight="SemiBold" />
           <TextBlock Text="{Binding Loc[MasterPwSectionDesc]}" FontSize="12" TextWrapping="Wrap"
-                     Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                     Foreground="{DynamicResource SETextSecondaryBrush}" />
 
           <!-- Not set -->
           <StackPanel Spacing="8" IsVisible="{Binding !MasterPasswordEnabled}">
@@ -167,7 +167,7 @@
 
           <!-- Set -->
           <StackPanel Spacing="8" IsVisible="{Binding MasterPasswordEnabled}">
-            <TextBlock Text="{Binding Loc[MasterPwIsSet]}" FontSize="12" Foreground="{DynamicResource CatStatusConnectedBrush}" />
+            <TextBlock Text="{Binding Loc[MasterPwIsSet]}" FontSize="12" Foreground="{DynamicResource SEStatusConnectedBrush}" />
             <StackPanel Orientation="Horizontal" Spacing="8">
               <Button Content="{Binding Loc[MasterPwChangeButton]}" Command="{Binding ChangeMasterPasswordCommand}" />
               <Button Content="{Binding Loc[MasterPwDisableButton]}" Command="{Binding DisableMasterPasswordCommand}" />
@@ -186,7 +186,7 @@
           <TextBlock Text="{Binding MasterPasswordMessage}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
                      IsVisible="{Binding MasterPasswordMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           <TextBlock Text="{Binding Loc[MasterPwNoRecovery]}" FontSize="11" TextWrapping="Wrap"
-                     Foreground="{DynamicResource CatTextFaintBrush}" Margin="0,8,0,0" />
+                     Foreground="{DynamicResource SETextFaintBrush}" Margin="0,8,0,0" />
         </StackPanel>
 
         <!-- Keyboard -->
@@ -194,7 +194,7 @@
               IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Keyboard}">
           <TextBlock Grid.Row="0" Text="{Binding Loc[SettingsKeyboard]}" FontSize="14" FontWeight="SemiBold" />
           <TextBlock Grid.Row="1" Text="{Binding Loc[KeyboardDesc]}" FontSize="12" TextWrapping="Wrap"
-                     Foreground="{DynamicResource CatTextSecondaryBrush}" Margin="0,4,0,10" />
+                     Foreground="{DynamicResource SETextSecondaryBrush}" Margin="0,4,0,10" />
 
           <!-- Conflict banner: only while two commands share a gesture (save is blocked meanwhile). -->
           <Border Grid.Row="2" IsVisible="{Binding HasShortcutConflicts}" Margin="0,0,0,10"
@@ -202,7 +202,7 @@
             <TextBlock Text="{Binding Loc[ShortcutConflictBanner]}" FontSize="12" Foreground="#F0B4B4" TextWrapping="Wrap" />
           </Border>
 
-          <Border Grid.Row="3" BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1" CornerRadius="6">
+          <Border Grid.Row="3" BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1" CornerRadius="6">
             <ScrollViewer>
               <ItemsControl ItemsSource="{Binding ShortcutGroups}">
                 <ItemsControl.ItemTemplate>
@@ -210,7 +210,7 @@
                     <StackPanel>
                       <!-- Group header (Tabs/Query/Editor/Search) -->
                       <TextBlock Text="{Binding Label}" FontSize="10.5" FontWeight="SemiBold" Margin="12,9,12,5"
-                                 Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                                 Foreground="{DynamicResource SETextSecondaryBrush}" />
                       <ItemsControl ItemsSource="{Binding Items}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate>
@@ -220,7 +220,7 @@
                                 <TextBlock Text="{Binding Label}" FontSize="12.5" />
                                 <TextBlock Text="{Binding ConflictWith, StringFormat='Conflicts with “{0}”'}"
                                            IsVisible="{Binding HasConflict}" FontSize="11"
-                                           Foreground="{DynamicResource CatStatusErrorBrush}" />
+                                           Foreground="{DynamicResource SEStatusErrorBrush}" />
                               </StackPanel>
 
                               <!-- Click-to-capture chip -->
@@ -239,7 +239,7 @@
                                       ToolTip.Tip="{Binding $parent[Window].DataContext.Loc[ShortcutResetTooltip]}">
                                 <Path Width="14" Height="14" Stretch="Uniform"
                                       Data="M3,8 A5,5 0 1 1 4.6,11.7 M3,5 V8 H6"
-                                      Stroke="{DynamicResource CatTextSecondaryBrush}" StrokeThickness="1.4"
+                                      Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.4"
                                       StrokeJoin="Round" StrokeLineCap="Round" />
                               </Button>
                             </Grid>
@@ -259,7 +259,7 @@
           <StackPanel Spacing="10" MaxWidth="560" HorizontalAlignment="Left">
             <TextBlock Text="{Binding Loc[SettingsMcp]}" FontSize="14" FontWeight="SemiBold" />
             <TextBlock Text="{Binding Loc[McpDesc]}" FontSize="12" TextWrapping="Wrap"
-                       Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                       Foreground="{DynamicResource SETextSecondaryBrush}" />
 
             <CheckBox Content="{Binding Loc[McpEnabled]}" IsChecked="{Binding McpEnabled}" Margin="0,6,0,0" />
 
@@ -268,7 +268,7 @@
               <NumericUpDown Grid.Column="1" Width="150" Minimum="1024" Maximum="65535" FormatString="0"
                              Value="{Binding McpPort}" />
             </Grid>
-            <TextBlock Text="{Binding Loc[McpBindHint]}" FontSize="11" Foreground="{DynamicResource CatTextFaintBrush}" />
+            <TextBlock Text="{Binding Loc[McpBindHint]}" FontSize="11" Foreground="{DynamicResource SETextFaintBrush}" />
 
             <!-- Server URL: read-only, copy. Reflects the loopback bind + selected port. -->
             <StackPanel Spacing="4" Margin="0,6,0,0">
@@ -299,7 +299,7 @@
                 <Button Grid.Column="2" Margin="6,0,0,0" Content="{Binding Loc[McpRegenerate]}"
                         Command="{Binding RegenerateMcpTokenCommand}" />
               </Grid>
-              <TextBlock Text="{Binding Loc[McpTokenHint]}" FontSize="11" Foreground="{DynamicResource CatTextFaintBrush}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Loc[McpTokenHint]}" FontSize="11" Foreground="{DynamicResource SETextFaintBrush}" TextWrapping="Wrap" />
             </StackPanel>
 
             <TextBlock Text="{Binding Loc[McpCaps]}" FontWeight="SemiBold" Margin="0,10,0,0" />
@@ -321,18 +321,18 @@
               IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Plugins}">
           <TextBlock Grid.Row="0" Text="{Binding Loc[SettingsPlugins]}" FontSize="14" FontWeight="SemiBold" />
           <TextBlock Grid.Row="1" Text="{Binding Loc[PluginsDesc]}" FontSize="12" TextWrapping="Wrap"
-                     Foreground="{DynamicResource CatTextSecondaryBrush}" Margin="0,4,0,12" />
+                     Foreground="{DynamicResource SETextSecondaryBrush}" Margin="0,4,0,12" />
 
           <!-- Empty state -->
           <TextBlock Grid.Row="2" IsVisible="{Binding !HasPlugins}"
                      Text="{Binding Loc[PluginsNoneHint]}" TextWrapping="Wrap"
-                     Foreground="{DynamicResource CatTextFaintBrush}" VerticalAlignment="Top" />
+                     Foreground="{DynamicResource SETextFaintBrush}" VerticalAlignment="Top" />
 
           <!-- Master-detail -->
           <Border Grid.Row="2" IsVisible="{Binding HasPlugins}"
-                  BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1" CornerRadius="6">
+                  BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1" CornerRadius="6">
             <Grid ColumnDefinitions="230,Auto,*">
-              <ListBox Grid.Column="0" Background="{DynamicResource CatPanelBgBrush}"
+              <ListBox Grid.Column="0" Background="{DynamicResource SEPanelBgBrush}"
                        ItemsSource="{Binding Plugins}" SelectedItem="{Binding SelectedPlugin}">
                 <ListBox.ItemTemplate>
                   <DataTemplate>
@@ -340,7 +340,7 @@
                       <Image Width="16" Height="16" VerticalAlignment="Center"
                              Source="{Binding Icon}" IsVisible="{Binding HasImageIcon}" />
                       <Path Width="16" Height="16" VerticalAlignment="Center" Data="{Binding FallbackIcon}"
-                            Stroke="{DynamicResource CatTextSecondaryBrush}" StrokeThickness="1.3"
+                            Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.3"
                             StrokeJoin="Round" StrokeLineCap="Round" IsVisible="{Binding !HasImageIcon}" />
                       <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
                     </StackPanel>
@@ -348,17 +348,17 @@
                 </ListBox.ItemTemplate>
               </ListBox>
 
-              <GridSplitter Grid.Column="1" Width="1" Background="{DynamicResource CatHairlineBrush}" />
+              <GridSplitter Grid.Column="1" Width="1" Background="{DynamicResource SEHairlineBrush}" />
 
               <ScrollViewer Grid.Column="2" DataContext="{Binding SelectedPlugin}">
                 <StackPanel Margin="18,16" Spacing="4">
                   <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
                                VerticalAlignment="Center" />
-                    <Border Background="{DynamicResource CatToolbarBgBrush}" CornerRadius="9" Padding="7,2"
+                    <Border Background="{DynamicResource SEToolbarBgBrush}" CornerRadius="9" Padding="7,2"
                             VerticalAlignment="Center">
                       <!-- <TextBlock Text="{Binding RouteLabel}" FontSize="10" -->
-                      <!--            Foreground="{DynamicResource CatTextSecondaryBrush}" /> -->
+                      <!--            Foreground="{DynamicResource SETextSecondaryBrush}" /> -->
                     </Border>
                   </StackPanel>
 

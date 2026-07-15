@@ -1,4 +1,6 @@
+using SqlExplorer.Sdk.Connections;
 using SqlExplorer.Sdk.Query;
+using SqlExplorer.Sdk.Schema;
 
 namespace SqlExplorer.Sdk.Ui;
 
@@ -21,4 +23,18 @@ public interface IToolUiContext
     /// that never call it are unaffected, so it needs no host-API bump.
     /// </summary>
     Task<QueryResult> QueryAsync(string sql, CancellationToken ct);
+
+    // ── Additive Route-B helpers (a view that ignores these is unaffected) ─────────────────────────────
+
+    /// <summary>The same provider/profile/node the host will hand <see cref="IToolPlugin.ExecuteAsync"/>,
+    /// so a custom view can walk the schema (e.g. build an object-selection tree) against the exact context
+    /// the tool runs on. <see cref="Node"/> is the launch node, or null at the connection root.</summary>
+    IDbProvider Provider { get; }
+    ConnectionProfile Profile { get; }
+    DbNodeRef? Node { get; }
+
+    /// <summary>Show a save/open file picker (the same one a Route A File field uses), so a custom view can
+    /// host its own Browse button. Returns the chosen path, or null if cancelled.</summary>
+    Task<string?> PickSaveFileAsync(string suggestedName, params string[] extensions);
+    Task<string?> PickOpenFileAsync(params string[] extensions);
 }

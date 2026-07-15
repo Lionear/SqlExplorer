@@ -6,12 +6,12 @@
         WindowStartupLocation="CenterOwner">
   <StackPanel Margin="16" Spacing="10">
 
-    <TextBlock Text="{Binding Loc[ImportPreview]}" FontSize="11" Foreground="{DynamicResource CatTextFaintBrush}" />
+    <TextBlock Text="{Binding Loc[ImportPreview]}" FontSize="11" Foreground="{DynamicResource SETextFaintBrush}" />
     <TextBox Text="{Binding PreviewText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
              FontFamily="Cascadia Code,Consolas,Menlo,monospace" FontSize="12"
              Height="90" ScrollViewer.HorizontalScrollBarVisibility="Auto" />
 
-    <TextBlock Text="{Binding Loc[ImportMapColumn]}" FontSize="11" Foreground="{DynamicResource CatTextFaintBrush}" Margin="0,4,0,0" />
+    <TextBlock Text="{Binding Loc[ImportMapColumn]}" FontSize="11" Foreground="{DynamicResource SETextFaintBrush}" Margin="0,4,0,0" />
     <ItemsControl ItemsSource="{Binding Mappings}" MaxHeight="220" ScrollViewer.VerticalScrollBarVisibility="Auto">
       <ItemsControl.ItemTemplate>
         <DataTemplate>
@@ -26,7 +26,7 @@
     </ItemsControl>
 
     <TextBlock Text="{Binding RowCountText}" FontSize="12"
-               Foreground="{DynamicResource CatTextSecondaryBrush}" Margin="0,4,0,0" />
+               Foreground="{DynamicResource SETextSecondaryBrush}" Margin="0,4,0,0" />
 
     <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
       <Button Grid.Column="1" Classes="Subtle" Content="{Binding Loc[Cancel]}" Click="OnCancel" Margin="0,0,8,0" />

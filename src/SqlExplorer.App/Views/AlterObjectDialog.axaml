@@ -9,7 +9,7 @@
     <TextBlock Text="{Binding ObjectLabel}" FontWeight="SemiBold" FontSize="15" />
 
     <TextBlock Text="{Binding Loc[IrreversibleWarning]}" TextWrapping="Wrap"
-               Foreground="{DynamicResource CatStatusErrorBrush}"
+               Foreground="{DynamicResource SEStatusErrorBrush}"
                IsVisible="{Binding IsDestructive}" />
 
     <!-- Add-column input: name + type + nullable. -->

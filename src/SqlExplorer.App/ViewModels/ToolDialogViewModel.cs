@@ -78,6 +78,12 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
 
     public ObservableCollection<string> Log { get; } = [];
 
+    /// <summary>Live per-item checklist, populated from <see cref="ToolProgress.ItemKey"/>/ItemStatus as the
+    /// tool runs. Empty for tools that don't report keyed items — the log panel is then the only feedback.</summary>
+    public ObservableCollection<ToolChecklistRow> Checklist { get; } = [];
+
+    public bool HasChecklist => Checklist.Count > 0;
+
     // Hide the progress-log panel until there is something to show, so form-only tools (e.g. the Shrink
     // dialogs) aren't dominated by a big empty box before the first run.
     public bool HasLogArea => IsRunning || IsCompleted || Log.Count > 0;
@@ -194,6 +200,8 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
         Progress = 0;
         IsProgressIndeterminate = true;
         Log.Clear();
+        Checklist.Clear();
+        OnPropertyChanged(nameof(HasChecklist));
 
         var inputs = HasCustomView
             ? _customValues
@@ -206,6 +214,22 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
             {
                 IsProgressIndeterminate = false;
                 Progress = Math.Clamp(fraction, 0, 1);
+            }
+
+            // Keyed item → live checklist row (first sighting adds it, later reports flip its status).
+            if (p is { ItemKey: { } key, ItemStatus: { } status })
+            {
+                var row = Checklist.FirstOrDefault(r => r.Key == key);
+                if (row is null)
+                {
+                    Checklist.Add(new ToolChecklistRow(key, p.Message) { Status = status });
+                    OnPropertyChanged(nameof(HasChecklist));
+                }
+                else
+                {
+                    row.Label = p.Message;
+                    row.Status = status;
+                }
             }
         });
 
@@ -254,4 +278,14 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
     // Route B live-data hook: run a read-only query through the same provider/profile the tool will use.
     public Task<QueryResult> QueryAsync(string sql, CancellationToken ct) =>
         _provider.ExecuteQueryAsync(_profile, sql, ct);
+
+    IDbProvider IToolUiContext.Provider => _provider;
+    ConnectionProfile IToolUiContext.Profile => _profile;
+    DbNodeRef? IToolUiContext.Node => _node;
+
+    Task<string?> IToolUiContext.PickSaveFileAsync(string suggestedName, params string[] extensions) =>
+        SaveFilePicker?.Invoke(suggestedName, extensions) ?? Task.FromResult<string?>(null);
+
+    Task<string?> IToolUiContext.PickOpenFileAsync(params string[] extensions) =>
+        OpenFilePicker?.Invoke(extensions) ?? Task.FromResult<string?>(null);
 }

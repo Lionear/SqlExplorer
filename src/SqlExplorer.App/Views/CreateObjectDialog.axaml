@@ -15,19 +15,19 @@
     <StackPanel Spacing="4" IsVisible="{Binding IsTable}">
       <Grid ColumnDefinitions="*,110,60,40,40,28" Margin="0,4,0,0">
         <TextBlock Grid.Column="0" Text="{Binding Loc[ColumnName]}" FontSize="11"
-                   Foreground="{DynamicResource CatTextFaintBrush}" />
+                   Foreground="{DynamicResource SETextFaintBrush}" />
         <TextBlock Grid.Column="1" Text="{Binding Loc[ColumnType]}" FontSize="11"
-                   Foreground="{DynamicResource CatTextFaintBrush}" />
+                   Foreground="{DynamicResource SETextFaintBrush}" />
         <TextBlock Grid.Column="2" Text="{Binding Loc[ColumnNullable]}" FontSize="11"
                    HorizontalAlignment="Center" TextAlignment="Center"
-                   Foreground="{DynamicResource CatTextFaintBrush}" />
+                   Foreground="{DynamicResource SETextFaintBrush}" />
         <TextBlock Grid.Column="3" Text="{Binding Loc[ColumnPrimaryKey]}" FontSize="11"
                    HorizontalAlignment="Center" TextAlignment="Center"
-                   Foreground="{DynamicResource CatTextFaintBrush}"
+                   Foreground="{DynamicResource SETextFaintBrush}"
                    ToolTip.Tip="{Binding Loc[PrimaryKeyHint]}" />
         <TextBlock Grid.Column="4" Text="{Binding Loc[ColumnAutoIncrement]}" FontSize="11"
                    HorizontalAlignment="Center" TextAlignment="Center"
-                   Foreground="{DynamicResource CatTextFaintBrush}"
+                   Foreground="{DynamicResource SETextFaintBrush}"
                    ToolTip.Tip="{Binding Loc[AutoIncrementHint]}" />
       </Grid>
       <ItemsControl ItemsSource="{Binding Columns}">

@@ -26,7 +26,7 @@
 
     <!-- Table + detail -->
     <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="12,0">
-      <Border Grid.Column="0" BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1" CornerRadius="4">
+      <Border Grid.Column="0" BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1" CornerRadius="4">
         <DataGrid ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}"
                   IsReadOnly="True" GridLinesVisibility="Horizontal"
                   CanUserResizeColumns="True" CanUserSortColumns="False">
@@ -44,7 +44,7 @@
 
       <!-- Detail of selected entry -->
       <Border Grid.Column="1" Width="330" Margin="10,0,0,0"
-              BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1" CornerRadius="4"
+              BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1" CornerRadius="4"
               IsVisible="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNotNull}}">
         <ScrollViewer>
           <StackPanel Margin="14" Spacing="6" DataContext="{Binding SelectedEntry}">

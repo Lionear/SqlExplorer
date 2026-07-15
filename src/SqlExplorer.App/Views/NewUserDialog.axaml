@@ -23,7 +23,7 @@
                       HorizontalAlignment="Stretch" IsVisible="{Binding IsChoice}" />
             <CheckBox Content="{Binding Label}" IsChecked="{Binding BoolValue}" IsVisible="{Binding IsBool}" />
             <TextBlock Text="{Binding Hint}" FontSize="11" IsVisible="{Binding HasHint}"
-                       Foreground="{DynamicResource CatTextFaintBrush}" />
+                       Foreground="{DynamicResource SETextFaintBrush}" />
           </StackPanel>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
@@ -32,8 +32,8 @@
     <!-- Optional role membership: a checkbox per assignable role (empty → hidden). -->
     <StackPanel Spacing="4" IsVisible="{Binding HasRoles}">
       <TextBlock Text="{Binding Loc[UserRoles]}" Margin="0,4,0,0" />
-      <Border BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1"
-              CornerRadius="{StaticResource CatControlRadius}" Padding="8" MaxHeight="140">
+      <Border BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1"
+              CornerRadius="{StaticResource SEControlRadius}" Padding="8" MaxHeight="140">
         <ScrollViewer>
           <ItemsControl ItemsSource="{Binding Roles}">
             <ItemsControl.ItemTemplate>

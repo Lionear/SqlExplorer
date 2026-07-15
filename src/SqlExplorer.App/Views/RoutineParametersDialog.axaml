@@ -9,10 +9,10 @@
     <DataTemplate x:Key="ParameterTemplate">
       <StackPanel Spacing="2" Margin="0,4,0,0">
         <StackPanel Orientation="Horizontal" Spacing="6">
-          <TextBlock Text="{Binding Name}" Foreground="{DynamicResource CatTextSecondaryBrush}" FontSize="11.5" />
-          <TextBlock Text="{Binding Type}" Foreground="{DynamicResource CatTextFaintBrush}" FontSize="11.5" />
+          <TextBlock Text="{Binding Name}" Foreground="{DynamicResource SETextSecondaryBrush}" FontSize="11.5" />
+          <TextBlock Text="{Binding Type}" Foreground="{DynamicResource SETextFaintBrush}" FontSize="11.5" />
           <TextBlock Text="{Binding $parent[Window].DataContext.Loc[ParameterOutput]}"
-                     Foreground="{DynamicResource CatTextFaintBrush}" FontSize="11.5"
+                     Foreground="{DynamicResource SETextFaintBrush}" FontSize="11.5"
                      IsVisible="{Binding IsOutput}" />
         </StackPanel>
         <TextBox Text="{Binding Value}" IsEnabled="{Binding IsInput}" />
@@ -23,7 +23,7 @@
   <Grid RowDefinitions="Auto,*,Auto">
 
     <TextBlock Grid.Row="0" Margin="18,16,18,0" TextWrapping="Wrap" FontSize="11.5"
-               Foreground="{DynamicResource CatTextSecondaryBrush}"
+               Foreground="{DynamicResource SETextSecondaryBrush}"
                Text="{Binding Loc[RoutineExecuteHint]}" />
 
     <ScrollViewer Grid.Row="1" Margin="0,4,0,0">

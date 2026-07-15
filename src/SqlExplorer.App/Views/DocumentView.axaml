@@ -12,16 +12,16 @@
       <Setter Property="BorderThickness" Value="0,0,0,2" />
       <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="CornerRadius" Value="0" />
-      <Setter Property="Foreground" Value="{DynamicResource CatTextSecondaryBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SETextSecondaryBrush}" />
       <Setter Property="Padding" Value="8,4" />
     </Style>
     <Style Selector="Button.ResultTab:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource CatHoverBgBrush}" />
+      <Setter Property="Background" Value="{DynamicResource SEHoverBgBrush}" />
     </Style>
     <Style Selector="Button.ResultTab.Accent">
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="{DynamicResource CatAccentBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource CatTextPrimaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SEAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SETextPrimaryBrush}" />
     </Style>
   </UserControl.Styles>
   <Grid x:Name="RootGrid" RowDefinitions="Auto,2*,Auto,Auto,Auto,3*,Auto,Auto">
@@ -60,7 +60,7 @@
         <Button Grid.Column="1" Margin="0,0,10,0"
                 Content="{Binding Loc[NextPage]}" Command="{Binding NextPageCommand}" />
         <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="0,0,12,0"
-                   FontSize="12" Foreground="{DynamicResource CatTextSecondaryBrush}"
+                   FontSize="12" Foreground="{DynamicResource SETextSecondaryBrush}"
                    Text="{Binding RowRange}" />
         <TextBox Grid.Column="3" MinWidth="160"
                  Text="{Binding FilterText}"
@@ -92,7 +92,7 @@
                 VerticalAlignment="Center" IsVisible="{Binding IsMonitorMode}">
       <Button Content="{Binding Loc[Refresh]}" Command="{Binding RefreshMonitorCommand}" />
       <TextBlock Text="{Binding Loc[AutoRefresh]}" VerticalAlignment="Center"
-                 Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                 Foreground="{DynamicResource SETextSecondaryBrush}" />
       <ComboBox MinWidth="90" ItemsSource="{Binding RefreshOptions}"
                 SelectedItem="{Binding SelectedRefreshOption}">
         <ComboBox.ItemTemplate>
@@ -105,9 +105,9 @@
 
     <!-- Row 1: SQL editor (query mode only; the row is collapsed for browse in code-behind). -->
     <Border Grid.Row="1" IsVisible="{Binding IsQueryMode}"
-            Background="{DynamicResource CatWindowBgBrush}"
-            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1"
-            CornerRadius="{StaticResource CatControlRadius}" ClipToBounds="True">
+            Background="{DynamicResource SEWindowBgBrush}"
+            BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1"
+            CornerRadius="{StaticResource SEControlRadius}" ClipToBounds="True">
       <ae:TextEditor x:Name="SqlEditor"
                      ShowLineNumbers="True"
                      WordWrap="{Binding EditorWordWrap}"
@@ -147,10 +147,10 @@
       <Button Grid.Column="4" Classes="Subtle" x:Name="ExportButton" Click="OnExportClick"
               Content="{Binding Loc[Export]}" />
       <TextBlock Grid.Column="5" VerticalAlignment="Center" Margin="12,0,0,0"
-                 Foreground="{DynamicResource CatTextSecondaryBrush}"
+                 Foreground="{DynamicResource SETextSecondaryBrush}"
                  Text="{Binding PendingSummary}" />
       <TextBlock Grid.Column="6" VerticalAlignment="Center"
-                 Foreground="{DynamicResource CatTextFaintBrush}"
+                 Foreground="{DynamicResource SETextFaintBrush}"
                  Text="{Binding ReadOnlyReason}"
                  IsVisible="{Binding ReadOnlyReason, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
     </Grid>
@@ -174,8 +174,8 @@
 
     <!-- Row 5: editable result grid, framed. Columns are built per result set in code-behind. -->
     <Border Grid.Row="5"
-            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1"
-            CornerRadius="{StaticResource CatControlRadius}" ClipToBounds="True">
+            BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1"
+            CornerRadius="{StaticResource SEControlRadius}" ClipToBounds="True">
       <DataGrid x:Name="ResultsGrid"
                 AutoGenerateColumns="False"
                 IsReadOnly="{Binding !IsResultEditable}"
@@ -216,24 +216,24 @@
 
     <!-- Row 6: selection aggregation strip (count + sum/avg/min/max for a numeric column). -->
     <Border Grid.Row="6" Margin="0,4,0,0" Padding="8,3"
-            Background="{DynamicResource CatToolbarBgBrush}"
-            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1"
-            CornerRadius="{StaticResource CatControlRadius}"
+            Background="{DynamicResource SEToolbarBgBrush}"
+            BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1"
+            CornerRadius="{StaticResource SEControlRadius}"
             IsVisible="{Binding AggregationSummary, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}">
       <TextBlock Text="{Binding AggregationSummary}" FontSize="12"
-                 Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                 Foreground="{DynamicResource SETextSecondaryBrush}" />
     </Border>
 
     <!-- Row 7: cell-value viewer — appears on cell click; full value, JSON pretty-printed when parseable. -->
     <Border Grid.Row="7" Margin="0,8,0,0" MaxHeight="200"
             IsVisible="{Binding IsCellViewerVisible}"
-            BorderBrush="{DynamicResource CatHairlineBrush}" BorderThickness="1"
-            CornerRadius="{StaticResource CatControlRadius}" ClipToBounds="True">
+            BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1"
+            CornerRadius="{StaticResource SEControlRadius}" ClipToBounds="True">
       <Grid RowDefinitions="Auto,*">
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="8,4"
-              Background="{DynamicResource CatToolbarBgBrush}">
+              Background="{DynamicResource SEToolbarBgBrush}">
           <TextBlock Grid.Column="0" Text="{Binding SelectedCellColumn}" VerticalAlignment="Center"
-                     FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource CatTextSecondaryBrush}" />
+                     FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource SETextSecondaryBrush}" />
           <Button Grid.Column="1" Classes="Subtle" Content="×" Padding="6,0" FontSize="15"
                   Command="{Binding HideCellViewerCommand}" />
         </Grid>
