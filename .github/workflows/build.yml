@@ -87,7 +87,7 @@ jobs:
       - name: Publish
         shell: bash
         run: |
-          dotnet publish src/Desktop/SqlExplorer.Desktop.csproj \
+          dotnet publish src/SqlExplorer.Desktop/SqlExplorer.Desktop.csproj \
             -c Release \
             -r ${{ matrix.rid }} \
             --self-contained true \
