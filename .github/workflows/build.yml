@@ -121,9 +121,9 @@ jobs:
           chmod +x "$APPDIR/usr/bin/SqlExplorer.Desktop"
 
           # Icon (top-level + hicolor path both referenced by the .desktop entry)
-          cp src/App/Assets/icon.png "$APPDIR/lionear-sql-explorer.png"
+          cp src/SqlExplorer.App/Assets/icon.png "$APPDIR/lionear-sql-explorer.png"
           mkdir -p "$APPDIR/usr/share/icons/hicolor/256x256/apps"
-          cp src/App/Assets/icon.png "$APPDIR/usr/share/icons/hicolor/256x256/apps/lionear-sql-explorer.png"
+          cp src/SqlExplorer.App/Assets/icon.png "$APPDIR/usr/share/icons/hicolor/256x256/apps/lionear-sql-explorer.png"
 
           cat > "$APPDIR/lionear-sql-explorer.desktop" <<'EOF'
           [Desktop Entry]
