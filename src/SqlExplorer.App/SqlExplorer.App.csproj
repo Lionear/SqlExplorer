@@ -41,6 +41,7 @@
          they aren't part of the core product. Debug-only: they build + get staged during development but
          never ship in a Release/MVP build. The template demonstrates IPluginSettings (Route A) live. -->
     <ProjectReference Include="..\..\plugins\Providers.Template\SqlExplorer.Providers.Template.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
+    <ProjectReference Include="..\..\plugins\Providers.DragonflyDb\SqlExplorer.Providers.DragonflyDb.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Providers.MongoDb\SqlExplorer.Providers.MongoDb.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Providers.Redis\SqlExplorer.Providers.Redis.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Tools.UniversalBackup\SqlExplorer.Tools.UniversalBackup.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />

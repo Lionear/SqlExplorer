@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using SqlExplorer.Sdk;
 
 namespace SqlExplorer.Core.Providers;
@@ -10,6 +11,10 @@ public interface IDbProviderRegistry
     IReadOnlyList<ProviderRegistration> All { get; }
 
     IDbProvider Get(string providerId);
+
+    /// <summary>Non-throwing lookup for call sites that must survive a saved connection whose provider
+    /// plugin isn't installed (e.g. a non-default provider like MongoDB left out of a build).</summary>
+    bool TryGet(string providerId, [NotNullWhen(true)] out IDbProvider? provider);
 }
 
 /// <summary>
@@ -33,4 +38,6 @@ public sealed class DbProviderRegistry : IDbProviderRegistry
         _byId.TryGetValue(providerId, out var provider)
             ? provider
             : throw new NotSupportedException($"No provider registered with id '{providerId}'.");
+
+    public bool TryGet(string providerId, [NotNullWhen(true)] out IDbProvider? provider) => _byId.TryGetValue(providerId, out provider);
 }

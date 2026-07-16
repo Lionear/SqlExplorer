@@ -590,11 +590,25 @@ public partial class MainViewModel : ViewModelBase
 
     private TreeNodeViewModel BuildConnectionNode(SavedConnection connection)
     {
+        var providerMissing = !_providers.TryGet(connection.ProviderId, out var provider);
+        if (providerMissing)
+        {
+            ReportError(connection.Name, $"Provider '{connection.ProviderId}' is not installed — install it via the Plugin Store to use this connection.");
+            provider = new MissingDbProvider(connection.ProviderId);
+        }
+
         var node = TreeNodeViewModel.ForConnection(
-            connection, _providers.Get(connection.ProviderId), ResolveIconImage(connection.ProviderId), LoadNodeChildrenAsync);
+            connection, provider!, ResolveIconImage(connection.ProviderId), LoadNodeChildrenAsync);
         // Drive the schema cache off the root's connection state: build once it reaches Connected
         // (via the Connect command or a manual expand), drop it again on disconnect/error.
         node.PropertyChanged += OnConnectionNodeStateChanged;
+        if (providerMissing)
+        {
+            // Surface the broken connection on the status dot right away instead of waiting for a
+            // doomed connect attempt to fail it the normal way.
+            node.State = ConnectionState.Error;
+        }
+
         return node;
     }
 
@@ -799,7 +813,7 @@ public partial class MainViewModel : ViewModelBase
     // that can render emoji (Linux/Avalonia can't), so it is not used here. SVG needs an extra
     // renderer, so raster only for now.
     private IImage? ResolveIconImage(string providerId) =>
-        PluginIconRenderer.Render(_providers.Get(providerId).Icon);
+        _providers.TryGet(providerId, out var provider) ? PluginIconRenderer.Render(provider.Icon) : null;
 
     // The lazy loader every tree node calls on expand: resolve secrets, ask the provider.
     private async Task<IReadOnlyList<DbTreeNode>> LoadNodeChildrenAsync(
