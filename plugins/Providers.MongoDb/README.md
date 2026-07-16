@@ -105,8 +105,10 @@ Shortcuts:
 
 Returned documents are flattened into a grid: the columns are the **union of every document's top-level
 fields** (order of first appearance, `_id` first). Nested documents and arrays render as relaxed
-extended JSON inside a single cell. Because Mongo is schemaless, results are read-only (no editable-grid
-save-back).
+extended JSON inside a single cell. `_id` is tagged key/read-only and every column is tagged with the
+collection as its base table, so the grid is editable (SE-114): cell edits, added and deleted rows are
+saved via `ApplyChangesAsync` as native `insertOne`/`updateOne`/`deleteOne` calls — no SQL is generated,
+and the save is **not** atomic (sequential ops, no multi-document transaction).
 
 Query results are capped at **1000 documents** by default; add an explicit `.limit(n)` (or a browse page
 size) to change it.
@@ -131,7 +133,7 @@ size) to change it.
 - **Naming** follows the existing providers (`MySql`, `MsSql`, `Sqlite`): acronyms are single-cap
   PascalCase words, so it's `MongoDb`. The `plugins/` folder drops the `SqlExplorer.` prefix
   (`Providers.MongoDb`), while the csproj/namespace keep the full `SqlExplorer.Providers.MongoDb`.
-- **Manifest** (`plugin.json`): `id` = `mongodb`, `type` = `provider`, `hostApiVersion` = 19.
+- **Manifest** (`plugin.json`): `id` = `mongodb`, `type` = `provider`, `hostApiVersion` = 23.
 - **Driver:** `MongoDB.Driver`; `CopyLocalLockFileAssemblies` emits its full closure into the plugin
   folder for isolated (ALC) loading, independent of any other plugin's driver version.
 - **Debug wiring:** a Debug-only `ProjectReference` in `src/SqlExplorer.App` forces the build, and a

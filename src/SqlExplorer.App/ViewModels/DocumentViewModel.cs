@@ -19,6 +19,7 @@ using SqlExplorer.Core.Schema;
 using SqlExplorer.Core.Settings;
 using SqlExplorer.Core.Sql;
 using SqlExplorer.Sdk;
+using SqlExplorer.Sdk.Editing;
 using SqlExplorer.Sdk.Ui;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -1429,8 +1430,21 @@ public partial class DocumentViewModel : ViewModelBase
             return;
         }
 
-        var dialect = _providers.Get(Connection.ProviderId).Dialect;
-        var statements = CrudStatementBuilder.Build(Editable, dialect);
+        var provider = _providers.Get(Connection.ProviderId);
+        if (provider.IsSqlBased)
+        {
+            await SaveSqlAsync(provider, ct);
+        }
+        else
+        {
+            await SaveChangeSetAsync(provider, ct);
+        }
+    }
+
+    // The SQL path: dialect-quoted INSERT/UPDATE/DELETE, run as one transaction (Notes §8).
+    private async Task SaveSqlAsync(IDbProvider provider, CancellationToken ct)
+    {
+        var statements = CrudStatementBuilder.Build(Editable!, provider.Dialect);
         if (statements.Count == 0)
         {
             Report(OutputLevel.Info, Loc.Get("SaveNothing"));
@@ -1438,22 +1452,16 @@ public partial class DocumentViewModel : ViewModelBase
         }
 
         var preview = BuildPreview(statements);
-
-        // Read fresh (not cached at construction) so a Settings-window change takes effect on the
-        // very next save, no new tab required.
-        if (_settingsStore.Load().ConfirmBeforeSave)
+        if (!await ConfirmSaveAsync(preview))
         {
-            if (SaveReviewRequested is null || !await SaveReviewRequested(preview))
-            {
-                return;
-            }
+            return;
         }
 
         var stopwatch = Stopwatch.StartNew();
         try
         {
             var profile = _connections.Resolve(Connection, _database);
-            var affected = await _providers.Get(Connection.ProviderId).ExecuteBatchAsync(profile, statements, ct);
+            var affected = await provider.ExecuteBatchAsync(profile, statements, ct);
             stopwatch.Stop();
             // Re-read so DB-assigned values (auto-increment ids, defaults) and a clean baseline show up.
             await ReloadAsync(ct);
@@ -1466,6 +1474,59 @@ public partial class DocumentViewModel : ViewModelBase
             ReportFailure(ex.Message);
             AppendHistory(preview, QueryHistoryKind.Save, stopwatch.ElapsedMilliseconds, 0, success: false, error: ex.Message);
         }
+    }
+
+    // The non-SQL path (SE-114): a structured ChangeSet, applied via the provider's own write ops
+    // (IDbProvider.ApplyChangesAsync) instead of generated SQL text.
+    private async Task SaveChangeSetAsync(IDbProvider provider, CancellationToken ct)
+    {
+        var changes = ChangeSetBuilder.Build(Editable!);
+        if (changes is null || changes.Rows.Count == 0)
+        {
+            Report(OutputLevel.Info, Loc.Get("SaveNothing"));
+            return;
+        }
+
+        var preview = BuildPreview(changes);
+        if (!await ConfirmSaveAsync(preview))
+        {
+            return;
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            var profile = _connections.Resolve(Connection, _database);
+            var result = await provider.ApplyChangesAsync(profile, changes, ct);
+            stopwatch.Stop();
+            await ReloadAsync(ct);
+            Report(OutputLevel.Info, Loc.Get("SaveOk", result.AffectedCount));
+            if (!result.IsAtomic && result.RowErrors.Count > 0)
+            {
+                Report(OutputLevel.Error, string.Join(Environment.NewLine, result.RowErrors));
+            }
+
+            AppendHistory(preview, QueryHistoryKind.Save, stopwatch.ElapsedMilliseconds, result.AffectedCount,
+                success: result.RowErrors.Count == 0, error: result.RowErrors.Count == 0 ? null : string.Join("; ", result.RowErrors));
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            ReportFailure(ex.Message);
+            AppendHistory(preview, QueryHistoryKind.Save, stopwatch.ElapsedMilliseconds, 0, success: false, error: ex.Message);
+        }
+    }
+
+    // Read fresh (not cached at construction) so a Settings-window change takes effect on the very next
+    // save, no new tab required.
+    private async Task<bool> ConfirmSaveAsync(string preview)
+    {
+        if (!_settingsStore.Load().ConfirmBeforeSave)
+        {
+            return true;
+        }
+
+        return SaveReviewRequested is not null && await SaveReviewRequested(preview);
     }
 
     private bool CanDiscard => HasChanges;
@@ -1499,6 +1560,29 @@ public partial class DocumentViewModel : ViewModelBase
             foreach (var parameter in statement.Parameters)
             {
                 builder.AppendLine($"  @{parameter.Name} = {parameter.Value ?? "NULL"}");
+            }
+
+            builder.AppendLine();
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
+    private static string BuildPreview(ChangeSet changes)
+    {
+        var builder = new StringBuilder();
+        foreach (var row in changes.Rows)
+        {
+            builder.Append(row.Kind).Append(' ').Append(changes.Table);
+            if (row.Identity.Count > 0)
+            {
+                builder.Append(" where ").Append(string.Join(", ", row.Identity.Select(kv => $"{kv.Key} = {kv.Value ?? "NULL"}")));
+            }
+
+            builder.AppendLine();
+            foreach (var cell in row.Cells)
+            {
+                builder.AppendLine($"  {cell.Column} = {cell.Value ?? "NULL"}");
             }
 
             builder.AppendLine();

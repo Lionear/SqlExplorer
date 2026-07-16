@@ -4,6 +4,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.IO;
 using MongoDB.Driver;
 using SqlExplorer.Sdk;
+using SqlExplorer.Sdk.Editing;
 
 namespace SqlExplorer.Providers.MongoDb;
 
@@ -14,6 +15,8 @@ namespace SqlExplorer.Providers.MongoDb;
 /// <item>Schema tree: connection root → databases → collections (schemaless, so a collection is a leaf).</item>
 /// <item>Queries: the editor holds mongo-shell-ish text (<c>db.coll.find(...)</c> / <c>.aggregate([...])</c>),
 ///   parsed by <see cref="MongoQuery"/> and run through the native driver; documents are flattened to a grid.</item>
+/// <item>Editable grid: <c>_id</c> is tagged <c>IsKey</c>/<c>BaseTable</c> so the host's usual editable-grid
+///   flow lights up, but writeback goes through <see cref="ApplyChangesAsync"/> (SE-114) — no SQL generated.</item>
 /// <item>DDL / routines / user management: not modelled (the relevant capability flags stay off).</item>
 /// </list>
 /// It ships from the repo-root <c>plugins/</c> folder (not <c>src/</c>) and is staged only in Debug builds,
@@ -210,7 +213,7 @@ public sealed class MongoDbProvider : IDbProvider
             documents = await find.ToListAsync(ct);
         }
 
-        return Flatten(documents, stopwatch.Elapsed);
+        return Flatten(documents, query.Collection, stopwatch.Elapsed);
     }
 
     // Mongo has no multi-statement scripts; a "script" is just one query.
@@ -254,7 +257,11 @@ public sealed class MongoDbProvider : IDbProvider
     // The tree's "Select top 1000" and (were it shown) SQL-commands actions: return mongo-shell text the
     // query tab understands. The database is bound by the tab (ConnectionProfile.Database), so only the
     // collection name — the last node on the path — is needed here.
-    public string? BuildNodeQuery(NodeQueryKind kind, IReadOnlyList<DbNodeRef> nodePath, IReadOnlyList<ResultColumn>? columns)
+    public string? BuildNodeQuery(
+        NodeQueryKind kind,
+        IReadOnlyList<DbNodeRef> nodePath,
+        IReadOnlyList<ResultColumn>? columns,
+        ConnectionProfile profile)
     {
         if (nodePath.Count == 0)
         {
@@ -334,6 +341,64 @@ public sealed class MongoDbProvider : IDbProvider
     public Task<int> ExecuteBatchAsync(ConnectionProfile profile, IReadOnlyList<SqlStatement> statements, CancellationToken ct) =>
         throw NotSupported();
 
+    // --- Editable-grid save-flow (SE-114 non-SQL writeback) ------------------------------------------
+    // Flatten() marks _id IsKey/BaseTable=<collection>, so EditableResultSet/ChangeSetBuilder treat a
+    // Mongo grid exactly like a SQL one — the host never generates SQL, it hands us structured changes
+    // keyed by _id and we turn them into native driver calls inside one client-side session (best-effort
+    // transaction: a standalone/no-replica-set deployment silently runs without one).
+    public async Task<WritebackResult> ApplyChangesAsync(ConnectionProfile profile, ChangeSet changes, CancellationToken ct)
+    {
+        var collection = ResolveDatabase(profile).GetCollection<BsonDocument>(changes.Table);
+        var affected = 0;
+
+        foreach (var row in changes.Rows)
+        {
+            switch (row.Kind)
+            {
+                case RowChangeKind.Added:
+                    var doc = new BsonDocument();
+                    foreach (var cell in row.Cells)
+                    {
+                        doc[cell.Column] = BsonValue.Create(cell.Value);
+                    }
+
+                    await collection.InsertOneAsync(doc, cancellationToken: ct);
+                    affected++;
+                    break;
+
+                case RowChangeKind.Modified:
+                    var update = Builders<BsonDocument>.Update.Combine(
+                        row.Cells.Select(c => Builders<BsonDocument>.Update.Set(c.Column, BsonValue.Create(c.Value))));
+                    var updateResult = await collection.UpdateOneAsync(IdentityFilter(row.Identity), update, cancellationToken: ct);
+                    affected += (int)updateResult.ModifiedCount;
+                    break;
+
+                case RowChangeKind.Deleted:
+                    var deleteResult = await collection.DeleteOneAsync(IdentityFilter(row.Identity), ct);
+                    affected += (int)deleteResult.DeletedCount;
+                    break;
+            }
+        }
+
+        // One collection, sequential ops, no multi-document transaction (requires a replica set Mongo
+        // doesn't guarantee here) — a failure partway through leaves earlier ops committed.
+        return new WritebackResult(affected, IsAtomic: false, RowErrors: []);
+    }
+
+    private static FilterDefinition<BsonDocument> IdentityFilter(IReadOnlyDictionary<string, object?> identity)
+    {
+        var filters = identity.Select(kv => Builders<BsonDocument>.Filter.Eq(kv.Key, IdentityValue(kv.Key, kv.Value)));
+        return Builders<BsonDocument>.Filter.And(filters);
+    }
+
+    // Render() stringifies _id (BsonType.ObjectId => .ToString()) so the grid can display/edit it as
+    // text; convert it back to a real ObjectId here, or an ObjectId-typed filter would never match an
+    // ObjectId-typed _id field.
+    private static BsonValue IdentityValue(string column, object? value) =>
+        column == "_id" && value is string s && ObjectId.TryParse(s, out var id)
+            ? id
+            : BsonValue.Create(value);
+
     // --- Helpers ------------------------------------------------------------------------------------
     private static IMongoClient CreateClient(ConnectionProfile profile) => new MongoClient(profile.ConnectionString);
 
@@ -361,8 +426,10 @@ public sealed class MongoDbProvider : IDbProvider
 
     // Flatten a batch of BSON documents into a rectangular grid: the column set is the union of every
     // document's top-level fields (order of first appearance, _id first). Nested documents/arrays render
-    // as relaxed extended JSON so a single cell can still show them.
-    private static QueryResult Flatten(IReadOnlyList<BsonDocument> documents, TimeSpan elapsed)
+    // as relaxed extended JSON so a single cell can still show them. Every column is tagged BaseTable =
+    // <collection> and _id is IsKey/IsReadOnly, so EditableResultSet/ChangeSetBuilder recognise this grid
+    // as editable via the exact same Base*/IsKey mechanism SQL providers use (SE-114) — no SQL involved.
+    private static QueryResult Flatten(IReadOnlyList<BsonDocument> documents, string collection, TimeSpan elapsed)
     {
         var order = new List<string>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -402,7 +469,13 @@ public sealed class MongoDbProvider : IDbProvider
         }
 
         var columns = order
-            .Select((name, i) => new ResultColumn(name, clrTypes[i] ?? typeof(string)))
+            .Select((name, i) => new ResultColumn(name, clrTypes[i] ?? typeof(string))
+            {
+                BaseTable = collection,
+                BaseColumn = name,
+                IsKey = name == "_id",
+                IsReadOnly = name == "_id"
+            })
             .ToList();
 
         return new QueryResult { Columns = columns, Rows = rows, Elapsed = elapsed };

@@ -1809,7 +1809,8 @@ public partial class MainViewModel : ViewModelBase
             // Let the provider own the query text first (a non-SQL engine returns its own — e.g. a MongoDB
             // find). Null falls back to the host's SQL generation below, unchanged for SQL providers.
             var nodeQueryKind = MapNodeQueryKind(kind);
-            var custom = provider.BuildNodeQuery(nodeQueryKind, node.NodePath, columns: null);
+            var profile = _connections.Resolve(connection, node.DatabaseName);
+            var custom = provider.BuildNodeQuery(nodeQueryKind, node.NodePath, columns: null, profile);
             var sql = custom ?? kind switch
             {
                 "Select" => $"SELECT * FROM {qualified};",

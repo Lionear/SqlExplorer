@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "redis",
+  "type": "provider",
+  "name": "Redis",
+  "version": "1.0.0",
+  "hostApiVersion": 23,
+  "entryAssembly": "SqlExplorer.Providers.Redis.dll"
+}

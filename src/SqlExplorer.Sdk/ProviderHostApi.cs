@@ -79,13 +79,32 @@ public static class ProviderHostApi
     //                   SecurityUiContext) + SecurityUiAction, so a provider can own the server-Login flow
     //                   (create/drop, server-role membership, login→user mapping, SQL+Windows auth). Purely
     //                   additive: enum values + an unused interface's shape, so v20 plugins keep loading.
-    public const int Version = 21;
+    // v22 (2026-07-16): added Sdk/Editing/ChangeSet.cs (RowChange/CellChange/ChangeSet/WritebackResult) +
+    //                   IDbProvider.ApplyChangesAsync (default throws) — the non-SQL half of the
+    //                   editable-grid save-flow (SE-114). The host builds a ChangeSet from the same
+    //                   Base*/IsKey column metadata SQL providers use for ExecuteBatchAsync, so a non-SQL
+    //                   provider (Mongo, later Elastic/Redis) opts into an editable grid by populating that
+    //                   metadata and implementing this method instead of generating SQL. Purely additive;
+    //                   SQL providers are unchanged (still routed through ExecuteBatchAsync).
+    // v23 (2026-07-16): IDbProvider.BuildNodeQuery gained a ConnectionProfile parameter — a provider whose
+    //                   node-action text depends on a live lookup (Redis: TYPE key, to pick GET/HGETALL/
+    //                   LRANGE/SMEMBERS/ZRANGE for "Select top 1000") had no connection to call with under
+    //                   the old signature, and DbNodeRef (Kind+Name, where Name is the displayed tree label)
+    //                   has nowhere to smuggle provider-owned metadata through instead. BREAKING for the one
+    //                   provider that overrides it (MongoDB; recompiled, ignores the new parameter — its
+    //                   browse text never depended on a live call), hence MinimumSupported also moves to 23.
+    //                   Also added plugins/Providers.Redis (SE-20): the first non-SQL provider to use
+    //                   SE-114's ApplyChangesAsync writeback, scoped to Hash keys (field/value rows map
+    //                   cleanly onto Base*/IsKey; List/Set/ZSet/String stay read-only via the grid, mutated
+    //                   through the console — see the plugin's README for why).
+    public const int Version = 23;
 
-    /// <summary>Oldest plugin ABI this host still loads. Additive bumps (v11→v21 style) keep this fixed;
-    /// only a breaking change raises it. Kept at 20 deliberately: pre-v20 versions added some abstract
-    /// members (v12/v14), so a full default-implementation audit is needed before lowering it. Last
-    /// breaking change: v10 (removed DatabaseKind).</summary>
-    public const int MinimumSupported = 20;
+    /// <summary>Oldest plugin ABI this host still loads. Additive bumps (v11→v22 style) keep this fixed;
+    /// only a breaking change raises it. Raised to 23 by the v23 BuildNodeQuery signature change above —
+    /// pre-v20 versions also added some abstract members (v12/v14), so a full default-implementation audit
+    /// would be needed before ever lowering it back down. Previous breaking change: v10 (removed
+    /// DatabaseKind).</summary>
+    public const int MinimumSupported = 23;
 
     /// <summary>True when this host can load a plugin built for <paramref name="pluginVersion"/> — any
     /// version in [<see cref="MinimumSupported"/>, <see cref="Version"/>].</summary>

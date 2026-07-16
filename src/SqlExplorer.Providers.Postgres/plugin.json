@@ -4,6 +4,6 @@
   "type": "provider",
   "name": "PostgreSQL",
   "version": "0.1.0",
-  "hostApiVersion": 20,
+  "hostApiVersion": 23,
   "entryAssembly": "SqlExplorer.Providers.Postgres.dll"
 }

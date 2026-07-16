@@ -1,6 +1,7 @@
 using SqlExplorer.Sdk.Branding;
 using SqlExplorer.Sdk.Connections;
 using SqlExplorer.Sdk.Ddl;
+using SqlExplorer.Sdk.Editing;
 using SqlExplorer.Sdk.Query;
 using SqlExplorer.Sdk.Routines;
 using SqlExplorer.Sdk.Schema;
@@ -47,11 +48,16 @@ public interface IDbProvider
     /// convention as <see cref="ParseConnectionString"/>. <paramref name="nodePath"/> is the path from the
     /// connection root down to and including the node (as passed to <see cref="GetChildNodesAsync"/>);
     /// <paramref name="columns"/> is the node's column metadata when the host already has it, else null.
+    /// <paramref name="profile"/> lets a provider make a cheap live call to decide the text — e.g. Redis
+    /// needs a synchronous <c>TYPE key</c> round-trip to pick <c>GET</c>/<c>HGETALL</c>/<c>LRANGE</c>/
+    /// <c>SMEMBERS</c>/<c>ZRANGE</c>, since a key's browse command depends on its (untyped-until-queried)
+    /// value shape, unlike a SQL table or a Mongo collection (SE-114/SE-20 design note).
     /// </summary>
     string? BuildNodeQuery(
         NodeQueryKind kind,
         IReadOnlyList<DbNodeRef> nodePath,
-        IReadOnlyList<ResultColumn>? columns) => null;
+        IReadOnlyList<ResultColumn>? columns,
+        ConnectionProfile profile) => null;
 
     /// <summary>
     /// Build the statement for a DROP/TRUNCATE/ALTER tree action, letting a provider own that syntax (e.g.
@@ -157,6 +163,20 @@ public interface IDbProvider
         ConnectionProfile profile,
         IReadOnlyList<SqlStatement> statements,
         CancellationToken ct);
+
+    /// <summary>
+    /// Apply a structured set of row changes — the write half of the editable-grid save-flow for a
+    /// provider whose writes cannot be expressed as generated SQL text (<see cref="IsSqlBased"/> is
+    /// false, e.g. a document or key-value store). The host builds <paramref name="changes"/> from the
+    /// same <c>Base*</c>/<see cref="ResultColumn.IsKey"/> metadata that drives <see cref="ExecuteBatchAsync"/>
+    /// for SQL providers, so a provider opts into an editable grid simply by populating that metadata
+    /// (e.g. Mongo marking its <c>_id</c> field <c>IsKey</c>) and overriding this method — no SQL is ever
+    /// generated for this path. SQL-based providers are unaffected: the host always uses
+    /// <see cref="ExecuteBatchAsync"/> for them, so the default here throws. See <see cref="WritebackResult.IsAtomic"/>
+    /// for how a non-transactional engine (e.g. a bulk API) reports partial failure.
+    /// </summary>
+    Task<WritebackResult> ApplyChangesAsync(ConnectionProfile profile, ChangeSet changes, CancellationToken ct) =>
+        throw new NotSupportedException("This provider does not support saving grid edits.");
 
     /// <summary>What DDL Create can build for this provider, and which tree-node kind each "New …"
     /// action appears under. Empty = nothing creatable (host hides every DDL Create menu item).</summary>

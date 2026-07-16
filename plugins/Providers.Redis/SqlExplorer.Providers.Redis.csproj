@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlExplorer.Providers.Redis</RootNamespace>
+    <!-- Plugin build: emit the full private dependency closure (StackExchange.Redis) into the output
+         folder for ALC loading, independent of any other plugin's driver version. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shared contract only. Private=false keeps Sdk.dll OUT of the plugin folder so the host's copy
+         is used across the ALC boundary (single type identity for IDbProvider). -->
+    <ProjectReference Include="..\..\src\SqlExplorer.Sdk\SqlExplorer.Sdk.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StackExchange.Redis" Version="2.8.24" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Optional brand logo. Drop a square PNG here as icon.png and it is embedded automatically;
+         until then the provider falls back to a glyph. -->
+    <EmbeddedResource Include="icon.png" LogicalName="icon.png" Condition="Exists('icon.png')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SDK namespaces mirror its folders; import the sub-namespaces project-wide so consumer
+         files keep a single `using SqlExplorer.Sdk` at the top. -->
+    <Using Include="SqlExplorer.Sdk.Connections" />
+    <Using Include="SqlExplorer.Sdk.Schema" />
+    <Using Include="SqlExplorer.Sdk.Query" />
+    <Using Include="SqlExplorer.Sdk.Ddl" />
+    <Using Include="SqlExplorer.Sdk.Branding" />
+    <Using Include="SqlExplorer.Sdk.Editing" />
+  </ItemGroup>
+
+</Project>
