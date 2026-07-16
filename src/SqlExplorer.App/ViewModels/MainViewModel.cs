@@ -1056,6 +1056,81 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    // Server logins (SQL Server): the provider owns the view (ICustomSecurityUi, Route B). "New Login…" on
+    // the Logins folder, "Properties…" on a login leaf — both host the provider view in the node-info dialog
+    // and refresh the folder afterwards. "Drop Login…" is a plain host-side confirm + DROP LOGIN.
+    [RelayCommand]
+    private Task NewLoginAsync() =>
+        SelectedNode is { CanManageLogins: true } node
+            ? OpenSecurityViewAsync(node, SecurityUiAction.NewLogin)
+            : Task.CompletedTask;
+
+    [RelayCommand]
+    private Task LoginPropertiesAsync() =>
+        SelectedNode is { CanManageLogin: true } node
+            ? OpenSecurityViewAsync(node, SecurityUiAction.LoginProperties)
+            : Task.CompletedTask;
+
+    private async Task OpenSecurityViewAsync(TreeNodeViewModel node, SecurityUiAction action)
+    {
+        if (SecurityViewRequested is null || node.NodeKind is not { } kind
+            || _providers.Get(node.Connection.ProviderId) is not ICustomSecurityUi security)
+        {
+            return;
+        }
+
+        try
+        {
+            var profile = _connections.Resolve(node.Connection, null); // logins are server-level
+            var target = action == SecurityUiAction.LoginProperties ? new DbNodeRef(kind, node.Name) : (DbNodeRef?)null;
+            var view = security.CreateSecurityView(new SecurityUiContext(action, profile, node.NodePath, target, (IDbProvider)security));
+            var title = action == SecurityUiAction.NewLogin ? Loc["NewLogin"] : string.Format(Loc["LoginPropertiesTitle"], node.Name);
+            await SecurityViewRequested(new NodeInfoDialogViewModel(title, view, Loc));
+
+            // The folder gets the new/changed login; on a leaf, refresh its parent folder.
+            var refreshTarget = action == SecurityUiAction.NewLogin ? node : node.Parent ?? FindConnectionNode(node.Connection.Id);
+            if (refreshTarget is not null)
+            {
+                await refreshTarget.RefreshAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ReportError(node.Connection.Name, ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task DropLoginAsync()
+    {
+        if (SelectedNode is not { CanManageLogin: true } node || ConfirmRequested is null)
+        {
+            return;
+        }
+
+        if (!await ConfirmRequested(Loc["DropLogin"], string.Format(Loc["ConfirmDropLogin"], node.Name)))
+        {
+            return;
+        }
+
+        try
+        {
+            var provider = _providers.Get(node.Connection.ProviderId);
+            var quoted = provider.Dialect?.QuoteIdentifier(node.Name) ?? node.Name;
+            var profile = _connections.Resolve(node.Connection, null);
+            await provider.ExecuteDdlAsync(profile, $"DROP LOGIN {quoted}", CancellationToken.None);
+            var refreshTarget = node.Parent ?? FindConnectionNode(node.Connection.Id);
+            if (refreshTarget is not null)
+            {
+                await refreshTarget.RefreshAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ReportError(node.Connection.Name, ex.Message);
+        }
+    }
+
     // DROP/ALTER (host-only SQL, see Core/Ddl/AlterStatementBuilder — no SDK member, no host-API bump):
     // "Drop Database…" on a Database node — resolves with no database override (`database: null`) so
     // it connects via the connection's own default catalog, never the one being dropped (Postgres/MsSql
@@ -1558,6 +1633,9 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>Set by the view so the VM can show the node-info (properties) dialog.</summary>
     public Func<NodeInfoDialogViewModel, Task>? NodeInfoRequested { get; set; }
+
+    /// <summary>Set by the view so the VM can host a provider security view (ICustomSecurityUi) in a dialog.</summary>
+    public Func<NodeInfoDialogViewModel, Task>? SecurityViewRequested { get; set; }
 
     [RelayCommand]
     private async Task CloseTab(DocumentViewModel? document)

@@ -171,6 +171,12 @@ public partial class TreeNodeViewModel : ViewModelBase
     /// <summary>"Delete" is offered on a User node whose provider supports user management.</summary>
     public bool CanDeleteUser => NodeKind == DbNodeKind.User && _provider is { CanManageUsers: true };
 
+    /// <summary>"New Login…" is offered on a Logins folder whose provider owns a security view.</summary>
+    public bool CanManageLogins => NodeKind == DbNodeKind.LoginFolder && _provider is ICustomSecurityUi;
+
+    /// <summary>"Properties…"/"Drop Login…" are offered on a Login leaf whose provider owns a security view.</summary>
+    public bool CanManageLogin => NodeKind == DbNodeKind.Login && _provider is ICustomSecurityUi;
+
     /// <summary>"Properties…" is offered when the provider ships an <see cref="ICustomNodeInfoUi"/> info view
     /// for this node (e.g. SQL Server's Database Properties on a Database node).</summary>
     public bool CanShowProperties => _provider is ICustomNodeInfoUi info

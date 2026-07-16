@@ -10,7 +10,7 @@ using Microsoft.Data.SqlClient;
 
 namespace SqlExplorer.Providers.MsSql;
 
-public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi, ICustomNodeInfoUi, ICustomCellActionUi
+public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi, ICustomNodeInfoUi, ICustomCellActionUi, ICustomSecurityUi
 {
     // Route B, fourth capability: make the Activity Monitor's blocking_session_id cell actionable when it
     // points at a real blocker (> 0) — click opens the blocking session's details with a Kill button.
@@ -70,6 +70,10 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi, ICustomNod
 
     public SqlStatement BuildDropUserStatement(DbNodeRef userNode, IReadOnlyList<DbNodeRef> ancestors) =>
         new($"DROP USER {Dialect.QuoteIdentifier(userNode.Name)};", []);
+
+    // Route B: the host offers New Login / Properties on the server Logins folder/leaves and hosts this
+    // tabbed view (General / Server Roles / User Mapping). The view reads databases and runs its own DDL.
+    public Control CreateSecurityView(SecurityUiContext context) => new Security.LoginPropertiesView(context);
 
     // Route B (Notes §4.4): render the Advanced section with a provider-owned view instead of the
     // host-generated form. The declared Advanced ConnectionFields still define the data — the view
@@ -429,6 +433,10 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi, ICustomNod
             // Every cosmetic folder shares the Group kind, so route Group nodes by their name.
             DbNodeKind.Group => await LoadGroupAsync(profile, ancestors, ct),
             DbNodeKind.UserFolder => await LoadUsersAsync(profile, ancestors, ct),
+            // Server logins as manageable Login leaves (SQL + Windows logins; skip system ## principals).
+            DbNodeKind.LoginFolder => await LoadPrincipalsAsync(profile,
+                "SELECT name FROM sys.server_principals WHERE type IN ('S','U','G','C','K') " +
+                "AND name NOT LIKE '##%' ORDER BY name", ct, DbNodeKind.Login),
             DbNodeKind.Database => DatabaseChildren(),
             DbNodeKind.SchemaFolder => await LoadSchemasAsync(profile, Name(ancestors, DbNodeKind.Database), ct),
             DbNodeKind.Schema => await FoldersAsync(profile, ancestors, ct),
@@ -486,16 +494,14 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi, ICustomNod
             ],
             Security =>
             [
-                new() { Kind = DbNodeKind.Group, Name = Logins, HasChildren = true },
+                // LoginFolder (not a plain Group) so the host can offer New Login… and manage the leaves.
+                new() { Kind = DbNodeKind.LoginFolder, Name = Logins, HasChildren = true },
                 new() { Kind = DbNodeKind.Group, Name = ServerRoles, HasChildren = true }
             ],
             Administration =>
             [
                 new() { Kind = DbNodeKind.Group, Name = AgentJobs, HasChildren = true }
             ],
-            Logins => await LoadPrincipalsAsync(profile,
-                "SELECT name FROM sys.server_principals WHERE type IN ('S','U','G','C','K') " +
-                "AND name NOT LIKE '##%' ORDER BY name", ct),
             ServerRoles => await LoadPrincipalsAsync(profile,
                 "SELECT name FROM sys.server_principals WHERE type = 'R' AND name NOT LIKE '##%' ORDER BY name", ct),
             AgentJobs => await LoadAgentJobsAsync(profile, ct),
@@ -537,7 +543,8 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi, ICustomNod
     private static async Task<IReadOnlyList<DbTreeNode>> LoadPrincipalsAsync(
         ConnectionProfile profile,
         string sql,
-        CancellationToken ct)
+        CancellationToken ct,
+        DbNodeKind kind = DbNodeKind.Object)
     {
         var nodes = new List<DbTreeNode>();
         await using var connection = await OpenAsync(profile, ct);
@@ -545,7 +552,7 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi, ICustomNod
         await using var reader = await command.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            nodes.Add(new DbTreeNode { Kind = DbNodeKind.Object, Name = reader.GetString(0) });
+            nodes.Add(new DbTreeNode { Kind = kind, Name = reader.GetString(0) });
         }
 
         return nodes;

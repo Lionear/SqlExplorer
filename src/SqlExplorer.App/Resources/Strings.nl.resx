@@ -183,6 +183,21 @@
   <data name="ConfirmDeleteUser" xml:space="preserve">
     <value>Gebruiker {0} verwijderen?</value>
   </data>
+  <data name="NewLogin" xml:space="preserve">
+    <value>Nieuwe login</value>
+  </data>
+  <data name="LoginProperties" xml:space="preserve">
+    <value>Eigenschappen</value>
+  </data>
+  <data name="LoginPropertiesTitle" xml:space="preserve">
+    <value>Login: {0}</value>
+  </data>
+  <data name="DropLogin" xml:space="preserve">
+    <value>Login verwijderen</value>
+  </data>
+  <data name="ConfirmDropLogin" xml:space="preserve">
+    <value>Login {0} verwijderen? Dit kan niet ongedaan worden gemaakt.</value>
+  </data>
   <data name="SettingsMcp" xml:space="preserve">
     <value>MCP-server</value>
   </data>

@@ -5,23 +5,42 @@ using SqlExplorer.Sdk.Schema;
 namespace SqlExplorer.Sdk.Ui;
 
 /// <summary>
-/// Optional Route-B capability an <c>IDbProvider</c> may also implement to replace the host's generic
-/// "New User…" form with a provider-owned Avalonia view — the seam for a genuinely divergent flow (e.g.
-/// SQL Server's full server-Login → database-User → server-role-mapping wizard) without a host-API bump.
+/// Optional Route-B capability an <c>IDbProvider</c> may also implement to own a security-management view
+/// the host can't model generically — SQL Server's server-Login flow (create/drop, server-role membership,
+/// login→database-user mapping, SQL + Windows auth) is the first user. The host offers the entry points
+/// (New Login… on a <see cref="DbNodeKind.LoginFolder"/>, Properties… on a <see cref="DbNodeKind.Login"/>)
+/// and hosts the returned <c>Control</c> in a dialog; the view is otherwise self-contained (it reads
+/// databases/roles/membership and runs its DDL through the provider it is handed).
 /// A fifth Route-B capability alongside <see cref="ICustomConnectionUi"/>, <see cref="ICustomNodeInfoUi"/>,
 /// <see cref="ICustomCellActionUi"/> and <c>ICustomToolUi</c>.
 /// </summary>
 /// <remarks>
-/// Not implemented by any provider in v1 — the seam simply exists so the later, richer flow slots in
-/// without breaking the contract. Host detection is the usual optional-interface check: a provider that
-/// only declares <c>UserFields</c> gets the generic form; one that also implements this gets its own view.
+/// Host detection is the usual optional-interface check: a provider that implements this gets its own view
+/// for the actions in <see cref="SecurityUiAction"/>; one that doesn't falls back to the generic flows.
 /// </remarks>
 public interface ICustomSecurityUi
 {
-    /// <summary>Build the provider-owned "New User…" view for the given users-folder node.</summary>
-    Control CreateUserView(UserUiContext context);
+    /// <summary>Build the provider-owned security view for the requested <see cref="SecurityUiAction"/>.</summary>
+    Control CreateSecurityView(SecurityUiContext context);
 }
 
-/// <summary>Everything a custom user view needs: the resolved profile, the users-folder node it was opened
-/// on (its ancestry gives the target database for SQL Server), and the provider itself.</summary>
-public sealed record UserUiContext(ConnectionProfile Profile, IReadOnlyList<DbNodeRef> Ancestors, IDbProvider Provider);
+/// <summary>Which security view the host is asking the provider to build.</summary>
+public enum SecurityUiAction
+{
+    /// <summary>Create a new server login (invoked on a <see cref="DbNodeKind.LoginFolder"/>).</summary>
+    NewLogin,
+
+    /// <summary>Edit an existing server login (invoked on a <see cref="DbNodeKind.Login"/>).</summary>
+    LoginProperties
+}
+
+/// <summary>Everything a custom security view needs: the action, the resolved profile, the node it was
+/// opened on (its ancestry gives the target server/database), the target principal for an edit action
+/// (null for <see cref="SecurityUiAction.NewLogin"/>), and the provider itself (to read metadata and run
+/// the resulting DDL).</summary>
+public sealed record SecurityUiContext(
+    SecurityUiAction Action,
+    ConnectionProfile Profile,
+    IReadOnlyList<DbNodeRef> Ancestors,
+    DbNodeRef? Target,
+    IDbProvider Provider);

@@ -132,6 +132,8 @@ public static class NodeIcons
         DbNodeKind.ColumnFolder => Folder,
         DbNodeKind.UserFolder => Folder,
         DbNodeKind.User => User,
+        DbNodeKind.LoginFolder => Folder,
+        DbNodeKind.Login => User,
         DbNodeKind.Table => Table,
         DbNodeKind.View => View,
         DbNodeKind.Column => Column,

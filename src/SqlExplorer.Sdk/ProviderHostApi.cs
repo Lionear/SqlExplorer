@@ -74,9 +74,14 @@ public static class ProviderHostApi
     //                   text, null = host SQL) + BuildAlterStatement (AlterSpec/AlterAction — provider-owned
     //                   DROP/TRUNCATE, null = host SQL). Lets a document store (MongoDB) generate its own
     //                   shell text instead of SELECT/DROP; SQL providers are unchanged (defaults).
-    public const int Version = 20;
+    // v21 (2026-07-16): added DbNodeKind LoginFolder/Login (server-level logins in the tree) and reshaped
+    //                   the (still-unimplemented) Route-B seam ICustomSecurityUi to CreateSecurityView(
+    //                   SecurityUiContext) + SecurityUiAction, so a provider can own the server-Login flow
+    //                   (create/drop, server-role membership, login→user mapping, SQL+Windows auth). Purely
+    //                   additive: enum values + an unused interface's shape, so v20 plugins keep loading.
+    public const int Version = 21;
 
-    /// <summary>Oldest plugin ABI this host still loads. Additive bumps (v11→v20 style) keep this fixed;
+    /// <summary>Oldest plugin ABI this host still loads. Additive bumps (v11→v21 style) keep this fixed;
     /// only a breaking change raises it. Kept at 20 deliberately: pre-v20 versions added some abstract
     /// members (v12/v14), so a full default-implementation audit is needed before lowering it. Last
     /// breaking change: v10 (removed DatabaseKind).</summary>

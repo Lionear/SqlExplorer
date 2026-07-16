@@ -1,0 +1,113 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SqlExplorer.Providers.MsSql.Security"
+             x:Class="SqlExplorer.Providers.MsSql.Security.LoginPropertiesView"
+             x:DataType="vm:LoginPropertiesViewModel"
+             x:CompileBindings="True"
+             MinWidth="520">
+  <StackPanel Spacing="12" Margin="2">
+
+    <TabControl>
+      <!-- General -->
+      <TabItem Header="General">
+        <StackPanel Spacing="10" Margin="0,10,0,0">
+          <StackPanel Spacing="4">
+            <TextBlock Text="Login name" />
+            <TextBox Text="{Binding LoginName}" />
+          </StackPanel>
+
+          <StackPanel Spacing="4">
+            <TextBlock Text="Authentication" />
+            <StackPanel Orientation="Horizontal" Spacing="18">
+              <RadioButton GroupName="auth" Content="SQL Server" IsChecked="{Binding IsSqlAuth}" />
+              <RadioButton GroupName="auth" Content="Windows" IsChecked="{Binding IsWindowsAuth}" />
+            </StackPanel>
+          </StackPanel>
+
+          <Grid ColumnDefinitions="*,12,*">
+            <StackPanel Grid.Column="0" Spacing="4">
+              <TextBlock Text="Password" />
+              <TextBox Text="{Binding Password}" PasswordChar="•" IsEnabled="{Binding IsSqlAuth}" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="4">
+              <TextBlock Text="Confirm password" />
+              <TextBox Text="{Binding ConfirmPassword}" PasswordChar="•" IsEnabled="{Binding IsSqlAuth}" />
+            </StackPanel>
+          </Grid>
+
+          <Grid ColumnDefinitions="*,12,Auto">
+            <StackPanel Grid.Column="0" Spacing="4">
+              <TextBlock Text="Default database" />
+              <ComboBox ItemsSource="{Binding Databases}" SelectedItem="{Binding DefaultDatabase}"
+                        HorizontalAlignment="Stretch" />
+            </StackPanel>
+            <CheckBox Grid.Column="2" Content="Enforce password policy" VerticalAlignment="Bottom"
+                      IsChecked="{Binding EnforcePolicy}" IsEnabled="{Binding IsSqlAuth}" />
+          </Grid>
+        </StackPanel>
+      </TabItem>
+
+      <!-- Server Roles -->
+      <TabItem Header="Server Roles">
+        <ScrollViewer MaxHeight="300" Margin="0,10,0,0">
+          <ItemsControl ItemsSource="{Binding ServerRoles}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:RoleRow">
+                <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" Margin="0,2" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- User Mapping -->
+      <TabItem Header="User Mapping">
+        <Grid RowDefinitions="Auto,150,Auto,160" Margin="0,10,0,0">
+          <TextBlock Grid.Row="0" Text="Map this login to database users" Margin="0,0,0,4" />
+          <Border Grid.Row="1" BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1" CornerRadius="4">
+            <ListBox ItemsSource="{Binding Mappings}" SelectedItem="{Binding SelectedMapping}"
+                     Background="Transparent" BorderThickness="0">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:MappingRow">
+                  <Grid ColumnDefinitions="Auto,*,*">
+                    <CheckBox Grid.Column="0" IsChecked="{Binding IsMapped}" Margin="0,0,8,0" />
+                    <TextBlock Grid.Column="1" Text="{Binding Database}" VerticalAlignment="Center" />
+                    <TextBox Grid.Column="2" Text="{Binding UserName}" PlaceholderText="user (defaults to login)" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Border>
+
+          <TextBlock Grid.Row="2" Text="Database roles for the selected database" Margin="0,12,0,4" />
+          <Border Grid.Row="3" BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1" CornerRadius="4" Padding="8,4">
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding SelectedDbRoles}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RoleRow">
+                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" Margin="0,2" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+      </TabItem>
+    </TabControl>
+
+    <!-- SQL preview -->
+    <StackPanel Spacing="4">
+      <TextBlock Text="SQL preview" />
+      <TextBox Text="{Binding SqlPreview}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+               FontFamily="Cascadia Code,Consolas,Menlo,monospace" FontSize="12" MinHeight="90" MaxHeight="150" />
+    </StackPanel>
+
+    <TextBlock Text="{Binding Status}" Foreground="#D64545" TextWrapping="Wrap"
+               IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+    <Grid ColumnDefinitions="*,Auto,Auto">
+      <Button Grid.Column="1" Name="CancelButton" Content="Cancel" Margin="0,0,8,0" />
+      <Button Grid.Column="2" Name="ApplyButton" Content="{Binding PrimaryAction}" Classes="Accent" />
+    </Grid>
+  </StackPanel>
+</UserControl>

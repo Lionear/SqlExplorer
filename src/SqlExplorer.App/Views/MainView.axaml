@@ -117,6 +117,12 @@
                           IsVisible="{Binding SelectedNode.CanManageUsers, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[DeleteUser]}" Command="{Binding DeleteUserCommand}"
                           IsVisible="{Binding SelectedNode.CanDeleteUser, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[NewLogin]}" Command="{Binding NewLoginCommand}"
+                          IsVisible="{Binding SelectedNode.CanManageLogins, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[LoginProperties]}" Command="{Binding LoginPropertiesCommand}"
+                          IsVisible="{Binding SelectedNode.CanManageLogin, FallbackValue=False}" />
+                <MenuItem Header="{Binding Loc[DropLogin]}" Command="{Binding DropLoginCommand}"
+                          IsVisible="{Binding SelectedNode.CanManageLogin, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[AddColumnMenu]}" Command="{Binding AddColumnCommand}"
                           IsVisible="{Binding SelectedNode.CanAddColumn, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[ImportCsv]}" Command="{Binding ImportCsvCommand}"

@@ -79,7 +79,16 @@ public enum DbNodeKind
     UserFolder,
 
     /// <summary>A single database/server user; "Delete" builds a provider-specific DROP via the SDK.</summary>
-    User
+    User,
+
+    /// <summary>Grouping node that holds a server's logins — the "New Login…" action appears here. Server-
+    /// level (SQL Server), distinct from <see cref="UserFolder"/> (database users). A provider that also
+    /// implements <c>ICustomSecurityUi</c> gets its own view for the richer login flow.</summary>
+    LoginFolder,
+
+    /// <summary>A single server login; "Properties…"/"Drop Login…" hang off it via the provider's
+    /// <c>ICustomSecurityUi</c> view.</summary>
+    Login
 }
 
 /// <summary>

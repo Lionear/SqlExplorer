@@ -183,6 +183,21 @@
   <data name="ConfirmDeleteUser" xml:space="preserve">
     <value>Delete user {0}?</value>
   </data>
+  <data name="NewLogin" xml:space="preserve">
+    <value>New login</value>
+  </data>
+  <data name="LoginProperties" xml:space="preserve">
+    <value>Properties</value>
+  </data>
+  <data name="LoginPropertiesTitle" xml:space="preserve">
+    <value>Login: {0}</value>
+  </data>
+  <data name="DropLogin" xml:space="preserve">
+    <value>Drop login</value>
+  </data>
+  <data name="ConfirmDropLogin" xml:space="preserve">
+    <value>Drop login {0}? This cannot be undone.</value>
+  </data>
   <data name="SettingsMcp" xml:space="preserve">
     <value>MCP server</value>
   </data>
