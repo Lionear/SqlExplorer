@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "dragonflydb",
+  "type": "provider",
+  "name": "DragonflyDB",
+  "version": "1.0.0",
+  "hostApiVersion": 23,
+  "entryAssembly": "SqlExplorer.Providers.DragonflyDb.dll"
+}
