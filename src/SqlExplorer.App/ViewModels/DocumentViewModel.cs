@@ -107,6 +107,19 @@ public partial class DocumentViewModel : ViewModelBase
 
     private void ReportFailure(string message) => Report(OutputLevel.Error, message);
 
+    /// <summary>Raised (connection id + new state) when running a query touches the connection, so the host
+    /// can colour that connection's status dot even though the query auto-connected outside the tree's own
+    /// connect flow. The handler only sets the node's State — it never reloads the tree.</summary>
+    public event Action<string, ConnectionState>? ConnectionActivity;
+
+    private void SignalConnection(ConnectionState state)
+    {
+        if (Connection is { } connection)
+        {
+            ConnectionActivity?.Invoke(connection.Id, state);
+        }
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsResultEditable))]
     [NotifyPropertyChangedFor(nameof(ReadOnlyReason))]
@@ -1076,6 +1089,8 @@ public partial class DocumentViewModel : ViewModelBase
             }
 
             stopwatch.Stop();
+            // The run auto-connected: light the connection's status dot in the tree.
+            SignalConnection(ConnectionState.Connected);
             var totalRows = results.Sum(r => r.Rows.Count);
             SetResultSets(BuildResultTabs(results));
             Report(OutputLevel.Info, DescribeOutcome(results, stopwatch.Elapsed.TotalMilliseconds));
@@ -1092,6 +1107,7 @@ public partial class DocumentViewModel : ViewModelBase
         catch (Exception ex)
         {
             stopwatch.Stop();
+            SignalConnection(ConnectionState.Error);
             ReportFailure(ex.Message);
             if (IsQueryMode)
             {
@@ -1157,6 +1173,8 @@ public partial class DocumentViewModel : ViewModelBase
             var profile = _connections.Resolve(Connection, _database);
             var result = await _providers.Get(Connection.ProviderId).ExecuteQueryAsync(profile, sql, token);
             stopwatch.Stop();
+            // The query auto-connected: reflect that on the connection's status dot in the tree.
+            SignalConnection(ConnectionState.Connected);
             _lastRowCount = result.Rows.Count;
             SetResultSets([new ResultSetTab("Result", EditableResultSet.From(result))]);
             // Browse paging shares this path; its own RowRange header already shows the count, so only a
@@ -1178,6 +1196,7 @@ public partial class DocumentViewModel : ViewModelBase
         catch (Exception ex)
         {
             stopwatch.Stop();
+            SignalConnection(ConnectionState.Error);
             ReportFailure(ex.Message);
             if (IsQueryMode)
             {

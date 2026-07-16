@@ -1951,7 +1951,20 @@ public partial class MainViewModel : ViewModelBase
         var document = new DocumentViewModel(_providers, _connections, _formatter, _history, _queryLog, _schemaCache, _settingsStore, Loc);
         // Surface every execution outcome (row counts, cancellations, failures) in the shared Output panel.
         document.Reported += (level, message) => ReportOutput(level, document.Connection?.Name, message);
+        // A query auto-connects outside the tree's connect flow, so reflect that on the connection's status dot.
+        document.ConnectionActivity += SetConnectionState;
         return document;
+    }
+
+    // Colour a connection's status dot from query activity. Property-only: setting State recolours the LED
+    // (via ConnectionStateBrushConverter) and drives the schema-cache observer — it never refreshes/reloads
+    // the node, so the tree keeps its expanded state (only the dot changes).
+    private void SetConnectionState(string connectionId, ConnectionState state)
+    {
+        if (FindConnectionNode(connectionId) is { } node && node.State != state)
+        {
+            node.State = state;
+        }
     }
 
     private void AddDocument(DocumentViewModel document)
