@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "mongodb",
+  "type": "provider",
+  "name": "MongoDB",
+  "version": "1.0.0",
+  "hostApiVersion": 20,
+  "entryAssembly": "SqlExplorer.Providers.MongoDb.dll"
+}

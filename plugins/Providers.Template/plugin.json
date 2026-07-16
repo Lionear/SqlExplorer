@@ -4,6 +4,6 @@
   "type": "provider",
   "name": "Template (example)",
   "version": "1.0.0",
-  "hostApiVersion": 19,
+  "hostApiVersion": 20,
   "entryAssembly": "SqlExplorer.Providers.Template.dll"
 }

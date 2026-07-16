@@ -128,7 +128,7 @@
                 <MenuItem Header="{Binding Loc[Export]}" Command="{Binding ExportTableCommand}"
                           IsVisible="{Binding SelectedNode.IsTableOrView, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[SqlCommands]}"
-                          IsVisible="{Binding SelectedNode.IsTableOrView, FallbackValue=False}">
+                          IsVisible="{Binding SelectedNode.CanGenerateSqlCommands, FallbackValue=False}">
                   <MenuItem Header="SELECT *" Command="{Binding GenerateSqlCommand}" CommandParameter="Select" />
                   <MenuItem Header="SELECT columns" Command="{Binding GenerateSqlCommand}" CommandParameter="SelectColumns" />
                   <MenuItem Header="INSERT" Command="{Binding GenerateSqlCommand}" CommandParameter="Insert" />

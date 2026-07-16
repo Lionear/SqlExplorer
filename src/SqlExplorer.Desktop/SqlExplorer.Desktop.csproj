@@ -52,6 +52,10 @@
                           Condition="'$(Configuration)' == 'Debug'">
         <PluginId>template</PluginId>
       </ProviderPluginFile>
+      <ProviderPluginFile Include="$(MSBuildThisFileDirectory)..\..\plugins\Providers.MongoDb\bin\$(Configuration)\$(TargetFramework)\**\*"
+                          Condition="'$(Configuration)' == 'Debug'">
+        <PluginId>mongodb</PluginId>
+      </ProviderPluginFile>
       <ProviderPluginFile Include="$(MSBuildThisFileDirectory)..\..\plugins\Tools.UniversalBackup\bin\$(Configuration)\$(TargetFramework)\**\*"
                           Condition="'$(Configuration)' == 'Debug'">
         <PluginId>universal-backup</PluginId>
