@@ -27,5 +27,8 @@
   "backup.progress.objectsSkipped": "Niet-tabel-objecten overgeslagen: {0}",
   "backup.progress.tableRunning": "Bezig met {0}…",
   "backup.progress.objectItem": "{0}",
-  "backup.progress.objectNoDdl": "Geen definitie beschikbaar voor {0} — overgeslagen."
+  "backup.progress.objectNoDdl": "Geen definitie beschikbaar voor {0} — overgeslagen.",
+  "restore.progress.tableSkipped": "{0} overgeslagen (niet geselecteerd).",
+  "restore.progress.tableDone": "{0}: {1} rij(en) teruggezet.",
+  "restore.progress.objectSkipped": "{0} overgeslagen (niet geselecteerd)."
 }

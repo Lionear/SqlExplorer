@@ -9,9 +9,13 @@ namespace SqlExplorer.Tools.UniversalBackup;
 /// A separate tool from Backup — same reason Backup/Restore are split everywhere: Backup is safe, Restore
 /// is not, and each deserves its own menu item. MVP: same-engine only (cross-engine is blocked).
 /// </summary>
-public sealed class UniversalRestoreTool : IToolPlugin
+public sealed class UniversalRestoreTool : IToolPlugin, ICustomToolUi
 {
     private const int InsertChunkSize = 500;
+
+    // Route B: the object-selection tree (+ drop&recreate toggle) replaces the generic form. Fields stay
+    // declared as a graceful fallback but are unused while this view is supplied.
+    public Avalonia.Controls.Control CreateView(IToolUiContext context) => new RestoreSelectionView(context);
 
     public string Id => "universal-restore";
 
@@ -76,6 +80,8 @@ public sealed class UniversalRestoreTool : IToolPlugin
         }
 
         var passphrase = inputs.GetValueOrDefault("passphrase");
+        var selection = BackupSelection.Parse(inputs.GetValueOrDefault("selection"));
+        var dropRecreate = string.Equals(inputs.GetValueOrDefault("dropRecreate"), "true", StringComparison.OrdinalIgnoreCase);
 
         // Streaming CPU/IO (decompress + decrypt + LOB spooling) off the UI thread.
         await Task.Run(async () =>
@@ -84,13 +90,13 @@ public sealed class UniversalRestoreTool : IToolPlugin
             {
                 if (meta.FormatVersion >= 2)
                 {
-                    var visitor = new RestoreVisitor(context, progress);
+                    var visitor = new RestoreVisitor(context, progress, selection, dropRecreate);
                     await LbakFormat.ReadStreamingAsync(filePath, passphrase, visitor, ct);
                     await visitor.FinishAsync(ct);
                 }
                 else
                 {
-                    await RestoreV1Async(context, filePath, passphrase, progress, ct);
+                    await RestoreV1Async(context, filePath, passphrase, dropRecreate, progress, ct);
                 }
             }
             catch (CryptographicException)
@@ -118,6 +124,17 @@ public sealed class UniversalRestoreTool : IToolPlugin
             && !type.Equals("rowversion", StringComparison.OrdinalIgnoreCase);
     }
 
+    // "Drop & recreate" toggle: DROP TABLE IF EXISTS is supported identically by all four engines, so this
+    // needs no dialect-specific builder. Non-table objects aren't covered (v1 scope) — a CREATE that
+    // collides with an existing view/procedure/function/trigger is still just logged and skipped, same as
+    // before this feature (see ReplayObjectsAsync).
+    internal static Task DropTableIfExistsAsync(ToolExecutionContext context, BackupTable table, CancellationToken ct)
+    {
+        var schema = string.IsNullOrEmpty(table.SchemaName) ? null : table.SchemaName;
+        var qualified = context.Provider.Dialect.QualifyName(null, schema, table.TableName);
+        return context.Provider.ExecuteDdlAsync(context.Profile, $"DROP TABLE IF EXISTS {qualified}", ct);
+    }
+
     // Recreate a table from a backup header and return the insertable column indices (rowversion skipped).
     internal static async Task<int[]> CreateTableAsync(ToolExecutionContext context, BackupTable table, CancellationToken ct)
     {
@@ -135,7 +152,8 @@ public sealed class UniversalRestoreTool : IToolPlugin
 
     // ---- v1 (materialised, legacy files) ----
     private static async Task RestoreV1Async(
-        ToolExecutionContext context, string filePath, string? passphrase, IProgress<ToolProgress> progress, CancellationToken ct)
+        ToolExecutionContext context, string filePath, string? passphrase, bool dropRecreate,
+        IProgress<ToolProgress> progress, CancellationToken ct)
     {
         var tables = LbakFormat.ReadPayloadV1(filePath, passphrase);
         var dialect = context.Provider.Dialect;
@@ -144,6 +162,11 @@ public sealed class UniversalRestoreTool : IToolPlugin
             ct.ThrowIfCancellationRequested();
             var table = tables[i];
             var fraction = (double)(i + 1) / tables.Count;
+            if (dropRecreate)
+            {
+                await DropTableIfExistsAsync(context, table, ct);
+            }
+
             var keep = await CreateTableAsync(context, table, ct);
             progress.Report(new ToolProgress(context.Localizer.Get("restore.progress.createdTable", table.TableName), fraction));
             if (keep.Length == 0 || table.Rows.Count == 0)

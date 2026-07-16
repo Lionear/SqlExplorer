@@ -22,11 +22,24 @@ public enum LbakObjectKind : byte
 /// a trigger (the table/view it hangs on), empty otherwise.</summary>
 public sealed record BackupObject(LbakObjectKind Kind, string SchemaName, string Name, string ParentTable, string Definition);
 
+/// <summary>One backed-up table's identity, carried in the always-plaintext <see cref="LbakMeta"/> so the
+/// Restore dialog's object-selection tree can list it before a passphrase is entered. <see cref="HasData"/>
+/// reflects the schema/data choice made at backup time (schema-only tables still appear here).</summary>
+public sealed record BackupTableMeta(string Schema, string Name, bool HasData);
+
+/// <summary>One backed-up non-table object's identity, carried in the plaintext <see cref="LbakMeta"/> —
+/// same purpose as <see cref="BackupTableMeta"/>. Only the name/kind/schema is exposed in plaintext; the
+/// object's actual DDL stays in the encrypted payload.</summary>
+public sealed record BackupObjectMeta(LbakObjectKind Kind, string Schema, string Name);
+
 /// <summary>One materialised table (v1 read path only). v2 restore streams rows through
 /// <see cref="ILbakVisitor"/> instead of building this in memory.</summary>
 public sealed record BackupTable(string SchemaName, string TableName, IReadOnlyList<BackupColumn> Columns, IReadOnlyList<object?[]> Rows);
 
-/// <summary>Always-plaintext header metadata — lets the Restore dialog show context before asking for a passphrase.</summary>
+/// <summary>Always-plaintext header metadata — lets the Restore dialog show context before asking for a
+/// passphrase. <see cref="Tables"/>/<see cref="Objects"/> are null for a backup written before this list
+/// existed (Fase 2b); the Restore dialog treats null as "no object-level picker available — restore
+/// everything", exactly like the pre-2b behaviour.</summary>
 public sealed record LbakMeta(
     string ProviderId,
     string EngineDisplayName,
@@ -38,7 +51,9 @@ public sealed record LbakMeta(
     int FormatVersion,
     int ViewCount = 0,
     int RoutineCount = 0,
-    int TriggerCount = 0);
+    int TriggerCount = 0,
+    IReadOnlyList<BackupTableMeta>? Tables = null,
+    IReadOnlyList<BackupObjectMeta>? Objects = null);
 
 /// <summary>Restore-side sink for a streamed v2 payload: one <see cref="OnTableAsync"/> per table, then
 /// one <see cref="OnRowAsync"/> per row. A row's cells must be read in order and any LOB stream fully

@@ -8,7 +8,11 @@ namespace SqlExplorer.Tools.UniversalBackup;
 /// inserted on its own via <see cref="IDbProvider.InsertStreamingAsync"/>, so a multi-gigabyte value flows
 /// backup-file → temp-file → database without ever sitting in a single .NET array.
 /// </summary>
-internal sealed class RestoreVisitor(ToolExecutionContext context, IProgress<ToolProgress> progress) : ILbakVisitor
+internal sealed class RestoreVisitor(
+    ToolExecutionContext context,
+    IProgress<ToolProgress> progress,
+    IReadOnlyList<SelectionEntry>? selection,
+    bool dropRecreate) : ILbakVisitor
 {
     private const int BatchSize = 500;
 
@@ -19,26 +23,52 @@ internal sealed class RestoreVisitor(ToolExecutionContext context, IProgress<Too
     private readonly List<object?[]> _batch = [];
     private readonly List<BackupObject> _objects = [];
     private long _inserted;
+    private string? _activeItemKey; // the checklist row currently "Running"; flipped to Done on the next switch
+    private bool _includeData; // Schema selected but Data unchecked → create the table, skip every row
 
     public async Task OnTableAsync(BackupTable header, CancellationToken ct)
     {
         await FlushBatchAsync(ct); // finish the previous table before switching state
+        CompleteActiveItem();
 
         _table = header;
+        var itemKey = $"table:{header.SchemaName}.{header.TableName}";
+
+        // null = table not selected at all; false = schema only; true = schema + data — the same
+        // [Schema][Data] semantics the Backup dialog's tree uses, shared via BackupSelection.
+        var dataChoice = BackupSelection.TableDataChoice(selection, header.SchemaName, header.TableName);
+        if (dataChoice is null)
+        {
+            _keep = []; // not selected — OnRowAsync no-ops below, the reader still drains the row bytes
+            progress.Report(new ToolProgress(
+                context.Localizer.Get("restore.progress.tableSkipped", header.TableName),
+                ItemKey: itemKey, ItemStatus: ToolItemStatus.Skipped));
+            return;
+        }
+
+        if (dropRecreate)
+        {
+            await UniversalRestoreTool.DropTableIfExistsAsync(context, header, ct);
+        }
+
+        _includeData = dataChoice == true;
         _keep = await UniversalRestoreTool.CreateTableAsync(context, header, ct);
         var dialect = context.Provider.Dialect;
         var schema = string.IsNullOrEmpty(header.SchemaName) ? null : header.SchemaName;
         _qualified = dialect.QualifyName(null, schema, header.TableName);
         _columnList = string.Join(", ", _keep.Select(k => dialect.QuoteIdentifier(header.Columns[k].Name)));
         _inserted = 0;
-        progress.Report(new ToolProgress($"Created table {header.TableName}"));
+        _activeItemKey = itemKey;
+        progress.Report(new ToolProgress(
+            context.Localizer.Get("restore.progress.createdTable", header.TableName),
+            ItemKey: itemKey, ItemStatus: ToolItemStatus.Running));
     }
 
     public async Task OnRowAsync(ILbakRow row, CancellationToken ct)
     {
-        if (_keep.Length == 0)
+        if (_keep.Length == 0 || !_includeData)
         {
-            return; // nothing insertable; ReadStreamingAsync drains the row's cells
+            return; // nothing insertable, or schema-only restore — ReadStreamingAsync drains the row's cells
         }
 
         var values = new object?[_keep.Length];
@@ -97,17 +127,42 @@ internal sealed class RestoreVisitor(ToolExecutionContext context, IProgress<Too
         }
     }
 
-    // Buffer non-table objects; they're replayed after all table data (they may reference tables).
+    // Buffer selected non-table objects; they're replayed after all table data (they may reference tables).
     public Task OnObjectAsync(BackupObject obj, CancellationToken ct)
     {
-        _objects.Add(obj);
+        if (BackupSelection.IsIncluded(selection, obj.Kind.ToString().ToLowerInvariant(), obj.SchemaName, obj.Name))
+        {
+            _objects.Add(obj);
+        }
+        else
+        {
+            var itemKey = $"{obj.Kind.ToString().ToLowerInvariant()}:{obj.SchemaName}.{obj.Name}";
+            progress.Report(new ToolProgress(
+                context.Localizer.Get("restore.progress.objectSkipped", obj.Name),
+                ItemKey: itemKey, ItemStatus: ToolItemStatus.Skipped));
+        }
+
         return Task.CompletedTask;
     }
 
     public async Task FinishAsync(CancellationToken ct)
     {
         await FlushBatchAsync(ct);
+        CompleteActiveItem();
         await ReplayObjectsAsync(ct);
+    }
+
+    private void CompleteActiveItem()
+    {
+        if (_activeItemKey is not { } key)
+        {
+            return;
+        }
+
+        progress.Report(new ToolProgress(
+            context.Localizer.Get("restore.progress.tableDone", _table?.TableName ?? string.Empty, _inserted),
+            ItemKey: key, ItemStatus: ToolItemStatus.Done));
+        _activeItemKey = null;
     }
 
     // Replay object DDL best-effort in dependency-friendly order (views → functions → procedures →
@@ -118,14 +173,19 @@ internal sealed class RestoreVisitor(ToolExecutionContext context, IProgress<Too
         foreach (var obj in _objects.OrderBy(ReplayOrder))
         {
             ct.ThrowIfCancellationRequested();
+            var itemKey = $"{obj.Kind.ToString().ToLowerInvariant()}:{obj.SchemaName}.{obj.Name}";
             try
             {
                 await context.Provider.ExecuteDdlAsync(context.Profile, obj.Definition, ct);
-                progress.Report(new ToolProgress(context.Localizer.Get("restore.progress.objectDone", obj.Name)));
+                progress.Report(new ToolProgress(
+                    context.Localizer.Get("restore.progress.objectDone", obj.Name),
+                    ItemKey: itemKey, ItemStatus: ToolItemStatus.Done));
             }
             catch (Exception ex)
             {
-                progress.Report(new ToolProgress(context.Localizer.Get("restore.progress.objectFailed", obj.Name, ex.Message)));
+                progress.Report(new ToolProgress(
+                    context.Localizer.Get("restore.progress.objectFailed", obj.Name, ex.Message),
+                    ItemKey: itemKey, ItemStatus: ToolItemStatus.Error));
             }
         }
     }
@@ -194,7 +254,9 @@ internal sealed class RestoreVisitor(ToolExecutionContext context, IProgress<Too
     }
 
     private void Report() =>
-        progress.Report(new ToolProgress($"{_table?.TableName}: inserted {_inserted} row(s)"));
+        progress.Report(new ToolProgress(
+            $"{_table?.TableName}: inserted {_inserted} row(s)",
+            ItemKey: _activeItemKey, ItemStatus: _activeItemKey is null ? null : ToolItemStatus.Running));
 
     private static void TryDelete(string path)
     {

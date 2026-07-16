@@ -3,7 +3,7 @@
   "id": "universal-backup",
   "type": "tool",
   "name": "Universal Backup & Restore",
-  "version": "1.0.1",
+  "version": "0.1.0",
   "hostApiVersion": 2,
   "entryAssembly": "SqlExplorer.Tools.UniversalBackup.dll",
   "localization": "Lang/strings"

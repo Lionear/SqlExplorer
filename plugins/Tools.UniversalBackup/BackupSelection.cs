@@ -61,17 +61,23 @@ public static class BackupSelection
     }
 
     /// <summary>Whether a non-table object is selected (schema-only; there is no data half).</summary>
-    public static bool IsObjectSelected(IReadOnlyList<SelectionEntry>? selection, LbakObjectKind kind, string schema, string name)
+    public static bool IsObjectSelected(IReadOnlyList<SelectionEntry>? selection, LbakObjectKind kind, string schema, string name) =>
+        IsIncluded(selection, kind.ToString().ToLowerInvariant(), schema, name);
+
+    /// <summary>Whether an item is checked in a selection tree that only has a single "include" checkbox per
+    /// row — the Restore dialog's tree (a table there is either restored or skipped whole; there is no
+    /// separate data toggle, that choice was already made at backup time). Shared with
+    /// <see cref="IsObjectSelected"/> so both trees resolve a selection the same way.</summary>
+    public static bool IsIncluded(IReadOnlyList<SelectionEntry>? selection, string kind, string schema, string name)
     {
         if (selection is null)
         {
-            return true; // no selection → include all objects
+            return true; // no selection captured → include everything
         }
 
-        var kindName = kind.ToString().ToLowerInvariant();
         return selection.Any(e =>
             e.IncludeSchema
-            && e.Kind == kindName
+            && e.Kind == kind
             && string.Equals(e.Name, name, StringComparison.Ordinal)
             && string.Equals(e.Schema, schema, StringComparison.Ordinal));
     }

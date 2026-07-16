@@ -27,5 +27,8 @@
   "backup.progress.objectsSkipped": "Skipped non-table objects: {0}",
   "backup.progress.tableRunning": "Backing up {0}…",
   "backup.progress.objectItem": "{0}",
-  "backup.progress.objectNoDdl": "No definition available for {0} — skipped."
+  "backup.progress.objectNoDdl": "No definition available for {0} — skipped.",
+  "restore.progress.tableSkipped": "Skipped {0} (not selected).",
+  "restore.progress.tableDone": "{0}: restored {1} row(s).",
+  "restore.progress.objectSkipped": "Skipped {0} (not selected)."
 }

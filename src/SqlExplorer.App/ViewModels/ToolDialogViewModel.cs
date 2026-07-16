@@ -84,14 +84,33 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
 
     public bool HasChecklist => Checklist.Count > 0;
 
-    // Hide the progress-log panel until there is something to show, so form-only tools (e.g. the Shrink
-    // dialogs) aren't dominated by a big empty box before the first run.
-    public bool HasLogArea => IsRunning || IsCompleted || Log.Count > 0;
+    // Hide the plain log once there's a checklist: a keyed-item tool's checklist already shows per-item
+    // status, so a second, line-by-line log underneath is mostly the same information twice (e.g. the
+    // Backup dialog showed "Table 7/9: Traders — 0 row(s)" in both panels at once). Otherwise, hide the
+    // panel until there is something to show, so form-only tools (e.g. the Shrink dialogs) aren't dominated
+    // by a big empty box before the first run.
+    public bool HasLogArea => !HasChecklist && (IsRunning || IsCompleted || Log.Count > 0);
+
+    /// <summary>True once a run has started (or finished): the Route-A/B fields area collapses so the
+    /// checklist/log can expand into that space instead — the object-selection tree (or form) has done its
+    /// job by the time there's something to report.</summary>
+    public bool ShowingResults => IsRunning || IsCompleted;
+
+    /// <summary>Row-0 (fields/custom view) height: fills the dialog while editing, collapses to nothing once
+    /// a run starts so <see cref="ResultsAreaHeight"/> can expand into the freed space.</summary>
+    public GridLength ObjectAreaHeight => ShowingResults ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+
+    /// <summary>Row-1 (checklist/log) height: content-sized while editing (usually empty), fills the space
+    /// <see cref="ObjectAreaHeight"/> just freed up once a run starts.</summary>
+    public GridLength ResultsAreaHeight => ShowingResults ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanExecute))]
     [NotifyPropertyChangedFor(nameof(InputsEnabled))]
     [NotifyPropertyChangedFor(nameof(HasLogArea))]
+    [NotifyPropertyChangedFor(nameof(ShowingResults))]
+    [NotifyPropertyChangedFor(nameof(ObjectAreaHeight))]
+    [NotifyPropertyChangedFor(nameof(ResultsAreaHeight))]
     private bool _isRunning;
 
     /// <summary>Set once the tool has finished successfully: the dialog switches to a done state (success
@@ -100,6 +119,9 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
     [NotifyPropertyChangedFor(nameof(CanExecute))]
     [NotifyPropertyChangedFor(nameof(InputsEnabled))]
     [NotifyPropertyChangedFor(nameof(HasLogArea))]
+    [NotifyPropertyChangedFor(nameof(ShowingResults))]
+    [NotifyPropertyChangedFor(nameof(ObjectAreaHeight))]
+    [NotifyPropertyChangedFor(nameof(ResultsAreaHeight))]
     private bool _isCompleted;
 
     /// <summary>Inputs are editable only before a run and while not finished.</summary>
@@ -202,6 +224,7 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
         Log.Clear();
         Checklist.Clear();
         OnPropertyChanged(nameof(HasChecklist));
+        OnPropertyChanged(nameof(HasLogArea));
 
         var inputs = HasCustomView
             ? _customValues
@@ -224,6 +247,7 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
                 {
                     Checklist.Add(new ToolChecklistRow(key, p.Message) { Status = status });
                     OnPropertyChanged(nameof(HasChecklist));
+                    OnPropertyChanged(nameof(HasLogArea));
                 }
                 else
                 {

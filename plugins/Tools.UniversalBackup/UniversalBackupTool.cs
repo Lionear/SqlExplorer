@@ -84,6 +84,13 @@ public sealed class UniversalBackupTool : IToolPlugin, IPluginSettings, ICustomT
         var selection = BackupSelection.Parse(inputs.GetValueOrDefault("selection"));
         var selectedRefs = objectRefs.Where(r => BackupSelection.IsObjectSelected(selection, r.Kind, r.Schema, r.Name)).ToList();
 
+        // Resolved once here (data choice per table) and reused by the write loop below, so the plaintext
+        // meta's table list always matches exactly what the loop is about to write.
+        var selectedTables = tableRefs
+            .Select(t => (Table: t, DataChoice: BackupSelection.TableDataChoice(selection, t.Schema, t.Table)))
+            .Where(x => x.DataChoice is not null)
+            .ToList();
+
         var meta = new LbakMeta(
             context.ProviderId,
             context.Provider.DisplayName,
@@ -95,7 +102,12 @@ public sealed class UniversalBackupTool : IToolPlugin, IPluginSettings, ICustomT
             FormatVersion: 3,
             ViewCount: selectedRefs.Count(r => r.Kind == LbakObjectKind.View),
             RoutineCount: selectedRefs.Count(r => r.Kind is LbakObjectKind.Procedure or LbakObjectKind.Function),
-            TriggerCount: selectedRefs.Count(r => r.Kind == LbakObjectKind.Trigger));
+            TriggerCount: selectedRefs.Count(r => r.Kind == LbakObjectKind.Trigger),
+            // Plaintext, on purpose (Fase 2b): the Restore dialog needs the object list to build its
+            // selection tree before a passphrase is entered. Only names/schema are exposed here — row data
+            // and object DDL text stay in the encrypted payload.
+            Tables: selectedTables.Select(x => new BackupTableMeta(x.Table.Schema ?? string.Empty, x.Table.Table, x.DataChoice == true)).ToList(),
+            Objects: selectedRefs.Select(r => new BackupObjectMeta(r.Kind, r.Schema, r.Name)).ToList());
 
         // The write pipeline (gzip + chunked-GCM + file) does synchronous CPU/IO work; run it off the UI
         // thread while the DB reader feeds it. Streaming means a huge LOB cell never has to fit in memory.
@@ -105,17 +117,11 @@ public sealed class UniversalBackupTool : IToolPlugin, IPluginSettings, ICustomT
         {
             using var writer = LbakFormat.CreateWriter(filePath, meta, passphrase);
             var tablesWritten = 0;
-            for (var i = 0; i < tableRefs.Count; i++)
+            for (var i = 0; i < selectedTables.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
-                var tableRef = tableRefs[i];
-                var fraction = (double)(i + 1) / tableRefs.Count;
-
-                var dataChoice = BackupSelection.TableDataChoice(selection, tableRef.Schema, tableRef.Table);
-                if (dataChoice is null)
-                {
-                    continue; // table not selected
-                }
+                var (tableRef, dataChoice) = selectedTables[i];
+                var fraction = (double)(i + 1) / selectedTables.Count;
 
                 var itemKey = $"table:{tableRef.Schema}.{tableRef.Table}";
                 progress.Report(new ToolProgress(
@@ -144,7 +150,7 @@ public sealed class UniversalBackupTool : IToolPlugin, IPluginSettings, ICustomT
 
                 tablesWritten++;
                 progress.Report(new ToolProgress(
-                    context.Localizer.Get("backup.progress.table", i + 1, tableRefs.Count, tableRef.Table, rowCount), fraction,
+                    context.Localizer.Get("backup.progress.table", i + 1, selectedTables.Count, tableRef.Table, rowCount), fraction,
                     ItemKey: itemKey, ItemStatus: ToolItemStatus.Done));
             }
 

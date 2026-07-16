@@ -34,11 +34,20 @@
     </DataTemplate>
   </Window.Resources>
 
-  <Grid RowDefinitions="*,Auto,Auto,Auto">
+  <Grid>
+    <Grid.RowDefinitions>
+      <!-- Fields/custom view fill the dialog while editing, then collapse to nothing once a run starts —
+           the object-selection tree has done its job by then, and Row 1 expands into the freed space
+           instead (bound in the view model so both rows flip together; see ShowingResults). -->
+      <RowDefinition Height="{Binding ObjectAreaHeight}" />
+      <RowDefinition Height="{Binding ResultsAreaHeight}" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
 
-    <!-- Row 0 fills the available height. Route A fields scroll if they overflow; a Route B custom view is
-         given the full height directly (not inside a ScrollViewer) so it can grow with the window and manage
-         its own scrolling (e.g. the backup object tree). Only one of the two is ever visible. -->
+    <!-- Row 0. Route A fields scroll if they overflow; a Route B custom view is given the full height
+         directly (not inside a ScrollViewer) so it can grow with the window and manage its own scrolling
+         (e.g. the backup object tree). Only one of the two is ever visible. -->
     <Panel Grid.Row="0">
       <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasFields}">
         <StackPanel Margin="18,16" Spacing="8">
@@ -59,25 +68,31 @@
                       HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
     </Panel>
 
-    <StackPanel Grid.Row="1" Spacing="8">
+    <!-- Row 1: Checklist and Log are mutually exclusive (HasLogArea is false whenever HasChecklist is
+         true), so a Panel — not a StackPanel — lets whichever one is visible stretch to fill the whole row
+         once it expands to "*" during a run. -->
+    <Panel Grid.Row="1">
       <!-- Live per-item checklist (object-selection backup/restore); hidden for tools that don't report items. -->
-      <Border Margin="18,8,18,0" MaxHeight="180" IsVisible="{Binding HasChecklist}"
+      <Border Margin="18,8,18,0" IsVisible="{Binding HasChecklist}"
               BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1"
               CornerRadius="4" Background="{DynamicResource SEPanelBgBrush}">
-        <ItemsControl ItemsSource="{Binding Checklist}" Margin="4">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <Grid ColumnDefinitions="18,*" Margin="4,2">
-                <TextBlock Grid.Column="0" Text="{Binding StatusGlyph}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="12" TextWrapping="Wrap" />
-              </Grid>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <ItemsControl ItemsSource="{Binding Checklist}" Margin="4">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="18,*" Margin="4,2">
+                  <TextBlock Grid.Column="0" Text="{Binding StatusGlyph}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="12" TextWrapping="Wrap" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
       </Border>
 
-      <!-- Progress / log — hidden until a run produces output, so it never shows as a big empty box. -->
-      <Border Margin="18,0,18,0" MaxHeight="200" IsVisible="{Binding HasLogArea}"
+      <!-- Progress / log — hidden until a run produces output (or a checklist is already showing), so it
+           never shows as a big empty box or duplicates the checklist. -->
+      <Border Margin="18,8,18,0" IsVisible="{Binding HasLogArea}"
               BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1"
               CornerRadius="4" Background="{DynamicResource SEPanelBgBrush}">
         <ListBox x:Name="LogList" Background="Transparent" ItemsSource="{Binding Log}">
@@ -89,7 +104,7 @@
           </ListBox.ItemTemplate>
         </ListBox>
       </Border>
-    </StackPanel>
+    </Panel>
 
     <!-- Progress bar (indeterminate until a tool reports a fraction) -->
     <ProgressBar Grid.Row="2" Margin="18,8,18,0" Height="4" Minimum="0" Maximum="1"
