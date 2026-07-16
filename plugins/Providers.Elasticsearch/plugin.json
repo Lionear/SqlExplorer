@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "elasticsearch",
+  "type": "provider",
+  "name": "Elasticsearch",
+  "version": "1.0.0",
+  "hostApiVersion": 24,
+  "entryAssembly": "SqlExplorer.Providers.Elasticsearch.dll"
+}

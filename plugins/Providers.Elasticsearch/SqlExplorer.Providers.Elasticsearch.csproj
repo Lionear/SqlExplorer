@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlExplorer.Providers.Elasticsearch</RootNamespace>
+    <!-- Plugin build: emit the full private dependency closure (Elastic.Clients.Elasticsearch +
+         Elastic.Transport) into the output folder for ALC loading, independent of any other plugin. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shared contract only. Private=false keeps Sdk.dll OUT of the plugin folder so the host's copy
+         is used across the ALC boundary (single type identity for IDbProvider). -->
+    <ProjectReference Include="..\..\src\SqlExplorer.Sdk\SqlExplorer.Sdk.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Official Elasticsearch .NET client (v8+; NEST is legacy). Bundles Elastic.Transport, which the
+         provider uses at the low level for Kibana Dev-Tools-style raw request passthrough. -->
+    <PackageReference Include="Elastic.Clients.Elasticsearch" Version="8.19.23" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Optional brand logo. Drop a square PNG here as icon.png and it is embedded automatically;
+         until then the provider falls back to a glyph. -->
+    <EmbeddedResource Include="icon.png" LogicalName="icon.png" Condition="Exists('icon.png')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SDK namespaces mirror its folders; import the sub-namespaces project-wide so consumer
+         files keep a single `using SqlExplorer.Sdk` at the top. -->
+    <Using Include="SqlExplorer.Sdk.Connections" />
+    <Using Include="SqlExplorer.Sdk.Schema" />
+    <Using Include="SqlExplorer.Sdk.Query" />
+    <Using Include="SqlExplorer.Sdk.Ddl" />
+    <Using Include="SqlExplorer.Sdk.Branding" />
+    <Using Include="SqlExplorer.Sdk.Editing" />
+  </ItemGroup>
+
+</Project>

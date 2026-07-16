@@ -89,6 +89,14 @@ public partial class DocumentViewModel : ViewModelBase
     private string _table = string.Empty;
     private int _lastRowCount;
 
+    // Cursor paging (providers with SupportsCursorPaging, e.g. Elasticsearch beyond its 10k window):
+    // instead of LIMIT/OFFSET, each page is fetched with an opaque forward cursor. _cursorStack[p] is the
+    // cursor that produces page p (index 0 = null, the first page), grown as we page forward so PrevPage can
+    // re-fetch an earlier page; _lastNextCursor is the token the just-loaded page handed back (null = no more).
+    private bool _cursorMode;
+    private readonly List<string?> _cursorStack = [null];
+    private string? _lastNextCursor;
+
     // Browse-mode server-side sort (base column name + direction); null = unsorted.
     private string? _sortColumn;
     private bool _sortDescending;
@@ -289,7 +297,10 @@ public partial class DocumentViewModel : ViewModelBase
 
     public bool CanPrevPage => IsBrowseMode && Page > 0;
 
-    public bool CanNextPage => IsBrowseMode && _lastRowCount == PageSize && PageSize > 0;
+    // Cursor providers know "is there a next page?" from the token they returned; offset providers infer it
+    // from a full last page (a short page means the end).
+    public bool CanNextPage => IsBrowseMode && PageSize > 0 &&
+        (_cursorMode ? _lastNextCursor is not null : _lastRowCount == PageSize);
 
     /// <summary>
     /// Render the active result set as text. <paramref name="rows"/> exports just those rows
@@ -378,6 +389,7 @@ public partial class DocumentViewModel : ViewModelBase
         _database = database;
         _schema = schema;
         _table = table;
+        _cursorMode = _providers.Get(connection.ProviderId).SupportsCursorPaging;
         // The connection-switcher ComboBox (query toolbar) two-way-binds SelectedItem to Connection. It is
         // collapsed in browse mode but still realized, so if Connection isn't among its ItemsSource the
         // ComboBox coerces SelectedItem to null and writes that null straight back into Connection — the
@@ -934,8 +946,37 @@ public partial class DocumentViewModel : ViewModelBase
             var orderBy = _sortColumn is null
                 ? null
                 : $"{dialect.QuoteIdentifier(_sortColumn)} {(_sortDescending ? "DESC" : "ASC")}";
-            var paged = dialect.Paginate($"SELECT * FROM {qualified}{where}", PageSize, Page * PageSize, orderBy);
-            await ExecuteAsync(paged, ct);
+            var baseSql = $"SELECT * FROM {qualified}{where}";
+            if (_cursorMode)
+            {
+                // Page 0 is always a fresh browse (InitBrowse / ApplyFilter / SortBy all reset Page to 0):
+                // restart the cursor chain so a new filter/sort re-opens the provider's point-in-time.
+                if (Page == 0)
+                {
+                    _cursorStack.Clear();
+                    _cursorStack.Add(null);
+                }
+
+                var cursor = Page < _cursorStack.Count ? _cursorStack[Page] : null;
+                var order = orderBy is null ? string.Empty : $" ORDER BY {orderBy}";
+                var cursorSql = baseSql + order;
+                await ExecuteAsync(cursorSql, ct,
+                    (profile, token) => _providers.Get(Connection.ProviderId)
+                        .ExecuteCursorPageAsync(profile, cursorSql, PageSize, cursor, token));
+
+                // Record the token that reaches the next page, so NextPage/PrevPage can navigate the chain.
+                if (_lastNextCursor is not null)
+                {
+                    if (Page + 1 < _cursorStack.Count) _cursorStack[Page + 1] = _lastNextCursor;
+                    else _cursorStack.Add(_lastNextCursor);
+                }
+            }
+            else
+            {
+                var paged = dialect.Paginate(baseSql, PageSize, Page * PageSize, orderBy);
+                await ExecuteAsync(paged, ct);
+            }
+
             SyncColumnFilters();
 
             var offset = Page * PageSize;
@@ -1166,17 +1207,23 @@ public partial class DocumentViewModel : ViewModelBase
 
     // Shared execution path for both a typed query and a browse page. Only typed queries are logged to
     // history — browse paging (same path, IsBrowseMode) would just clutter it.
-    private Task ExecuteAsync(string sql, CancellationToken ct) => RunTracked(ct, async token =>
+    // A non-null runner overrides the default ExecuteQueryAsync call (cursor-paged browse fetches one page
+    // via ExecuteCursorPageAsync) while reusing all the result-population, output, and error handling here.
+    private Task ExecuteAsync(string sql, CancellationToken ct,
+        Func<ConnectionProfile, CancellationToken, Task<QueryResult>>? runner = null) => RunTracked(ct, async token =>
     {
         var stopwatch = Stopwatch.StartNew();
         try
         {
             var profile = _connections.Resolve(Connection, _database);
-            var result = await _providers.Get(Connection.ProviderId).ExecuteQueryAsync(profile, sql, token);
+            var result = runner is null
+                ? await _providers.Get(Connection.ProviderId).ExecuteQueryAsync(profile, sql, token)
+                : await runner(profile, token);
             stopwatch.Stop();
             // The query auto-connected: reflect that on the connection's status dot in the tree.
             SignalConnection(ConnectionState.Connected);
             _lastRowCount = result.Rows.Count;
+            _lastNextCursor = result.NextCursor;
             SetResultSets([new ResultSetTab("Result", EditableResultSet.From(result))]);
             // Browse paging shares this path; its own RowRange header already shows the count, so only a
             // typed query reports to the Output panel — otherwise every page-flip would spam it.

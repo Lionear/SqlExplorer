@@ -103,6 +103,29 @@ public interface IDbProvider
     Task<QueryResult> ExecuteQueryAsync(ConnectionProfile profile, string sql, CancellationToken ct);
 
     /// <summary>
+    /// True when this provider drives browse-grid paging with an opaque forward cursor
+    /// (<see cref="ExecuteCursorPageAsync"/>) instead of the host's default LIMIT/OFFSET. Engines whose
+    /// deep pagination is cursor-only set this — e.g. Elasticsearch, where <c>from + size</c> is capped at
+    /// <c>index.max_result_window</c> (10 000 by default) and going further needs a point-in-time +
+    /// <c>search_after</c> cursor. The trade-off is forward/back navigation only (no jump-to-arbitrary-page),
+    /// which the host handles by remembering the cursor that produced each visited page.
+    /// </summary>
+    bool SupportsCursorPaging => false;
+
+    /// <summary>
+    /// Fetch one browse page by cursor — only called when <see cref="SupportsCursorPaging"/> is true.
+    /// <paramref name="sql"/> is the same browse query the host would otherwise paginate — a
+    /// <c>SELECT * FROM &lt;table&gt; [WHERE …] [ORDER BY …]</c> with no LIMIT/OFFSET — so the provider keeps
+    /// its existing filter/sort translation. <paramref name="cursor"/> is null for the first page, otherwise
+    /// the <see cref="QueryResult.NextCursor"/> the previous page returned. The returned result's
+    /// <see cref="QueryResult.NextCursor"/> carries the token for the following page (null once the last page
+    /// was reached).
+    /// </summary>
+    Task<QueryResult> ExecuteCursorPageAsync(
+        ConnectionProfile profile, string sql, int pageSize, string? cursor, CancellationToken ct) =>
+        throw new NotSupportedException("This provider does not support cursor paging.");
+
+    /// <summary>
     /// Stream a result set row-by-row into <paramref name="visitor"/> instead of materialising every
     /// row (and every cell) up front — the read half of the streaming backup. LOB cells are exposed as
     /// forward-only streams so a multi-gigabyte value never has to fit in a single .NET array.

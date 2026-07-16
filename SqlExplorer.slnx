@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/Plugins/">
     <Project Path="plugins/Providers.DragonflyDb/SqlExplorer.Providers.DragonflyDb.csproj" />
+    <Project Path="plugins/Providers.Elasticsearch/SqlExplorer.Providers.Elasticsearch.csproj" />
     <Project Path="plugins/Providers.MongoDb/SqlExplorer.Providers.MongoDb.csproj" />
     <Project Path="plugins/Providers.Redis/SqlExplorer.Providers.Redis.csproj" />
     <Project Path="plugins/Providers.Template/SqlExplorer.Providers.Template.csproj" />

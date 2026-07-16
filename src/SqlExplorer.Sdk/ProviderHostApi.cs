@@ -97,7 +97,16 @@ public static class ProviderHostApi
     //                   SE-114's ApplyChangesAsync writeback, scoped to Hash keys (field/value rows map
     //                   cleanly onto Base*/IsKey; List/Set/ZSet/String stay read-only via the grid, mutated
     //                   through the console — see the plugin's README for why).
-    public const int Version = 23;
+    // v24 (2026-07-16): added IDbProvider.SupportsCursorPaging + ExecuteCursorPageAsync (default throws)
+    //                   and QueryResult.NextCursor — cursor-based browse paging for engines whose deep
+    //                   pagination is cursor-only (Elasticsearch: from+size caps at 10 000, beyond it needs
+    //                   a point-in-time + search_after cursor). The host asks a cursor-capable provider for
+    //                   one page at a time, remembering the token that produced each visited page so
+    //                   forward/back navigation works without an offset. Purely additive: offset providers
+    //                   leave SupportsCursorPaging false and are paged exactly as before, so v23 (and older)
+    //                   plugins keep loading. Also added plugins/Providers.Elasticsearch (SE-3), the first
+    //                   provider to use it (plus a search_after/PIT StreamQueryAsync for unbounded export).
+    public const int Version = 24;
 
     /// <summary>Oldest plugin ABI this host still loads. Additive bumps (v11→v22 style) keep this fixed;
     /// only a breaking change raises it. Raised to 23 by the v23 BuildNodeQuery signature change above —

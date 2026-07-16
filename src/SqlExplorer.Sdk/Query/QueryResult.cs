@@ -39,4 +39,12 @@ public sealed class QueryResult
     public required IReadOnlyList<object?[]> Rows { get; init; }
     public int RecordsAffected { get; init; }
     public TimeSpan Elapsed { get; init; }
+
+    /// <summary>
+    /// An opaque, provider-defined token for fetching the *next* page of a cursor-paged browse (see
+    /// <see cref="Sdk.IDbProvider.ExecuteCursorPageAsync"/>). Non-null means "more rows may exist beyond
+    /// this page — pass this token back to continue"; null means either the provider is not cursor-paging
+    /// or the last page was reached. Only meaningful when <see cref="Sdk.IDbProvider.SupportsCursorPaging"/>.
+    /// </summary>
+    public string? NextCursor { get; init; }
 }
