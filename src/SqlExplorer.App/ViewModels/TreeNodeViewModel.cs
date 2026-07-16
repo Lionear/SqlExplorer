@@ -204,6 +204,13 @@ public partial class TreeNodeViewModel : ViewModelBase
     // same CreateCapabilities the provider already declares, since every engine here can drop exactly
     // what it can create. Gated on the node itself BEING that kind (unlike CanCreate*, which gates on
     // the node it would be created UNDER).
+    /// <summary>A non-SQL provider (e.g. MongoDB): the host suppresses its SQL scaffolds and lets the
+    /// provider own query/DROP/TRUNCATE generation (see IDbProvider.IsSqlBased).</summary>
+    private bool IsNonSql => _provider is { IsSqlBased: false };
+
+    // A non-SQL provider can DROP/TRUNCATE what it exposes via its own BuildAlterStatement (it has no
+    // CreateCapabilities to gate on), so allow those there too. Drop Database stays off for non-SQL —
+    // document-store databases are implicit and vanish when empty; dropping a whole one isn't offered.
     public bool CanDropDatabase => _provider is not null && NodeKind == DbNodeKind.Database
         && _provider.CreateCapabilities.Any(c => c.Kind == DbObjectKind.Database);
 
@@ -211,7 +218,11 @@ public partial class TreeNodeViewModel : ViewModelBase
         && _provider.CreateCapabilities.Any(c => c.Kind == DbObjectKind.Schema);
 
     public bool CanDropTable => _provider is not null && IsTableOrView
-        && _provider.CreateCapabilities.Any(c => c.Kind == DbObjectKind.Table);
+        && (_provider.CreateCapabilities.Any(c => c.Kind == DbObjectKind.Table) || IsNonSql);
+
+    /// <summary>The tree's "SQL commands" submenu (SELECT/INSERT/UPDATE/DELETE scaffolds) only makes sense
+    /// for a SQL engine — hidden for non-SQL providers, which use the query tab with their own syntax.</summary>
+    public bool CanGenerateSqlCommands => IsTableOrView && _provider is { IsSqlBased: true };
 
     /// <summary>"Add Column…" only on an actual table (not a view — ALTER TABLE ADD doesn't apply there).</summary>
     public bool CanAddColumn => _provider is not null && NodeKind == DbNodeKind.Table
@@ -225,8 +236,10 @@ public partial class TreeNodeViewModel : ViewModelBase
     /// <summary>"Import CSV…" — any table the provider can also ALTER (i.e. a real writable table).</summary>
     public bool CanImportCsv => CanAddColumn;
 
-    /// <summary>"Truncate…" — a real writable table (not a view).</summary>
-    public bool CanTruncate => CanAddColumn;
+    /// <summary>"Truncate…" — a real writable table (not a view): one the SQL provider can ALTER, or any
+    /// table/collection a non-SQL provider empties via its own BuildAlterStatement (deleteMany).</summary>
+    public bool CanTruncate => (CanAddColumn || (IsNonSql && NodeKind == DbNodeKind.Table))
+        && _provider is not null;
 
     /// <summary>"Collapse all" is offered on any expandable container, including the connection root.</summary>
     public bool CanCollapseAll => HasChildren && (IsConnectionNode || CanRefresh);

@@ -29,6 +29,39 @@ public interface IDbProvider
 
     ISqlDialect Dialect { get; }
 
+    /// <summary>
+    /// False when this provider is not a SQL engine (e.g. a document store like MongoDB). The host then
+    /// suppresses its built-in SQL scaffolds — the tree's "SQL commands" submenu (SELECT/INSERT/UPDATE/
+    /// DELETE templates) — and relies on <see cref="BuildNodeQuery"/> for any node-action query text.
+    /// True (the default) keeps the host's SQL generation. Same "flag defaults to the common case"
+    /// convention as <see cref="SupportsActivityMonitor"/>.
+    /// </summary>
+    bool IsSqlBased => true;
+
+    /// <summary>
+    /// Build the query text for a table/collection node convenience action — the "Select top 1000" and
+    /// "SQL commands" menu items. A non-SQL provider returns its own text here (e.g. a MongoDB
+    /// <c>db.orders.find({}).limit(1000)</c> for <see cref="NodeQueryKind.SelectTop"/>); the host drops it
+    /// into a new editable query tab (and runs it for <see cref="NodeQueryKind.SelectTop"/>). Return null
+    /// to fall back to the host's built-in SQL generation (the default) — the same "null = not supported"
+    /// convention as <see cref="ParseConnectionString"/>. <paramref name="nodePath"/> is the path from the
+    /// connection root down to and including the node (as passed to <see cref="GetChildNodesAsync"/>);
+    /// <paramref name="columns"/> is the node's column metadata when the host already has it, else null.
+    /// </summary>
+    string? BuildNodeQuery(
+        NodeQueryKind kind,
+        IReadOnlyList<DbNodeRef> nodePath,
+        IReadOnlyList<ResultColumn>? columns) => null;
+
+    /// <summary>
+    /// Build the statement for a DROP/TRUNCATE/ALTER tree action, letting a provider own that syntax (e.g.
+    /// a MongoDB <c>db.orders.drop()</c>) instead of the host's built-in SQL builder. The host previews the
+    /// returned statement — the user may edit it — then runs it via <see cref="ExecuteDdlAsync"/>. Return
+    /// null for actions this provider does not handle (the default), and the host falls back to its own SQL
+    /// generation — the same "null = not supported" convention as <see cref="ParseConnectionString"/>.
+    /// </summary>
+    SqlStatement? BuildAlterStatement(AlterSpec spec) => null;
+
     /// <summary>The fields this provider needs to build a connection — drives the connection dialog.</summary>
     IReadOnlyList<ConnectionField> ConnectionFields { get; }
 

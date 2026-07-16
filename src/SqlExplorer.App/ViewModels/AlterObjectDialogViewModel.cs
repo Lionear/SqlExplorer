@@ -1,6 +1,7 @@
 using SqlExplorer.Core.Ddl;
 using SqlExplorer.Core.Localization;
 using SqlExplorer.Sdk;
+using SqlExplorer.Sdk.Ddl;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SqlExplorer.App.ViewModels;
@@ -27,8 +28,10 @@ public enum AlterKind
 /// </summary>
 public partial class AlterObjectDialogViewModel : ViewModelBase
 {
+    private IDbProvider _provider = null!;
     private ISqlDialect _dialect = null!;
     private string _providerId = string.Empty;
+    private string? _database;
     private string? _schema;
     private string _target = string.Empty;
     private bool _isView;
@@ -90,11 +93,13 @@ public partial class AlterObjectDialogViewModel : ViewModelBase
     /// pattern as <see cref="CreateObjectDialogViewModel"/> (a per-invocation VM can't take
     /// constructor args from a zero-arg factory delegate).</summary>
     public void Configure(
-        AlterKind kind, string providerId, ISqlDialect dialect, IReadOnlyList<string> columnTypes,
-        string objectLabel, string? schema, string target, bool isView = false, string? existingColumn = null)
+        AlterKind kind, IDbProvider provider, string providerId, ISqlDialect dialect, IReadOnlyList<string> columnTypes,
+        string objectLabel, string? database, string? schema, string target, bool isView = false, string? existingColumn = null)
     {
         Kind = kind;
+        _provider = provider;
         _providerId = providerId;
+        _database = database;
         _dialect = dialect;
         ColumnTypes = columnTypes;
         ObjectLabel = objectLabel;
@@ -133,7 +138,10 @@ public partial class AlterObjectDialogViewModel : ViewModelBase
 
         try
         {
-            SqlPreview = Kind switch
+            // Give the provider first refusal on the statement (a non-SQL engine returns its own, e.g. a
+            // MongoDB db.coll.drop()); null falls back to the host's SQL builder, unchanged for SQL engines.
+            var custom = _provider.BuildAlterStatement(BuildSpec());
+            SqlPreview = custom?.Text ?? Kind switch
             {
                 AlterKind.DropDatabase => AlterStatementBuilder.DropDatabase(_dialect, _target),
                 AlterKind.DropSchema => AlterStatementBuilder.DropSchema(_dialect, _target),
@@ -150,4 +158,25 @@ public partial class AlterObjectDialogViewModel : ViewModelBase
             SqlPreview = $"-- {ex.Message}";
         }
     }
+
+    // The current dialog state as the SDK's provider-facing spec (for BuildAlterStatement).
+    private AlterSpec BuildSpec() => new(
+        Action: Kind switch
+        {
+            AlterKind.DropDatabase => AlterAction.DropDatabase,
+            AlterKind.DropSchema => AlterAction.DropSchema,
+            AlterKind.DropTable => AlterAction.DropTable,
+            AlterKind.TruncateTable => AlterAction.TruncateTable,
+            AlterKind.AddColumn => AlterAction.AddColumn,
+            AlterKind.DropColumn => AlterAction.DropColumn,
+            _ => AlterAction.RenameColumn
+        },
+        Database: _database,
+        Schema: _schema,
+        Target: _target,
+        IsView: _isView,
+        Column: string.IsNullOrEmpty(_existingColumn) ? null : _existingColumn,
+        NewName: string.IsNullOrWhiteSpace(NewColumnName) ? null : NewColumnName,
+        NewType: string.IsNullOrWhiteSpace(NewColumnType) ? null : NewColumnType,
+        Nullable: NewColumnNullable);
 }

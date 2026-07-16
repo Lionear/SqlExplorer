@@ -92,9 +92,64 @@ public interface ISqlDialect
 - **`SqlStatement(Text, Parameters)`** / **`SqlParam(Name, Value)`** —
   parameterised statement with named placeholders (`@p0, @p1, ...`).
 
+### Optional capabilities (default to "not supported")
+
+Beyond the required members above, `IDbProvider` and its DTOs carry a set of
+**optional** capabilities, each a default-interface member that returns the
+"nothing extra" value so a minimal provider ignores them entirely. The
+convention is consistent: a `bool` flag defaults to `false`, a nullable return
+defaults to `null`, a collection defaults to empty, and the paired builders
+`throw NotSupportedException` until the flag turns them on. Examples already in
+the SDK: `SupportsActivityMonitor`, `CanManageUsers`, `ParseConnectionString`
+(null), `CreateCapabilities` (empty), `GetObjectDefinitionAsync` (null).
+
+#### Non-SQL providers
+
+By default the host assumes a SQL engine: it generates `SELECT`/`DROP`/`TRUNCATE`
+text itself (using `ISqlDialect` for quoting/paging) for the tree's convenience
+actions. A non-SQL engine — a document store like MongoDB — opts out and owns
+that generation instead:
+
+```csharp
+// Declare the engine non-SQL. The host then hides its SQL-scaffold "SQL commands"
+// submenu and routes node-action generation to the two builders below.
+bool IsSqlBased => true;   // return false for a non-SQL engine
+
+// "Select top 1000" / "SQL commands": return your own query text, or null to let
+// the host generate SQL. nodePath is the connection-root→node path (as in
+// GetChildNodesAsync); columns is the node's column metadata when known, else null.
+string? BuildNodeQuery(
+    NodeQueryKind kind,
+    IReadOnlyList<DbNodeRef> nodePath,
+    IReadOnlyList<ResultColumn>? columns) => null;
+
+// DROP/TRUNCATE/ALTER from the tree: return your own statement (previewed, then run
+// via ExecuteDdlAsync), or null to fall back to the host's SQL builder.
+SqlStatement? BuildAlterStatement(AlterSpec spec) => null;
+```
+
+- **`NodeQueryKind`** — `SelectAll, SelectTop, Count, SelectColumns, Insert,
+  Update, Delete`. For a non-SQL provider the host only ever asks for `SelectTop`
+  (the "Select top 1000" action stays visible); the column-shaped kinds are the
+  hidden SQL-commands submenu, so returning `null` for them is fine.
+- **`AlterSpec(Action, Database, Schema, Target, IsView, Column, NewName, NewType,
+  Nullable)`** with **`AlterAction`** = `DropDatabase, DropSchema, DropTable,
+  TruncateTable, AddColumn, DropColumn, RenameColumn`. Return `null` for actions
+  you don't handle; the host hides the menu items a non-SQL provider can't service
+  (columns, schemas) automatically.
+- Both builders are also available to *SQL* providers as a plain override hook
+  (return non-null to replace the host's default text for any one action).
+
+MongoDB (`plugins/Providers.MongoDb`) is the reference implementation:
+`IsSqlBased => false`, `BuildNodeQuery` returns `db.coll.find({}).limit(1000)`,
+and `BuildAlterStatement` returns `db.coll.drop()` / `db.coll.deleteMany({})`,
+which its `ExecuteDdlAsync` then runs. Because such text is not database-qualified
+(the mongo shell binds `db` to the current database), the host binds the generated
+query tab to the node's database via `ConnectionProfile.Database`.
+
 ### Host API versioning
 
-`ProviderHostApi.Version` (currently `15`) is the contract version. Every
+`ProviderHostApi.Version` (currently `20`) is the contract version. Every
 plugin declares the version it was built against in its manifest
 (`hostApiVersion`); the loader rejects a plugin whose version does not match,
 rather than risk loading against a contract it doesn't fully implement.
@@ -196,7 +251,7 @@ Every plugin folder needs a `plugin.json` describing it:
   "type": "provider",
   "name": "MyEngine",
   "version": "1.0.0",
-  "hostApiVersion": 15,
+  "hostApiVersion": 20,
   "entryAssembly": "SqlExplorer.Providers.MyEngine.dll"
 }
 ```
@@ -208,7 +263,7 @@ Every plugin folder needs a `plugin.json` describing it:
 | `type` | Plugin kind discriminator. Must be `"provider"` — the only value the loader currently accepts. |
 | `name` | Display name (informational; `IDbProvider.DisplayName` is what the UI actually shows). |
 | `version` | Your plugin's own version string. |
-| `hostApiVersion` | Must equal `ProviderHostApi.Version` at build time (currently 15). A mismatch causes the loader to skip the plugin rather than risk a broken contract. |
+| `hostApiVersion` | Must equal `ProviderHostApi.Version` at build time (currently 20). A mismatch causes the loader to skip the plugin rather than risk a broken contract. |
 | `entryAssembly` | Path (relative to the plugin's own folder) to the compiled plugin DLL. |
 
 ### 4. Ship it

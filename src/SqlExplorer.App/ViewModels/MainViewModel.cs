@@ -1186,7 +1186,7 @@ public partial class MainViewModel : ViewModelBase
 
         var provider = _providers.Get(node.Connection.ProviderId);
         var dialog = _alterDialogFactory();
-        dialog.Configure(kind, node.Connection.ProviderId, provider.Dialect, provider.ColumnTypes, objectLabel, schema, target, isView, existingColumn);
+        dialog.Configure(kind, provider, node.Connection.ProviderId, provider.Dialect, provider.ColumnTypes, objectLabel, database, schema, target, isView, existingColumn);
 
         var sql = await AlterObjectDialogRequested(dialog);
         if (string.IsNullOrWhiteSpace(sql))
@@ -1720,14 +1720,19 @@ public partial class MainViewModel : ViewModelBase
         }
 
         var connection = node.Connection;
-        var dialect = _providers.Get(connection.ProviderId).Dialect;
+        var provider = _providers.Get(connection.ProviderId);
+        var dialect = provider.Dialect;
         // Generated SQL opens in a free query tab with no database context, so qualify it fully — the
         // dialect decides how far (SQL Server: three-part [db].[schema].[table]; Postgres: schema.table).
         var qualified = dialect.QualifyName(node.DatabaseName, node.SchemaName, node.Name);
 
         try
         {
-            var sql = kind switch
+            // Let the provider own the query text first (a non-SQL engine returns its own — e.g. a MongoDB
+            // find). Null falls back to the host's SQL generation below, unchanged for SQL providers.
+            var nodeQueryKind = MapNodeQueryKind(kind);
+            var custom = provider.BuildNodeQuery(nodeQueryKind, node.NodePath, columns: null);
+            var sql = custom ?? kind switch
             {
                 "Select" => $"SELECT * FROM {qualified};",
                 "SelectTop" => $"{dialect.Paginate($"SELECT * FROM {qualified}", 1000, 0)};",
@@ -1736,7 +1741,9 @@ public partial class MainViewModel : ViewModelBase
             };
 
             var document = NewDocument();
-            document.InitQuery(connection);
+            // Provider-owned text (e.g. a MongoDB db.coll.find()) isn't self-qualified with the database, so
+            // bind the tab to the node's database; host SQL is fully qualified and keeps a free-context tab.
+            document.InitQuery(connection, custom is not null ? node.DatabaseName : null);
             document.Sql = sql;
             AddDocument(document);
 
@@ -1752,6 +1759,18 @@ public partial class MainViewModel : ViewModelBase
             ReportError(SelectedConnection?.Name, ex.Message);
         }
     }
+
+    // Map the menu's CommandParameter string to the SDK's NodeQueryKind for provider-owned generation.
+    private static NodeQueryKind MapNodeQueryKind(string? kind) => kind switch
+    {
+        "SelectTop" => NodeQueryKind.SelectTop,
+        "Count" => NodeQueryKind.Count,
+        "SelectColumns" => NodeQueryKind.SelectColumns,
+        "Insert" => NodeQueryKind.Insert,
+        "Update" => NodeQueryKind.Update,
+        "Delete" => NodeQueryKind.Delete,
+        _ => NodeQueryKind.SelectAll
+    };
 
     // A zero-row query is the cheapest way to read a relation's column metadata (names, PK) per dialect.
     private async Task<IReadOnlyList<ResultColumn>> FetchColumnsAsync(SavedConnection connection, string? database, string qualified)

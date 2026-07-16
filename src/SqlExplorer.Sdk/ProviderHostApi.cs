@@ -67,7 +67,13 @@ public static class ProviderHostApi
     //                   ICustomSecurityUi (unused in v1). Create/Drop contained-DB users (MSSQL, per
     //                   Database), cluster login-roles (Postgres) and name@host users (MySQL) from the
     //                   tree, with an optional role checkbox list. SQLite unsupported. Roadmap plan #3 of 4.
-    public const int Version = 19;
+    // v20 (2026-07-16): added the non-SQL provider seam to IDbProvider (all default to current behaviour):
+    //                   IsSqlBased (false suppresses the host's SQL-scaffold "SQL commands" submenu) +
+    //                   BuildNodeQuery (NodeQueryKind — provider-owned "Select top 1000"/SQL-commands query
+    //                   text, null = host SQL) + BuildAlterStatement (AlterSpec/AlterAction — provider-owned
+    //                   DROP/TRUNCATE, null = host SQL). Lets a document store (MongoDB) generate its own
+    //                   shell text instead of SELECT/DROP; SQL providers are unchanged (defaults).
+    public const int Version = 20;
 
     /// <summary>True when this host can load a plugin built for <paramref name="pluginVersion"/>.</summary>
     public static bool IsCompatible(int pluginVersion) => pluginVersion == Version;
