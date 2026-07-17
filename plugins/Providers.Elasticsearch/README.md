@@ -55,6 +55,62 @@ Because the provider declares itself **non-SQL** (`IDbProvider.IsSqlBased => fal
 
 ---
 
+## Browse queries: projection, filters & aggregations
+
+Besides the raw console, the provider understands a **SQL-ish browse** — the shape "Select top 1000"
+generates, extended so you can project, filter, and aggregate without hand-writing a `_search` body.
+
+```
+SELECT "@timestamp", level FROM logs WHERE {"term":{"level":"Error"}} ORDER BY "@timestamp" DESC LIMIT 100
+```
+
+**Projection (`SELECT`).** A field list becomes an ES `_source` filter — only those fields come back
+(plus `_id`, always the key column). `SELECT *` (the default) returns everything. Only plain field names
+and dot-paths are allowed (`fields.ApplicationContext`, `level.keyword`) — no expressions. This keeps a
+wide log index from returning 100s of KB per row.
+
+**`WHERE` takes an Elasticsearch query-DSL object, not a SQL expression.** Paste a raw query object:
+
+```
+SELECT * FROM logs
+WHERE {"bool":{"filter":[{"term":{"level":"Error"}},{"range":{"@timestamp":{"gte":"now-1d"}}}]}}
+```
+
+As a convenience, **simple equality** is translated for you: `level = 'Error'` → `{"term":{"level":"Error"}}`,
+and `status != 404` → a negated term. Other SQL operators (`>`, `<`, `IN`, `BETWEEN`, `OR`) are **not**
+supported — use a query object for those. An unrecognised `WHERE` returns an error with a worked example.
+
+**Aggregations (`GROUP BY` / `COUNT`).** Server-side aggregation is translated to a `size:0` + `aggs`
+search — the result is exact, independent of the row cap:
+
+```
+SELECT status, COUNT(*) FROM logs GROUP BY status                 -- terms bucket: status, doc_count
+SELECT COUNT(*) FROM logs                                          -- total hit count (never a dump)
+SELECT COUNT(*) FROM logs GROUP BY date_histogram("@timestamp", '1m')   -- per-minute counts
+SELECT status, AVG(price) FROM orders GROUP BY status             -- terms + avg metric column
+```
+
+Supported: a single `GROUP BY` key (a field → `terms`, or `date_histogram("field", 'interval')`), with
+`COUNT(*)` (the bucket `doc_count`) and `COUNT`/`SUM`/`AVG`/`MIN`/`MAX(field)` metrics. `LIMIT` sets the
+`terms` size. Anything richer (multiple keys, `HAVING`) still needs a raw console `aggs` request — which
+the grid now also projects (buckets → rows) instead of showing an empty result. A `COUNT`/`GROUP BY`
+shape the provider can't translate returns a clear error rather than silently dumping all documents.
+
+**Time zones (date ranges).** A bare `range` on a date field is read by ES in **UTC**, which silently
+shifts a window for a user in another offset (often to 0 hits). The provider injects a `time_zone` into
+date range and `date_histogram` clauses that don't already have one — by default the app's local offset,
+or the **Time zone** connection field (an offset like `+02:00`, an IANA id, or `UTC` to disable). Numeric
+ranges are left untouched.
+
+## Schema: index fields from the mapping
+
+Expanding an index in the tree (and MCP `get_schema`) lists its fields from `GET <index>/_mapping`: the
+field name, its ES type (`keyword`/`text`/`date`/`long`/…), and a `.keyword` marker where a keyword
+sub-field exists — so you don't have to `SELECT * LIMIT 1` to discover fields or guess `.keyword`. Nested
+objects appear as dot-paths. A fully dynamic index with no mapping falls back to `_id` + `_source`.
+
+---
+
 ## Result shape / editable grid
 
 Browsing (double-click, or "Select top 1000") projects each hit's `_source` into a grid shaped like
@@ -106,6 +162,8 @@ field) — it surfaces as a normal ES error, not a crash.
 | Username / Password | HTTP basic auth; password stored in the OS keychain |
 | API key | advanced; base64 `Authorization: ApiKey` value — takes precedence over user/pass |
 | Verify TLS certificate | advanced; uncheck for a self-signed dev cluster |
+| Max field length (chars) | advanced; truncate long text/JSON cells in browse results to N chars (default 2000, `0` = off). Display/MCP only — never the stored data |
+| Time zone for date ranges | advanced; injected into bare date `range`/`date_histogram` clauses. Empty = the app's local offset; set an offset (`+02:00`), an IANA id, or `UTC` to disable |
 
 Connection details are stored as an ADO-style `Key=Value;…` string (robust quoting via
 `DbConnectionStringBuilder`) and unpacked into `ElasticsearchClientSettings` at connect time.
@@ -115,7 +173,7 @@ Connection details are stored as an ADO-style `Key=Value;…` string (robust quo
 ## Development notes
 
 - **Naming:** `plugins/Providers.Elasticsearch`, namespace `SqlExplorer.Providers.Elasticsearch`,
-  manifest `id` = `elasticsearch`, `hostApiVersion` = 23.
+  manifest `id` = `elasticsearch`, `hostApiVersion` = 25.
 - **Driver:** `Elastic.Clients.Elasticsearch` (official v8+; NEST is legacy). The provider uses the
   low-level `client.Transport` for raw request passthrough — the console, browse (`_search`), and
   writeback (`_bulk`) all go through it as raw JSON, so the full REST surface is reachable and

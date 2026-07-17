@@ -18,6 +18,14 @@ public sealed class McpService(
 {
     public IReadOnlyList<McpToolDefinition> Tools => tools;
 
+    /// <summary>Whether the underlying server is currently listening. Mirrors <see cref="McpServer.IsRunning"/>.</summary>
+    public bool IsRunning => server.IsRunning;
+
+    /// <summary>Raised after the running-state may have changed (start, stop, or restart). Lets the UI reflect
+    /// startup auto-start, Save-driven restarts, and the manual Start/Stop toggle. May fire off the UI thread
+    /// (both apply/stop run on a background task) — subscribers must marshal to their own thread.</summary>
+    public event Action? StateChanged;
+
     /// <summary>Apply the current settings: (re)start the server when enabled with tools present, stop it
     /// otherwise. Generates and persists a token the first time it's needed.</summary>
     public async Task ApplyAsync(CancellationToken ct = default)
@@ -33,7 +41,12 @@ public sealed class McpService(
         }
 
         await server.StartAsync(options, tools, ct);
+        StateChanged?.Invoke();
     }
 
-    public Task StopAsync(CancellationToken ct = default) => server.StopAsync(ct);
+    public async Task StopAsync(CancellationToken ct = default)
+    {
+        await server.StopAsync(ct);
+        StateChanged?.Invoke();
+    }
 }

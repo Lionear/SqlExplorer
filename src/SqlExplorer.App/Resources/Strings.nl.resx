@@ -249,6 +249,27 @@
   <data name="McpTimeout" xml:space="preserve">
     <value>Query-timeout (seconden)</value>
   </data>
+  <data name="McpStart" xml:space="preserve">
+    <value>Starten</value>
+  </data>
+  <data name="McpStop" xml:space="preserve">
+    <value>Stoppen</value>
+  </data>
+  <data name="McpServerRunning" xml:space="preserve">
+    <value>Actief</value>
+  </data>
+  <data name="McpServerStopped" xml:space="preserve">
+    <value>Niet actief</value>
+  </data>
+  <data name="McpScrubSecrets" xml:space="preserve">
+    <value>Secrets uit query-resultaten redigeren</value>
+  </data>
+  <data name="McpScrubSecretsHint" xml:space="preserve">
+    <value>Scant resultaatwaarden op tokens, sleutels en secret-achtige kolomnamen en vervangt ze voordat de AI ze ziet. Een verdedigingslaag, geen garantie.</value>
+  </data>
+  <data name="McpNoScrubWarning" xml:space="preserve">
+    <value>Redactie staat uit — live secrets in query-resultaten (tokens, API-sleutels, wachtwoorden) gaan ongefilterd naar de AI.</value>
+  </data>
   <data name="AiAccess" xml:space="preserve">
     <value>AI-toegang (MCP)</value>
   </data>
@@ -1289,6 +1310,33 @@
   </data>
   <data name="UpdateBannerLater" xml:space="preserve">
     <value>Later</value>
+  </data>
+  <data name="UpdateBannerDownload" xml:space="preserve">
+    <value>Downloaden</value>
+  </data>
+  <data name="UpdateBannerDownloading" xml:space="preserve">
+    <value>{0} downloaden…</value>
+  </data>
+  <data name="UpdateBannerReady" xml:space="preserve">
+    <value>{0} gedownload — nu installeren en herstarten?</value>
+  </data>
+  <data name="UpdateBannerUpdateNow" xml:space="preserve">
+    <value>Nu updaten</value>
+  </data>
+  <data name="UpdateBannerOpenFolder" xml:space="preserve">
+    <value>Map openen</value>
+  </data>
+  <data name="UpdateBannerCancel" xml:space="preserve">
+    <value>Annuleren</value>
+  </data>
+  <data name="UpdateBannerRetry" xml:space="preserve">
+    <value>Opnieuw</value>
+  </data>
+  <data name="UpdateBannerRefetched" xml:space="preserve">
+    <value>Nieuwere build {0} gedownload — nu installeren en herstarten?</value>
+  </data>
+  <data name="UpdateBannerUpToDate" xml:space="preserve">
+    <value>Je hebt al de nieuwste build.</value>
   </data>
   <data name="UpdateDialogTitle" xml:space="preserve">
     <value>Update beschikbaar</value>

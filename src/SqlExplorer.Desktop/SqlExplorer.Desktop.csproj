@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <!-- WinExe = GUI subsystem on Windows (no console window allocated for this GUI app). On Linux/macOS
+         WinExe is identical to Exe — no subsystem distinction — so the AppImage/DMG builds are unaffected. -->
+    <OutputType>WinExe</OutputType>
     <RootNamespace>SqlExplorer.Desktop</RootNamespace>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <MacBundleName>SQL Explorer</MacBundleName>

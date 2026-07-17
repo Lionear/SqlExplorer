@@ -36,6 +36,14 @@ internal sealed class ElasticQuery
     public JsonNode? Query { get; init; }
     public JsonArray? Sort { get; init; }
 
+    /// <summary>Explicit SELECT field list → an ES <c>_source</c> filter. Null means <c>SELECT *</c> (all
+    /// fields). <c>_id</c> is always returned as the key column regardless (SE-141).</summary>
+    public IReadOnlyList<string>? Projection { get; init; }
+
+    /// <summary>Non-null when the browse is an aggregation (a GROUP BY and/or an aggregate function in the
+    /// SELECT). Routes to a <c>size:0</c> + <c>aggs</c> search instead of a document browse (SE-140).</summary>
+    public ElasticAggregation? Aggregation { get; init; }
+
     // Console:
     public string Method { get; init; } = "GET";
     public string Path { get; init; } = string.Empty;
@@ -94,7 +102,7 @@ internal sealed class ElasticQuery
         return new ElasticQuery { Kind = ElasticQueryKind.Console, Method = method, Path = path, Body = body };
     }
 
-    // --- SELECT * FROM <index> [WHERE <filter>] [ORDER BY <cols>] [LIMIT n] [OFFSET m] --------------
+    // --- SELECT <cols> FROM <index> [WHERE <filter>] [GROUP BY <expr>] [ORDER BY <cols>] [LIMIT n] [OFFSET m] ---
     private static ElasticQuery ParseBrowse(string t)
     {
         var fromIdx = IndexOfWordTopLevel(t, "FROM", 0);
@@ -103,12 +111,17 @@ internal sealed class ElasticQuery
             throw new FormatException("Expected FROM <index>.");
         }
 
+        // The SELECT list is everything between "SELECT" (6 chars) and FROM.
+        var selectItems = SplitTopLevel(t[6..fromIdx].Trim(), ',')
+            .Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+
         var pos = fromIdx + 4;
         while (pos < t.Length && char.IsWhiteSpace(t[pos])) pos++;
         var (indexToken, afterIndex) = ReadToken(t, pos);
         var index = Unquote(indexToken);
 
         var whereIdx = IndexOfWordTopLevel(t, "WHERE", afterIndex);
+        var groupIdx = IndexOfWordTopLevel(t, "GROUP", afterIndex);
         var orderIdx = IndexOfWordTopLevel(t, "ORDER", afterIndex);
         var limitIdx = IndexOfWordTopLevel(t, "LIMIT", afterIndex);
         var offsetIdx = IndexOfWordTopLevel(t, "OFFSET", afterIndex);
@@ -116,7 +129,7 @@ internal sealed class ElasticQuery
         JsonNode? query = null;
         if (whereIdx >= 0)
         {
-            var end = ClauseEnd(whereIdx, t.Length, orderIdx, limitIdx, offsetIdx);
+            var end = ClauseEnd(whereIdx, t.Length, groupIdx, orderIdx, limitIdx, offsetIdx);
             query = ParseWhere(t[(whereIdx + 5)..end].Trim());
         }
 
@@ -129,16 +142,143 @@ internal sealed class ElasticQuery
             sort = ParseOrderBy(orderText);
         }
 
+        var size = limitIdx >= 0 ? ReadIntAt(t, limitIdx + 5) : null;
+        var from = offsetIdx >= 0 ? ReadIntAt(t, offsetIdx + 6) : null;
+
+        string? groupByText = null;
+        if (groupIdx >= 0)
+        {
+            var end = ClauseEnd(groupIdx, t.Length, orderIdx, limitIdx, offsetIdx);
+            var g = t[(groupIdx + 5)..end].Trim();
+            if (g.StartsWith("BY", StringComparison.OrdinalIgnoreCase)) g = g[2..].Trim();
+            groupByText = g;
+        }
+
+        // An aggregate function in the SELECT, or a GROUP BY, routes to a server-side aggregation — never a
+        // silent full browse/dump (SE-140). A shape we can't translate throws a clear error below.
+        var hasAggregate = selectItems.Any(IsAggregateItem);
+        if (hasAggregate || groupByText is not null)
+        {
+            return new ElasticQuery
+            {
+                Kind = ElasticQueryKind.Browse,
+                Index = index,
+                Query = query,
+                Aggregation = BuildAggregation(selectItems, groupByText, size)
+            };
+        }
+
         return new ElasticQuery
         {
             Kind = ElasticQueryKind.Browse,
             Index = index,
             Query = query,
             Sort = sort,
-            Size = limitIdx >= 0 ? ReadIntAt(t, limitIdx + 5) : null,
-            From = offsetIdx >= 0 ? ReadIntAt(t, offsetIdx + 6) : null
+            Projection = ParseProjection(selectItems),
+            Size = size,
+            From = from
         };
     }
+
+    // --- Projection (SE-141) -----------------------------------------------------------------------
+    // The SELECT field list → an _source filter. "*" (or an empty/absent list) means all fields. Only plain
+    // field names (optionally quoted, dot-paths and .keyword allowed) are supported — no expressions.
+    private static IReadOnlyList<string>? ParseProjection(IReadOnlyList<string> selectItems)
+    {
+        if (selectItems.Count == 0 || selectItems.Any(i => i == "*")) return null;
+
+        var fields = new List<string>();
+        foreach (var item in selectItems)
+        {
+            var field = Unquote(item);
+            if (!PlainField.IsMatch(field))
+            {
+                throw new FormatException(
+                    $"Only plain field names or * are supported in SELECT — couldn't interpret '{item}'. " +
+                    "Use e.g. SELECT \"@timestamp\", level FROM idx, or an aggregate like COUNT(*)/GROUP BY.");
+            }
+
+            // _id is always returned as the key column; no need to request it in _source (it isn't there).
+            if (field != "_id") fields.Add(field);
+        }
+
+        return fields;
+    }
+
+    // --- Aggregation (SE-140) ----------------------------------------------------------------------
+    // Build an aggregation from the SELECT metrics + an optional GROUP BY bucket. Pragmatic subset: a single
+    // group key (a field → terms, or date_histogram(field,'interval')), COUNT(*) as the bucket doc_count, and
+    // COUNT/SUM/AVG/MIN/MAX(field) as metric sub-aggregations. Unsupported shapes throw a helpful error.
+    private static ElasticAggregation BuildAggregation(IReadOnlyList<string> selectItems, string? groupByText, int? size)
+    {
+        ElasticBucket? bucket = groupByText is null ? null : ParseBucket(groupByText);
+
+        var metrics = new List<ElasticMetric>();
+        foreach (var item in selectItems)
+        {
+            var m = AggregateItem.Match(item);
+            if (m.Success)
+            {
+                var fn = m.Groups["fn"].Value.ToUpperInvariant();
+                var arg = m.Groups["arg"].Value.Trim();
+                var alias = m.Groups["alias"].Success ? Unquote(m.Groups["alias"].Value) : null;
+
+                if (fn == "COUNT" && arg == "*") continue; // implicit: the bucket doc_count / total hits
+                metrics.Add(new ElasticMetric(fn, Unquote(arg), alias));
+                continue;
+            }
+
+            if (DateHistogramItem.IsMatch(item) || item == "*") continue; // group expr echoed in SELECT, ignore
+
+            // A bare non-aggregated column is only valid if it IS the group key.
+            var field = Unquote(item);
+            if (bucket is not null && string.Equals(field, bucket.Field, StringComparison.Ordinal)) continue;
+
+            throw new FormatException(
+                $"'{item}' must be aggregated or appear in GROUP BY. Supported: COUNT(*), COUNT/SUM/AVG/MIN/MAX(field), " +
+                "and a single GROUP BY <field> or GROUP BY date_histogram(\"field\", '1m').");
+        }
+
+        return new ElasticAggregation(bucket, metrics, size);
+    }
+
+    private static ElasticBucket ParseBucket(string groupByText)
+    {
+        var keys = SplitTopLevel(groupByText, ',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+        if (keys.Count != 1)
+        {
+            throw new FormatException(
+                "Only a single GROUP BY key is supported (composite aggregations aren't translated yet).");
+        }
+
+        var key = keys[0];
+        var dh = DateHistogramItem.Match(key);
+        if (dh.Success)
+        {
+            return new DateHistogramBucket(Unquote(dh.Groups["field"].Value), dh.Groups["interval"].Value);
+        }
+
+        var field = Unquote(key);
+        if (!PlainField.IsMatch(field))
+        {
+            throw new FormatException(
+                $"Unsupported GROUP BY expression '{key}'. Use a field name or date_histogram(\"field\", '1m').");
+        }
+
+        return new TermsBucket(field);
+    }
+
+    private static bool IsAggregateItem(string item) => AggregateItem.IsMatch(item);
+
+    private static readonly Regex PlainField = new(@"^(?:[A-Za-z_@][\w$.@-]*)$", RegexOptions.Compiled);
+
+    private static readonly Regex AggregateItem = new(
+        """^(?<fn>COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(?<arg>\*|"[^"]+"|`[^`]+`|[A-Za-z_@][\w$.@-]*)\s*\)(?:\s+AS\s+(?<alias>"[^"]+"|[A-Za-z_][\w]*))?$""",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex DateHistogramItem = new(
+        """^date_histogram\s*\(\s*(?<field>"[^"]+"|`[^`]+`|[A-Za-z_@][\w$.@-]*)\s*,\s*'(?<interval>[^']+)'\s*\)$""",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     // Translate a browse WHERE clause into an ES query. Two kinds of conjunct are understood: a raw ES
     // query object typed into the filter box (e.g. { "term": { "status": "active" } }), and the host's
@@ -173,8 +313,23 @@ internal sealed class ElasticQuery
                 continue;
             }
 
+            // Convenience: the most common SQL reflex, `field = 'value'` / `field = 42` / `field != 'x'`, is
+            // translated to a term (or a negated term). Everything richer still needs a raw ES query object.
+            var eq = EqualityClause.Match(part);
+            if (eq.Success)
+            {
+                var column = Unquote(eq.Groups["col"].Value);
+                JsonNode value = ParseLiteral(eq.Groups["val"].Value);
+                JsonNode term = new JsonObject { ["term"] = new JsonObject { [column] = value } };
+                var negate = eq.Groups["op"].Value is "!=" or "<>";
+                musts.Add(negate ? new JsonObject { ["bool"] = new JsonObject { ["must_not"] = term } } : term);
+                continue;
+            }
+
             throw new FormatException(
-                "The filter box expects an Elasticsearch query object, e.g. { \"term\": { \"status\": \"active\" } }. " +
+                "WHERE expects an Elasticsearch query-DSL object, not a SQL expression. " +
+                "Example: WHERE {\"bool\":{\"filter\":[{\"term\":{\"level\":\"Error\"}},{\"range\":{\"@timestamp\":{\"gte\":\"now-1d\"}}}]}}. " +
+                "Simple equality (level = 'Error') is also accepted, but other SQL operators (>, <, IN, BETWEEN, OR) are not. " +
                 $"Couldn't interpret: {part}");
         }
 
@@ -230,6 +385,88 @@ internal sealed class ElasticQuery
     private static readonly Regex LikeClause = new(
         """^(?:CAST\s*\(\s*)?(?<col>"[^"]+"|`[^`]+`|\[[^\]]+\]|[A-Za-z_][\w$.]*)\s*(?:AS\s+[^)]+\))?\s+LIKE\s+'(?<pat>(?:[^']|'')*)'$""",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    // field = 'value' | field = 42 | field != 'x' — the plain-equality convenience (SE-142).
+    private static readonly Regex EqualityClause = new(
+        """^(?<col>"[^"]+"|`[^`]+`|\[[^\]]+\]|[A-Za-z_@][\w$.@-]*)\s*(?<op>!=|<>|=)\s*(?<val>'(?:[^']|'')*'|-?\d+(?:\.\d+)?|true|false)$""",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    // A SQL literal from an equality clause → a JSON scalar: quoted → string, digits → number, true/false → bool.
+    private static JsonNode ParseLiteral(string raw)
+    {
+        var v = raw.Trim();
+        if (v.Length >= 2 && v[0] == '\'' && v[^1] == '\'')
+        {
+            return JsonValue.Create(v[1..^1].Replace("''", "'"))!;
+        }
+
+        if (v.Equals("true", StringComparison.OrdinalIgnoreCase)) return JsonValue.Create(true)!;
+        if (v.Equals("false", StringComparison.OrdinalIgnoreCase)) return JsonValue.Create(false)!;
+        if (long.TryParse(v, System.Globalization.CultureInfo.InvariantCulture, out var l)) return JsonValue.Create(l)!;
+        return JsonValue.Create(double.Parse(v, System.Globalization.CultureInfo.InvariantCulture))!;
+    }
+
+    // --- Time-zone normalisation for range filters (SE-144) ----------------------------------------
+    // A `range` on a date field without a time_zone is interpreted by ES in UTC — for a user in +02:00 that
+    // silently shifts the window and can yield 0 hits. Walk the query tree and inject `time_zone` into any
+    // range clause that lacks one AND has a date-looking (non-numeric) bound. Numeric ranges are left alone
+    // (time_zone is invalid on them). Bounds that already carry an explicit offset are unaffected by ES.
+    public static void ApplyTimeZone(JsonNode? query, string? timeZone)
+    {
+        if (query is null || string.IsNullOrWhiteSpace(timeZone)) return;
+        Walk(query);
+
+        void Walk(JsonNode node)
+        {
+            switch (node)
+            {
+                case JsonObject obj:
+                    foreach (var (key, child) in obj.ToList())
+                    {
+                        if (key == "range" && child is JsonObject range)
+                        {
+                            foreach (var (_, bound) in range.ToList())
+                            {
+                                if (bound is JsonObject b && !b.ContainsKey("time_zone") && HasDateBound(b))
+                                {
+                                    b["time_zone"] = timeZone;
+                                }
+                            }
+                        }
+                        else if (child is not null)
+                        {
+                            Walk(child);
+                        }
+                    }
+                    break;
+                case JsonArray arr:
+                    foreach (var child in arr)
+                    {
+                        if (child is not null) Walk(child);
+                    }
+                    break;
+            }
+        }
+
+        static bool HasDateBound(JsonObject bounds)
+        {
+            foreach (var key in new[] { "gte", "gt", "lte", "lt" })
+            {
+                if (bounds.TryGetPropertyValue(key, out var v) && v is JsonValue jv &&
+                    jv.TryGetValue<string>(out var s) && LooksLikeDate(s))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // A date string carries a '-'/'T'/':' or ES date-math ("now", "||"); a bare number does not.
+        static bool LooksLikeDate(string s) =>
+            s.StartsWith("now", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("||") || s.Contains('T') || (s.Contains('-') && s.Contains(':')) || (s.Contains('-') && s.Length >= 8);
+    }
 
     // --- Text scanning helpers (quote- and nesting-aware) ------------------------------------------
     private static string FirstWord(string s)
@@ -395,4 +632,29 @@ internal sealed class ElasticQuery
 
         return s;
     }
+}
+
+/// <summary>A translated aggregation: an optional bucketing (GROUP BY) plus metric sub-aggregations. A null
+/// <see cref="Bucket"/> is a global aggregation over the whole (filtered) result — a total COUNT(*) when
+/// <see cref="Metrics"/> is empty, or global metrics otherwise.</summary>
+internal sealed record ElasticAggregation(ElasticBucket? Bucket, IReadOnlyList<ElasticMetric> Metrics, int? Size);
+
+/// <summary>The GROUP BY bucketing. <see cref="Field"/> is the field it buckets on.</summary>
+internal abstract record ElasticBucket(string Field);
+
+/// <summary>A <c>terms</c> aggregation on a keyword/numeric field (GROUP BY field).</summary>
+internal sealed record TermsBucket(string Field) : ElasticBucket(Field);
+
+/// <summary>A <c>date_histogram</c> on a date field (GROUP BY date_histogram("field", '1m')).</summary>
+internal sealed record DateHistogramBucket(string Field, string Interval) : ElasticBucket(Field);
+
+/// <summary>A metric sub-aggregation: SUM/AVG/MIN/MAX/COUNT of a field. <see cref="OutputName"/> is the alias
+/// when given, else derived as <c>func_field</c>.</summary>
+internal sealed record ElasticMetric(string Function, string Field, string? OutputName)
+{
+    /// <summary>The ES metric-aggregation type: value_count for COUNT(field), else the lowercased function.</summary>
+    public string EsAggType => Function == "COUNT" ? "value_count" : Function.ToLowerInvariant();
+
+    /// <summary>The column header / agg name for this metric.</summary>
+    public string Name => OutputName ?? $"{Function.ToLowerInvariant()}_{Field}";
 }
