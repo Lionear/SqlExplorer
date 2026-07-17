@@ -843,6 +843,12 @@
   <data name="SettingsPlugins" xml:space="preserve">
     <value>Plugins</value>
   </data>
+  <data name="SettingsPluginSources" xml:space="preserve">
+    <value>Plugin sources</value>
+  </data>
+  <data name="StoreManageSources" xml:space="preserve">
+    <value>Manage sources…</value>
+  </data>
   <data name="AppearanceDesc" xml:space="preserve">
     <value>Theme applies live — no restart needed.</value>
   </data>

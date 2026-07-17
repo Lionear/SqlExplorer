@@ -36,6 +36,15 @@
     <Style Selector="ctl|ShortcutCaptureBox.conflict">
       <Setter Property="BorderBrush" Value="{DynamicResource SEStatusErrorBrush}" />
     </Style>
+    <!-- Mirrors the Plugin Store's Card look — used by the Plugin sources pane so its rows read the
+         same as they did before the Sources tab moved here (SE-122). -->
+    <Style Selector="Border.Card">
+      <Setter Property="Background" Value="{DynamicResource SEPanelBgBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SEHairlineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="12,10" />
+    </Style>
   </Window.Styles>
 
   <Grid ColumnDefinitions="172,*">
@@ -381,6 +390,70 @@
             </Grid>
           </Border>
         </Grid>
+
+        <!-- ===== Plugin Sources pane (SE-122, relocated from Plugin Store's Sources tab) ===== -->
+        <ScrollViewer IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=PluginSources}">
+          <StackPanel Margin="24,20" Spacing="20">
+            <!-- Discovery (read-only) -->
+            <StackPanel Spacing="6">
+              <TextBlock Text="{Binding Loc[StoreDiscoverySources]}" FontSize="13" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding Loc[StoreDiscoveryDesc]}" FontSize="11.5" TextWrapping="Wrap"
+                         Foreground="{DynamicResource SETextSecondaryBrush}" />
+              <ItemsControl ItemsSource="{Binding DiscoverySources}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Classes="Card" Background="{DynamicResource SEPanelBgBrush}">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Image Grid.Column="0" Width="24" Height="24" Margin="0,0,10,0" VerticalAlignment="Center"
+                               RenderOptions.BitmapInterpolationMode="HighQuality"
+                               Source="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        <StackPanel Grid.Column="1" Spacing="2">
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" />
+                          <TextBlock Text="{Binding Url}" FontSize="10.5" FontFamily="Cascadia Code,Menlo,Consolas,monospace"
+                                     Foreground="{DynamicResource SETextFaintBrush}" />
+                          <TextBlock Text="{Binding Error}" FontSize="10.5" Foreground="{DynamicResource SEStatusErrorBrush}"
+                                     IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        </StackPanel>
+                        <Ellipse Grid.Column="2" Width="8" Height="8" VerticalAlignment="Center"
+                                 Fill="{Binding Ok, Converter={x:Static c:BoolToStatusBrushConverter.Instance}}" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <!-- Manual -->
+            <StackPanel Spacing="6">
+              <TextBlock Text="{Binding Loc[StoreManualSources]}" FontSize="13" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding Loc[StoreManualHint]}" FontSize="11.5" TextWrapping="Wrap"
+                         Foreground="{DynamicResource SETextSecondaryBrush}" />
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBox Grid.Column="0" PlaceholderText="{Binding Loc[StoreAddSourceHint]}" Text="{Binding NewSourceUrl}" />
+                <Button Grid.Column="1" Classes="Subtle" Margin="8,0,0,0" Content="{Binding Loc[Add]}" Command="{Binding AddManualSourceCommand}" />
+              </Grid>
+              <ItemsControl ItemsSource="{Binding ManualSources}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Classes="Card" Background="{DynamicResource SEPanelBgBrush}">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Ellipse Grid.Column="0" Width="8" Height="8" Margin="0,0,10,0" VerticalAlignment="Center"
+                                 Fill="{Binding Ok, Converter={x:Static c:BoolToStatusBrushConverter.Instance}}" />
+                        <StackPanel Grid.Column="1" Spacing="2">
+                          <TextBlock Text="{Binding Url}" FontSize="11.5" FontFamily="Cascadia Code,Menlo,Consolas,monospace" />
+                          <TextBlock Text="{Binding Error}" FontSize="10.5" Foreground="{DynamicResource SEStatusErrorBrush}"
+                                     IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Classes="Subtle" Content="{Binding $parent[Window].DataContext.Loc[Remove]}"
+                                Command="{Binding $parent[Window].DataContext.RemoveManualSourceCommand}" CommandParameter="{Binding}" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
       </Panel>
 
       <!-- Footer -->

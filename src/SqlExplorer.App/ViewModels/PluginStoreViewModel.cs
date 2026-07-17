@@ -27,7 +27,6 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     private readonly IPluginInstaller _installer;
     private readonly PluginCatalogService _installed;
     private readonly PluginUpdateService _updates;
-    private readonly IStoreSourcesStore _sources;
     private readonly HttpClient _http;
     private readonly IDbProviderRegistry _providers;
     private readonly IToolRegistry _tools;
@@ -55,7 +54,6 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
 
     public const string TabBrowse = "Browse";
     public const string TabInstalled = "Installed";
-    public const string TabSources = "Sources";
 
     public const string CategoryAll = "All";
     public const string CategoryProviders = "Providers";
@@ -99,15 +97,18 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     [ObservableProperty]
     private string? _consentChecksum;
 
-    [ObservableProperty]
-    private string? _newSourceUrl;
+    /// <summary>Deep-link from the Store's "Manage sources…" button — opens Settings on the
+    /// PluginSources category so all app-wide preferences live in one place (SE-122).</summary>
+    public Action? ManageSourcesRequested { get; set; }
+
+    [RelayCommand]
+    private void ManageSources() => ManageSourcesRequested?.Invoke();
 
     public PluginStoreViewModel(
         IStoreCatalog catalog,
         IPluginInstaller installer,
         PluginCatalogService installed,
         PluginUpdateService updates,
-        IStoreSourcesStore sources,
         HttpClient http,
         IDbProviderRegistry providers,
         IToolRegistry tools,
@@ -117,7 +118,6 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         _installer = installer;
         _installed = installed;
         _updates = updates;
-        _sources = sources;
         _http = http;
         _providers = providers;
         _tools = tools;
@@ -130,8 +130,6 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     public ObservableCollection<StoreListItem> BrowseItems { get; } = [];
     public ObservableCollection<InstalledListItem> BundledPlugins { get; } = [];
     public ObservableCollection<InstalledListItem> UserPlugins { get; } = [];
-    public ObservableCollection<SourceRow> DiscoverySources { get; } = [];
-    public ObservableCollection<SourceRow> ManualSources { get; } = [];
     public ObservableCollection<string> ConsentCapabilities { get; } = [];
 
     /// <summary>One line per install phase entered (Downloading/Verifying/…) — the mini install log.</summary>
@@ -152,7 +150,6 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     public bool HasUpdates => UpdateCount > 0;
     public string UpdateAllLabel => Loc.Get("StoreUpdateAll", UpdateCount);
     public int InstalledCount => BundledPlugins.Count + UserPlugins.Count;
-    public int SourcesCount => DiscoverySources.Count + ManualSources.Count;
     public string InstalledCountLabel => Loc.Get("StoreInstalledCount", InstalledCount);
 
     /// <summary>Set by the view: pick a local .zip to install; returns null if cancelled.</summary>
@@ -184,7 +181,6 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
             _lastCatalog = await _catalog.FetchAsync(CancellationToken.None);
             BuildInstalled(_lastCatalog);
             BuildBrowse(_lastCatalog);
-            BuildSources(_lastCatalog);
         }
         catch (Exception ex)
         {
@@ -416,33 +412,6 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasBrowseItems));
     }
 
-    private void BuildSources(StoreCatalog catalog)
-    {
-        DiscoverySources.Clear();
-        ManualSources.Clear();
-
-        var statusByUrl = catalog.Sources.ToDictionary(s => s.Url, s => s, StringComparer.OrdinalIgnoreCase);
-
-        foreach (var source in catalog.Sources.Where(s => s.IsDiscovery))
-        {
-            DiscoverySources.Add(new SourceRow(source.Url, source.Name, isDiscovery: true, source.Ok, source.Error, source.IconUrl));
-        }
-
-        foreach (var url in _sources.GetManualSources())
-        {
-            var ok = statusByUrl.TryGetValue(url, out var status) && status.Ok;
-            var error = status?.Error;
-            ManualSources.Add(new SourceRow(url, name: null, isDiscovery: false, ok, error, iconUrl: null));
-        }
-
-        OnPropertyChanged(nameof(SourcesCount));
-
-        foreach (var row in DiscoverySources)
-        {
-            _ = LoadIconAsync(row.IconUrl, image => row.Icon = image);
-        }
-    }
-
     // Icons load lazily and best-effort from a remote URL — any failure (offline, 404, not an image)
     // just leaves the item icon-less, falling back to a vector glyph in the view.
     private async Task LoadIconAsync(string? url, Action<Avalonia.Media.IImage> set)
@@ -659,28 +628,6 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         _installed.RequestUninstall(item.Id);
         item.Pending = PluginPendingAction.Remove;
         RestartRequired = true;
-    }
-
-    // --- Sources ------------------------------------------------------------------------------------
-
-    [RelayCommand]
-    private async Task AddSourceAsync()
-    {
-        if (string.IsNullOrWhiteSpace(NewSourceUrl))
-        {
-            return;
-        }
-
-        _sources.AddManualSource(NewSourceUrl);
-        NewSourceUrl = null;
-        await RefreshAsync();
-    }
-
-    [RelayCommand]
-    private async Task RemoveSourceAsync(SourceRow row)
-    {
-        _sources.RemoveManualSource(row.Url);
-        await RefreshAsync();
     }
 
     // --- Capability consent overlay ----------------------------------------------------------------

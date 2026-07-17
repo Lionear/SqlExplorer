@@ -2006,10 +2006,27 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        await PluginStoreRequested(_pluginStoreFactory());
+        var store = _pluginStoreFactory();
+        // Deep-link from the Store's "Manage sources…" button: open Settings on PluginSources.
+        // Best-effort — a missing settings-dialog callback just leaves the button as a no-op.
+        store.ManageSourcesRequested = () => _ = OpenSettingsOnAsync("PluginSources");
+        await PluginStoreRequested(store);
 
         // The store may have staged installs/removes/toggles — refresh the main-window banner.
         EvaluatePluginRestart();
+    }
+
+    // Opens Settings pre-navigated to a given category key. Used by the Plugin Store's deep-link.
+    private async Task OpenSettingsOnAsync(string categoryKey)
+    {
+        if (SettingsDialogRequested is null)
+        {
+            return;
+        }
+
+        var vm = _settingsDialogFactory();
+        vm.SelectCategoryByKey(categoryKey);
+        await SettingsDialogRequested(vm);
     }
 
     /// <summary>Set by the view so the VM can show the About window.</summary>

@@ -843,6 +843,12 @@
   <data name="SettingsPlugins" xml:space="preserve">
     <value>Plug-ins</value>
   </data>
+  <data name="SettingsPluginSources" xml:space="preserve">
+    <value>Plug-in bronnen</value>
+  </data>
+  <data name="StoreManageSources" xml:space="preserve">
+    <value>Bronnen beheren…</value>
+  </data>
   <data name="AppearanceDesc" xml:space="preserve">
     <value>Thema wordt direct toegepast — geen herstart nodig.</value>
   </data>

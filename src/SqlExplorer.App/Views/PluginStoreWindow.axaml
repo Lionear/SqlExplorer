@@ -162,17 +162,11 @@
                            Foreground="{DynamicResource SETextFaintBrush}" />
               </StackPanel>
             </Button>
-            <Button Classes="Tab" Classes.selected="{Binding SelectedTab, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Sources}"
-                    Command="{Binding SelectTabCommand}" CommandParameter="Sources">
-              <StackPanel Orientation="Horizontal" Spacing="5">
-                <TextBlock Text="{Binding Loc[StoreTabSources]}" />
-                <TextBlock Text="{Binding SourcesCount}" FontSize="10.5" VerticalAlignment="Center"
-                           Foreground="{DynamicResource SETextFaintBrush}" />
-              </StackPanel>
-            </Button>
           </StackPanel>
-          <Button Grid.Column="2" Classes="Subtle" Margin="0,0,0,6" VerticalAlignment="Center"
-                  Content="{Binding Loc[Refresh]}" Command="{Binding RefreshCommand}" />
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,0,6">
+            <Button Classes="Subtle" Content="{Binding Loc[StoreManageSources]}" Command="{Binding ManageSourcesCommand}" />
+            <Button Classes="Subtle" Content="{Binding Loc[Refresh]}" Command="{Binding RefreshCommand}" />
+          </StackPanel>
         </Grid>
       </Grid>
     </Border>
@@ -404,83 +398,6 @@
         </ScrollViewer>
       </Grid>
 
-      <!-- ===== SOURCES ===== -->
-      <ScrollViewer IsVisible="{Binding SelectedTab, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Sources}">
-        <StackPanel Margin="16,14" Spacing="16">
-          <!-- Discovery (read-only) -->
-          <StackPanel Spacing="6">
-            <StackPanel Orientation="Horizontal" Spacing="7">
-              <Path Width="13" Height="13" VerticalAlignment="Center"
-                    Data="M4.5,7.5 H11.5 V13 H4.5 Z M6,7.5 V5.5 A2,2 0 0 1 10,5.5 V7.5"
-                    Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.3"
-                    StrokeJoin="Round" StrokeLineCap="Round" />
-              <TextBlock Text="{Binding Loc[StoreDiscoverySources]}" FontSize="13" FontWeight="SemiBold" />
-            </StackPanel>
-            <TextBlock Text="{Binding Loc[StoreDiscoveryDesc]}" FontSize="11.5" TextWrapping="Wrap"
-                       Foreground="{DynamicResource SETextSecondaryBrush}" />
-            <ItemsControl ItemsSource="{Binding DiscoverySources}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <Border Classes="Card" Background="{DynamicResource SEPanelBgBrush}">
-                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                      <Image Grid.Column="0" Width="24" Height="24" Margin="0,0,10,0" VerticalAlignment="Center"
-                             RenderOptions.BitmapInterpolationMode="HighQuality"
-                             Source="{Binding Icon}" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                      <StackPanel Grid.Column="1" Spacing="2">
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" />
-                        <TextBlock Text="{Binding Url}" FontSize="10.5" FontFamily="Cascadia Code,Menlo,Consolas,monospace"
-                                   Foreground="{DynamicResource SETextFaintBrush}" />
-                        <TextBlock Text="{Binding Error}" FontSize="10.5" Foreground="{DynamicResource SEStatusErrorBrush}"
-                                   IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                      </StackPanel>
-                      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="0,0,10,0">
-                        <Path Width="11" Height="11" VerticalAlignment="Center"
-                              Data="M3.2,5.5 H8.8 V10 H3.2 Z M4.3,5.5 V4.3 A1.7,1.7 0 0 1 7.7,4.3 V5.5"
-                              Stroke="{DynamicResource SETextFaintBrush}" StrokeThickness="1.1"
-                              StrokeJoin="Round" StrokeLineCap="Round" />
-                        <TextBlock Text="{Binding $parent[Window].DataContext.Loc[StoreReadOnly]}" FontSize="10.5"
-                                   Foreground="{DynamicResource SETextFaintBrush}" />
-                      </StackPanel>
-                      <Ellipse Grid.Column="3" Width="8" Height="8" VerticalAlignment="Center"
-                               Fill="{Binding Ok, Converter={x:Static c:BoolToStatusBrushConverter.Instance}}" />
-                    </Grid>
-                  </Border>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-
-          <!-- Manual -->
-          <StackPanel Spacing="6">
-            <TextBlock Text="{Binding Loc[StoreManualSources]}" FontSize="13" FontWeight="SemiBold" />
-            <TextBlock Text="{Binding Loc[StoreManualHint]}" FontSize="11.5" TextWrapping="Wrap"
-                       Foreground="{DynamicResource SETextSecondaryBrush}" />
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBox Grid.Column="0" PlaceholderText="{Binding Loc[StoreAddSourceHint]}" Text="{Binding NewSourceUrl}" />
-              <Button Grid.Column="1" Classes="Subtle" Margin="8,0,0,0" Content="{Binding Loc[Add]}" Command="{Binding AddSourceCommand}" />
-            </Grid>
-            <ItemsControl ItemsSource="{Binding ManualSources}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <Border Classes="Card" Background="{DynamicResource SEPanelBgBrush}">
-                    <Grid ColumnDefinitions="Auto,*,Auto">
-                      <Ellipse Grid.Column="0" Width="8" Height="8" Margin="0,0,10,0" VerticalAlignment="Center"
-                               Fill="{Binding Ok, Converter={x:Static c:BoolToStatusBrushConverter.Instance}}" />
-                      <StackPanel Grid.Column="1" Spacing="2">
-                        <TextBlock Text="{Binding Url}" FontSize="11.5" FontFamily="Cascadia Code,Menlo,Consolas,monospace" />
-                        <TextBlock Text="{Binding Error}" FontSize="10.5" Foreground="{DynamicResource SEStatusErrorBrush}"
-                                   IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                      </StackPanel>
-                      <Button Grid.Column="2" Classes="Subtle" Content="{Binding $parent[Window].DataContext.Loc[Remove]}"
-                              Command="{Binding $parent[Window].DataContext.RemoveSourceCommand}" CommandParameter="{Binding}" />
-                    </Grid>
-                  </Border>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-        </StackPanel>
-      </ScrollViewer>
     </Panel>
 
     <!-- ===== Busy / progress panel: a mini install log + the progress bar ===== -->

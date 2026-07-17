@@ -9,6 +9,7 @@ using SqlExplorer.Core.Localization;
 using SqlExplorer.Core.Providers;
 using SqlExplorer.Core.Settings;
 using SqlExplorer.Core.Shortcuts;
+using SqlExplorer.Core.Store;
 using SqlExplorer.Core.Tools;
 using SqlExplorer.Sdk;
 using SqlExplorer.Sdk.Settings;
@@ -39,6 +40,9 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly Mcp.Hosting.McpService _mcp;
     private readonly Core.Logging.IQueryLog _queryLog;
     private readonly Core.Security.MasterPasswordService _masterPassword;
+    private readonly IStoreSourcesStore _sources;
+    private readonly IStoreCatalog _catalog;
+    private readonly System.Net.Http.HttpClient _http;
 
     // Idle auto-lock options (minutes; 0 = Never), index-matched to the Security-page dropdown.
     private static readonly int[] LockMinuteOptions = [0, 15, 30, 60];
@@ -220,6 +224,9 @@ public partial class SettingsViewModel : ViewModelBase
         Mcp.Hosting.McpService mcp,
         Core.Logging.IQueryLog queryLog,
         Core.Security.MasterPasswordService masterPassword,
+        IStoreSourcesStore sources,
+        IStoreCatalog catalog,
+        System.Net.Http.HttpClient http,
         ILocalizer localizer)
     {
         _store = store;
@@ -230,6 +237,9 @@ public partial class SettingsViewModel : ViewModelBase
         _mcp = mcp;
         _queryLog = queryLog;
         _masterPassword = masterPassword;
+        _sources = sources;
+        _catalog = catalog;
+        _http = http;
         Loc = localizer;
 
         Categories =
@@ -243,12 +253,120 @@ public partial class SettingsViewModel : ViewModelBase
             new SettingsCategory("Mcp", localizer["SettingsMcp"], NodeIcons.SettingsPlugins),
             new SettingsCategory("Security", localizer["SettingsSecurity"], NodeIcons.SettingsGeneral),
             new SettingsCategory("Plugins", localizer["SettingsPlugins"], NodeIcons.SettingsPlugins),
+            new SettingsCategory("PluginSources", localizer["SettingsPluginSources"], NodeIcons.SettingsPlugins),
         ];
         _selectedCategory = Categories[0];
 
         LoadFromStore();
         BuildPluginCatalog();
         BuildShortcutCatalog();
+        LoadManualSources();
+        _ = RefreshDiscoverySourcesAsync();
+    }
+
+    /// <summary>Open on a specific category (deep-link from another window, e.g. Plugin Store's
+    /// "Manage sources…" button lands on <c>PluginSources</c>). Falls back to the first category if
+    /// the key is unknown.</summary>
+    public void SelectCategoryByKey(string key)
+    {
+        var match = Categories.FirstOrDefault(c => c.Key == key);
+        if (match is not null)
+        {
+            SelectedCategory = match;
+        }
+    }
+
+    // --- Plugin Sources (relocated from PluginStoreViewModel, SE-122). Bindings hit IStoreSourcesStore
+    // directly so the Plugin Store's next Refresh picks up any change without extra plumbing. -----------
+
+    public ObservableCollection<SourceRow> DiscoverySources { get; } = [];
+    public ObservableCollection<SourceRow> ManualSources { get; } = [];
+
+    [ObservableProperty]
+    private string? _newSourceUrl;
+
+    private void LoadManualSources()
+    {
+        ManualSources.Clear();
+        foreach (var url in _sources.GetManualSources())
+        {
+            ManualSources.Add(new SourceRow(url, name: null, isDiscovery: false, ok: true, error: null, iconUrl: null));
+        }
+    }
+
+    // Best-effort discovery refresh: any failure just leaves the source list empty, matching the
+    // Plugin Store's own tolerance for offline catalogs.
+    private async Task RefreshDiscoverySourcesAsync()
+    {
+        try
+        {
+            var catalog = await _catalog.FetchAsync(System.Threading.CancellationToken.None);
+            DiscoverySources.Clear();
+            foreach (var source in catalog.Sources.Where(s => s.IsDiscovery))
+            {
+                var row = new SourceRow(source.Url, source.Name, isDiscovery: true, source.Ok, source.Error, source.IconUrl);
+                DiscoverySources.Add(row);
+                _ = LoadIconAsync(row);
+            }
+
+            // Update the manual-source statuses with what the catalog observed (ok/error).
+            var byUrl = catalog.Sources.ToDictionary(s => s.Url, s => s, System.StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < ManualSources.Count; i++)
+            {
+                var row = ManualSources[i];
+                if (byUrl.TryGetValue(row.Url, out var status))
+                {
+                    ManualSources[i] = new SourceRow(row.Url, name: null, isDiscovery: false, status.Ok, status.Error, iconUrl: null);
+                }
+            }
+        }
+        catch
+        {
+            // ignored — offline / DNS fail leaves the last known list intact
+        }
+    }
+
+    // Same downsample-at-load as the Plugin Store — remote source icons render just as small.
+    private async Task LoadIconAsync(SourceRow row)
+    {
+        if (string.IsNullOrEmpty(row.IconUrl))
+        {
+            return;
+        }
+
+        try
+        {
+            var bytes = await _http.GetByteArrayAsync(row.IconUrl);
+            using var stream = new System.IO.MemoryStream(bytes);
+            row.Icon = Avalonia.Media.Imaging.Bitmap.DecodeToWidth(
+                stream, PluginIconRenderer.IconDecodeWidth, Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality);
+        }
+        catch
+        {
+            // ignored — missing icon just leaves the slot empty
+        }
+    }
+
+    [RelayCommand]
+    private async Task AddManualSourceAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NewSourceUrl))
+        {
+            return;
+        }
+
+        _sources.AddManualSource(NewSourceUrl);
+        NewSourceUrl = null;
+        LoadManualSources();
+        await RefreshDiscoverySourcesAsync();
+    }
+
+    [RelayCommand]
+    private async Task RemoveManualSourceAsync(SourceRow row)
+    {
+        _sources.RemoveManualSource(row.Url);
+        LoadManualSources();
+        await RefreshDiscoverySourcesAsync();
     }
 
     public ILocalizer Loc { get; }
