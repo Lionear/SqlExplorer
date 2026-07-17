@@ -745,7 +745,7 @@
     <value>Quit</value>
   </data>
   <data name="ExitConfirmMessage" xml:space="preserve">
-    <value>Are you sure you want to quit Lionear SQL Explorer?</value>
+    <value>Are you sure you want to quit SQL Explorer?</value>
   </data>
   <data name="ExitConfirmQuit" xml:space="preserve">
     <value>Quit</value>
@@ -793,7 +793,7 @@
     <value>About</value>
   </data>
   <data name="AboutText" xml:space="preserve">
-    <value>Lionear SQL Explorer</value>
+    <value>SQL Explorer</value>
   </data>
   <data name="AboutTagline" xml:space="preserve">
     <value>A cross-platform, multilingual SQL explorer built in .NET. Database drivers ship as plugins.</value>

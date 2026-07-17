@@ -745,7 +745,7 @@
     <value>Afsluiten</value>
   </data>
   <data name="ExitConfirmMessage" xml:space="preserve">
-    <value>Weet je zeker dat je Lionear SQL Explorer wilt afsluiten?</value>
+    <value>Weet je zeker dat je SQL Explorer wilt afsluiten?</value>
   </data>
   <data name="ExitConfirmQuit" xml:space="preserve">
     <value>Afsluiten</value>
@@ -793,7 +793,7 @@
     <value>Over</value>
   </data>
   <data name="AboutText" xml:space="preserve">
-    <value>Lionear SQL Explorer</value>
+    <value>SQL Explorer</value>
   </data>
   <data name="AboutTagline" xml:space="preserve">
     <value>Een cross-platform, meertalige SQL-verkenner gebouwd in .NET. Databasedrivers zijn plug-ins.</value>

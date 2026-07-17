@@ -131,7 +131,7 @@ public sealed partial class AboutViewModel : ViewModelBase
     public string BuildDiagnostics()
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"**Lionear SQL Explorer** {AppVersion}");
+        sb.AppendLine($"**SQL Explorer** {AppVersion}");
         sb.AppendLine();
         sb.AppendLine("| | |");
         sb.AppendLine("|---|---|");

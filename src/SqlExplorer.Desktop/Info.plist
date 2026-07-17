@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleName</key>
-  <string>Lionear SQL Explorer</string>
+  <string>SQL Explorer</string>
   <key>CFBundleDisplayName</key>
-  <string>Lionear SQL Explorer</string>
+  <string>SQL Explorer</string>
   <key>CFBundleIdentifier</key>
   <string>com.lionear.sqlexplorer</string>
   <key>CFBundleExecutable</key>

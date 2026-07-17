@@ -4,7 +4,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>SqlExplorer.Desktop</RootNamespace>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <MacBundleName>Lionear SQL Explorer</MacBundleName>
+    <MacBundleName>SQL Explorer</MacBundleName>
   </PropertyGroup>
 
   <ItemGroup>

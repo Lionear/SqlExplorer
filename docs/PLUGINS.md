@@ -1,11 +1,11 @@
-# Writing Plugins for Lionear SQL Explorer
+# Writing Plugins for SQL Explorer
 
 This document explains the plugin system: what a plugin is, how it is loaded,
 and how to build one.
 
 ## Overview
 
-Lionear SQL Explorer ships **no database drivers in the host binaries**. Every
+SQL Explorer ships **no database drivers in the host binaries**. Every
 database engine (PostgreSQL, MySQL, SQL Server, SQLite, ...) is a separate
 plugin, discovered at startup and loaded in its own isolated
 `AssemblyLoadContext`. This keeps the host provider-agnostic and lets each

@@ -1,4 +1,4 @@
-# Lionear SQL Explorer
+# SQL Explorer
 
 A cross-platform, multilingual SQL explorer built in .NET. Database drivers ship
 as plugins, result sets are editable with a reviewable save flow, and connections

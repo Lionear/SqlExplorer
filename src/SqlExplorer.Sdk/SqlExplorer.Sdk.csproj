@@ -6,7 +6,7 @@
          plugins reference ONLY this package. Kept interface-only + small; once v1 is published, breaking
          changes are expensive (Notes.md §4.1). Folders group the surface (Connections/, Schema/, Query/,
          Ddl/, Ui/); the base contract stays UI-neutral. -->
-    <Description>Lionear SQL Explorer — plugin extensibility contract.</Description>
+    <Description>SQL Explorer — plugin extensibility contract.</Description>
     <!-- Pinned independent of the app's own release version (CI passes -p:Version=<nightly/release> to
          `dotnet publish`, which propagates through project references to every assembly built in that
          graph, this one included). ProviderLoadContext shares this exact assembly across the plugin/host

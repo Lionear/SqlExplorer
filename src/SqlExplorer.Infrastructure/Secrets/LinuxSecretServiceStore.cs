@@ -20,7 +20,7 @@ public sealed class LinuxSecretServiceStore : ISecretStore
     public void Set(string key, string secret)
     {
         // secret-tool store reads the password from stdin.
-        var psi = NewStartInfo("store", "--label", "Lionear SQL Explorer", "service", Service, "account", key);
+        var psi = NewStartInfo("store", "--label", "SQL Explorer", "service", Service, "account", key);
         psi.RedirectStandardInput = true;
 
         using var process = Start(psi);
