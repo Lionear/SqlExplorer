@@ -403,6 +403,10 @@ jobs:
           RANGE="$RANGE" tools/make-changelog.sh > notes.md || echo "No changes recorded." > notes.md
 
           COMMIT=$(git rev-parse --short "$HEAD_REF")
+          # gh's --target is a target_commitish: only a branch name or a commit SHA is valid, never a tag
+          # name. On a Stable build REF is the v-tag (v0.2.0), so pass the resolved commit instead — a SHA
+          # is valid for every channel (branch builds resolve HEAD to the branch tip we built).
+          TARGET=$(git rev-parse "${HEAD_REF}^{commit}")
           PUBLISHED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           DOWNLOAD_BASE="https://github.com/$GH_REPO/releases/download/$RELEASE_TAG"
 
@@ -421,18 +425,18 @@ jobs:
             # the tag — the tag is what we checked out and what users cite.
             gh release delete "$RELEASE_TAG" --yes || true
             gh release create "$RELEASE_TAG" assets/* \
-              --title "SQL Explorer $VERSION" --notes "$BODY" --latest --target "$REF"
+              --title "SQL Explorer $VERSION" --notes "$BODY" --latest --target "$TARGET"
             # Rolling `stable` pointer: only update.json, whose asset URLs point at the v-tag release above.
             gh release delete "$TAG" --yes --cleanup-tag || true
             gh release create "$TAG" update.json \
               --title "Stable channel manifest" \
               --notes "Update manifest for the Stable channel (points at the latest v-tag release)." \
-              --latest=false --target "$REF"
+              --latest=false --target "$TARGET"
           else
             if [ "$TAG" = nightly ]; then TITLE="Nightly build (develop)"; else TITLE="Preview build (main)"; fi
             # Recreate the rolling release so tag, date and notes track the latest build. Target the branch
             # we built: on a scheduled run GITHUB_SHA is main's head, but the artifacts came from develop.
             gh release delete "$TAG" --yes --cleanup-tag || true
             gh release create "$TAG" assets/* update.json \
-              --title "$TITLE" --notes "$BODY" --prerelease --target "$REF"
+              --title "$TITLE" --notes "$BODY" --prerelease --target "$TARGET"
           fi
