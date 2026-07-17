@@ -14,14 +14,33 @@ namespace SqlExplorer.App.ViewModels;
 
 /// <summary>One plugin row in the About dialog's diagnostics list: what's loaded, from where, and whether
 /// it's pinned or disabled. Read-only — installing/enabling/pinning stays in the Store and Settings.</summary>
-public sealed record AboutPluginRow(string Id, string Version, string Source, bool IsEnabled, bool IsPinned)
+/// <param name="Source">Raw and English (<see cref="SourceBundled"/>/<see cref="SourceStore"/>). This is what
+/// <see cref="AboutViewModel.BuildDiagnostics"/> emits, so a pasted report reads the same whatever language the
+/// reporter runs in; <see cref="SourceLabel"/> is the localized counterpart the UI binds to.</param>
+public sealed record AboutPluginRow(string Id, string Version, string Source, bool IsEnabled, bool IsPinned, ILocalizer Loc)
 {
+    public const string SourceBundled = "bundled";
+    public const string SourceStore = "store";
+
+    private const string FlagDisabled = "disabled";
+    private const string FlagPinned = "pinned";
+
     public bool IsDisabled => !IsEnabled;
 
-    /// <summary>Only one flag is ever shown; disabled outranks pinned (it explains why it isn't running).</summary>
-    public string? Flag => IsDisabled ? "disabled" : IsPinned ? "pinned" : null;
+    /// <summary>Only one flag is ever shown; disabled outranks pinned (it explains why it isn't running).
+    /// Raw and English, same contract as <see cref="Source"/> — the UI binds <see cref="FlagLabel"/>.</summary>
+    public string? Flag => IsDisabled ? FlagDisabled : IsPinned ? FlagPinned : null;
 
     public bool HasFlag => Flag is not null;
+
+    public string SourceLabel => Loc[Source == SourceBundled ? "AboutSourceBundled" : "AboutSourceStore"];
+
+    public string? FlagLabel => Flag switch
+    {
+        FlagDisabled => Loc["AboutFlagDisabled"],
+        FlagPinned => Loc["AboutFlagPinned"],
+        _ => null
+    };
 }
 
 /// <summary>
@@ -89,9 +108,10 @@ public sealed partial class AboutViewModel : ViewModelBase
             Plugins.Add(new AboutPluginRow(
                 plugin.Id,
                 plugin.Version ?? "—",
-                plugin.Origin == PluginOrigin.Bundled ? "bundled" : "store",
+                plugin.Origin == PluginOrigin.Bundled ? AboutPluginRow.SourceBundled : AboutPluginRow.SourceStore,
                 plugin.Enabled,
-                pins.ContainsKey(plugin.Id)));
+                pins.ContainsKey(plugin.Id),
+                Loc));
         }
     }
 

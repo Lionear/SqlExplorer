@@ -828,6 +828,18 @@
   <data name="AboutPluginCount" xml:space="preserve">
     <value>{0} geladen · {1} uitgeschakeld</value>
   </data>
+  <data name="AboutSourceBundled" xml:space="preserve">
+    <value>meegeleverd</value>
+  </data>
+  <data name="AboutSourceStore" xml:space="preserve">
+    <value>store</value>
+  </data>
+  <data name="AboutFlagDisabled" xml:space="preserve">
+    <value>uitgeschakeld</value>
+  </data>
+  <data name="AboutFlagPinned" xml:space="preserve">
+    <value>vastgezet</value>
+  </data>
   <data name="AboutWebsite" xml:space="preserve">
     <value>Website</value>
   </data>

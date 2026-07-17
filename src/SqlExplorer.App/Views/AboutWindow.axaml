@@ -116,12 +116,12 @@
                              Margin="8,0" Foreground="{DynamicResource SETextSecondaryBrush}" />
                   <Border Grid.Column="3" Background="{DynamicResource SEToolbarBgBrush}" CornerRadius="8"
                           Padding="6,1" VerticalAlignment="Center" Margin="0,0,6,0">
-                    <TextBlock Text="{Binding Source}" FontSize="9.5"
+                    <TextBlock Text="{Binding SourceLabel}" FontSize="9.5"
                                Foreground="{DynamicResource SETextFaintBrush}" />
                   </Border>
                   <Border Grid.Column="4" Background="#223574F0" CornerRadius="8" Padding="6,1"
                           VerticalAlignment="Center" IsVisible="{Binding HasFlag}">
-                    <TextBlock Text="{Binding Flag}" FontSize="9.5"
+                    <TextBlock Text="{Binding FlagLabel}" FontSize="9.5"
                                Foreground="{DynamicResource SEAccentBrush}" />
                   </Border>
                 </Grid>
