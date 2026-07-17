@@ -32,6 +32,11 @@ public sealed class McpHost(
     // Host settings are top-level (not per-plugin); the host constructs this with a reader over them.
     private bool RequireAuthOn => getSetting("requireAuth") is not "false"; // default on
 
+    // Redact suspected secrets out of result cells before they reach the AI (SE-145). Default on: any
+    // connection that reaches a result is already MCP-reachable, i.e. AI-facing.
+    private bool ScrubSecretsOn => getSetting("scrubSecrets") is not "false";
+    private readonly SecretScrubber scrubber = new();
+
     public IReadOnlyList<McpConnectionInfo> ListConnections() =>
         connections.List()
             .Where(c => c.IsMcpReachable)
@@ -139,7 +144,9 @@ public sealed class McpHost(
             stopwatch.Stop();
             var mapped = Map(result, cap, stopwatch.Elapsed.TotalMilliseconds);
             AppendHistory(connection, sql, mapped.RowCount, success: true, error: null, stopwatch.ElapsedMilliseconds);
-            LogAudit("run_query", connectionId, allowed: true, mapped.Truncated ? "ok (row-capped)" : "ok", RequireAuthOn);
+            var outcome = mapped.Truncated ? "ok (row-capped)" : "ok";
+            if (mapped.RedactedCount > 0) outcome += $", redacted={mapped.RedactedCount}";
+            LogAudit("run_query", connectionId, allowed: true, outcome, RequireAuthOn);
             return mapped;
         }
         catch (McpAccessException)
@@ -192,14 +199,23 @@ public sealed class McpHost(
         return cts;
     }
 
-    private static McpQueryResult Map(Sdk.Query.QueryResult result, int cap, double durationMs)
+    private McpQueryResult Map(Sdk.Query.QueryResult result, int cap, double durationMs)
     {
         var columns = result.Columns.Select(c => c.Name).ToList();
         var truncated = result.Rows.Count > cap;
-        var rows = result.Rows.Take(cap)
+        IReadOnlyList<IReadOnlyList<object?>> rows = result.Rows.Take(cap)
             .Select(r => (IReadOnlyList<object?>)r.ToList())
             .ToList();
-        return new McpQueryResult(columns, rows, rows.Count, durationMs, truncated);
+
+        var redacted = 0;
+        if (ScrubSecretsOn)
+        {
+            var outcome = scrubber.Scrub(columns, rows);
+            rows = outcome.Rows;
+            redacted = outcome.RedactedCount;
+        }
+
+        return new McpQueryResult(columns, rows, rows.Count, durationMs, truncated, redacted);
     }
 
     private void AppendHistory(SavedConnection connection, string sql, int rowCount, bool success, string? error, long durationMs)

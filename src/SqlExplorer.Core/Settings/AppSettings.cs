@@ -135,6 +135,11 @@ public sealed class AppSettings
     /// <summary>Server-side query timeout (seconds) for MCP queries.</summary>
     public int McpTimeoutSeconds { get; set; } = 30;
 
+    /// <summary>Redact suspected secrets out of MCP query results before they reach the AI (SE-145). Default on:
+    /// any MCP-reachable connection is AI-facing, so live tokens/keys in result cells would otherwise leak into
+    /// the AI context. Turning it off restores verbatim values — the UI warns on disable.</summary>
+    public bool McpScrubSecrets { get; set; } = true;
+
     // ── App updates (SE-137) ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>Release channel the in-app updater follows. Null = never chosen → follow the channel of the

@@ -323,8 +323,15 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private int _mcpTimeoutSeconds;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowNoScrubWarning))]
+    private bool _mcpScrubSecrets;
+
     /// <summary>Show the "any local process can query" warning when auth is turned off (plan §6 / CRIT-3).</summary>
     public bool ShowNoAuthWarning => !McpRequireAuth;
+
+    /// <summary>Warn that live secrets in results may reach the AI when scrubbing is turned off (SE-145).</summary>
+    public bool ShowNoScrubWarning => !McpScrubSecrets;
 
     [RelayCommand]
     private void RegenerateMcpToken() =>
@@ -568,6 +575,7 @@ public partial class SettingsViewModel : ViewModelBase
         McpToken = settings.McpToken;
         McpMaxRows = settings.McpMaxRows;
         McpTimeoutSeconds = settings.McpTimeoutSeconds;
+        McpScrubSecrets = settings.McpScrubSecrets;
     }
 
     // A plugin (provider or tool) gets a tree entry only if it declares fields (Route A) or a custom
@@ -705,6 +713,7 @@ public partial class SettingsViewModel : ViewModelBase
         McpRequireAuth = defaults.McpRequireAuth;
         McpMaxRows = defaults.McpMaxRows;
         McpTimeoutSeconds = defaults.McpTimeoutSeconds;
+        McpScrubSecrets = defaults.McpScrubSecrets;
 
         // Keyboard shortcuts reset to their factory bindings too.
         foreach (var shortcut in _allShortcuts)
@@ -768,6 +777,7 @@ public partial class SettingsViewModel : ViewModelBase
         settings.McpToken = McpToken;
         settings.McpMaxRows = McpMaxRows;
         settings.McpTimeoutSeconds = McpTimeoutSeconds;
+        settings.McpScrubSecrets = McpScrubSecrets;
         _store.Save(settings);
 
         // Apply MCP changes immediately (start/stop/restart the server with the new settings).

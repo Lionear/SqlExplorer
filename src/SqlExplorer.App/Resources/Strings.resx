@@ -249,6 +249,15 @@
   <data name="McpTimeout" xml:space="preserve">
     <value>Query timeout (seconds)</value>
   </data>
+  <data name="McpScrubSecrets" xml:space="preserve">
+    <value>Redact secrets from query results</value>
+  </data>
+  <data name="McpScrubSecretsHint" xml:space="preserve">
+    <value>Scans result values for tokens, keys and secret-named columns and replaces them before the AI sees them. A safety net, not a guarantee.</value>
+  </data>
+  <data name="McpNoScrubWarning" xml:space="preserve">
+    <value>Redaction is off — live secrets in query results (tokens, API keys, passwords) are sent to the AI verbatim.</value>
+  </data>
   <data name="AiAccess" xml:space="preserve">
     <value>AI access (MCP)</value>
   </data>

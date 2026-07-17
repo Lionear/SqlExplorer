@@ -254,6 +254,7 @@ public static class AppServices
                     "requireAuth" => s.McpRequireAuth ? "true" : "false",
                     "maxRows" => s.McpMaxRows.ToString(),
                     "timeoutSeconds" => s.McpTimeoutSeconds.ToString(),
+                    "scrubSecrets" => s.McpScrubSecrets ? "true" : "false",
                     _ => null
                 };
             }

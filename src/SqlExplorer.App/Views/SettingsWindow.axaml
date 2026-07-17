@@ -15,7 +15,8 @@
         <Grid ColumnDefinitions="*,Auto">
           <TextBox Grid.Column="0" Text="{Binding Value}" PlaceholderText="{Binding Watermark}"
                    IsVisible="{Binding IsText}" />
-          <CheckBox Grid.Column="0" IsChecked="{Binding BoolValue}" IsVisible="{Binding IsBool}" />
+          <ToggleSwitch Grid.Column="0" IsChecked="{Binding BoolValue}" IsVisible="{Binding IsBool}"
+                        OnContent="" OffContent="" HorizontalAlignment="Left" />
           <ComboBox Grid.Column="0" HorizontalAlignment="Stretch" ItemsSource="{Binding Choices}"
                     SelectedItem="{Binding Value}" IsVisible="{Binding IsChoice}" />
           <Button Grid.Column="1" Margin="6,0,0,0"
@@ -87,13 +88,17 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
           <TextBlock Text="{Binding Loc[Startup]}" FontWeight="SemiBold" Margin="0,10,0,0" />
-          <CheckBox Content="{Binding Loc[RestoreTabsOnStartup]}" IsChecked="{Binding RestoreTabsOnStartup}" />
-          <CheckBox Content="{Binding Loc[ConfirmOnExit]}" IsChecked="{Binding ConfirmOnExit}" />
-          <CheckBox Content="{Binding Loc[CloseToTray]}" IsChecked="{Binding CloseToTray}" />
+          <ToggleSwitch IsChecked="{Binding RestoreTabsOnStartup}"
+                        OnContent="{Binding Loc[RestoreTabsOnStartup]}" OffContent="{Binding Loc[RestoreTabsOnStartup]}" />
+          <ToggleSwitch IsChecked="{Binding ConfirmOnExit}"
+                        OnContent="{Binding Loc[ConfirmOnExit]}" OffContent="{Binding Loc[ConfirmOnExit]}" />
+          <ToggleSwitch IsChecked="{Binding CloseToTray}"
+                        OnContent="{Binding Loc[CloseToTray]}" OffContent="{Binding Loc[CloseToTray]}" />
           <TextBlock Text="{Binding Loc[CloseToTrayHint]}" FontSize="11" TextWrapping="Wrap"
                      Foreground="{DynamicResource SETextFaintBrush}" Margin="24,0,0,0" />
           <TextBlock Text="{Binding Loc[SettingsSchemaTree]}" FontWeight="SemiBold" Margin="0,10,0,0" />
-          <CheckBox Content="{Binding Loc[ShowSystemDatabases]}" IsChecked="{Binding ShowSystemDatabases}" />
+          <ToggleSwitch IsChecked="{Binding ShowSystemDatabases}"
+                        OnContent="{Binding Loc[ShowSystemDatabases]}" OffContent="{Binding Loc[ShowSystemDatabases]}" />
 
           <TextBlock Text="{Binding Loc[SettingsUpdates]}" FontWeight="SemiBold" FontSize="14" Margin="0,14,0,0" />
           <TextBlock Text="{Binding Loc[SettingsUpdatesHint]}" FontSize="12" TextWrapping="Wrap"
@@ -205,14 +210,16 @@
             <NumericUpDown Grid.Column="1" Width="150"
                            Minimum="8" Maximum="32" Value="{Binding EditorFontSize}" />
           </Grid>
-          <CheckBox Content="{Binding Loc[EditorWordWrap]}" IsChecked="{Binding EditorWordWrap}" />
+          <ToggleSwitch IsChecked="{Binding EditorWordWrap}"
+                        OnContent="{Binding Loc[EditorWordWrap]}" OffContent="{Binding Loc[EditorWordWrap]}" />
         </StackPanel>
 
         <!-- Query -->
         <StackPanel Spacing="10"
                     IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Query}">
           <TextBlock Text="{Binding Loc[SettingsQuery]}" FontSize="14" FontWeight="SemiBold" />
-          <CheckBox Content="{Binding Loc[ConfirmBeforeSave]}" IsChecked="{Binding ConfirmBeforeSave}" Margin="0,6,0,0" />
+          <ToggleSwitch IsChecked="{Binding ConfirmBeforeSave}" Margin="0,6,0,0"
+                        OnContent="{Binding Loc[ConfirmBeforeSave]}" OffContent="{Binding Loc[ConfirmBeforeSave]}" />
           <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
             <TextBlock Grid.Column="0" Text="{Binding Loc[QueryTimeout]}" VerticalAlignment="Center" />
             <NumericUpDown Grid.Column="1" Width="150" Minimum="0" Maximum="86400" FormatString="0"
@@ -236,14 +243,15 @@
           <TextBlock Text="{Binding Loc[QueryLogDesc]}" FontSize="12" TextWrapping="Wrap"
                      Foreground="{DynamicResource SETextSecondaryBrush}" />
 
-          <CheckBox Content="{Binding Loc[QueryLogEnabledLabel]}" IsChecked="{Binding QueryLogEnabled}" Margin="0,6,0,0" />
+          <ToggleSwitch IsChecked="{Binding QueryLogEnabled}" Margin="0,6,0,0"
+                        OnContent="{Binding Loc[QueryLogEnabledLabel]}" OffContent="{Binding Loc[QueryLogEnabledLabel]}" />
 
           <TextBlock Text="{Binding Loc[QueryLogSources]}" FontWeight="SemiBold" Margin="0,4,0,0"
                      IsEnabled="{Binding QueryLogEnabled}" />
-          <CheckBox Content="{Binding Loc[QueryLogAppLabel]}" IsChecked="{Binding QueryLogApp}"
-                    IsEnabled="{Binding QueryLogEnabled}" Margin="12,0,0,0" />
-          <CheckBox Content="{Binding Loc[QueryLogMcpLabel]}" IsChecked="{Binding QueryLogMcp}"
-                    IsEnabled="{Binding QueryLogEnabled}" Margin="12,0,0,0" />
+          <ToggleSwitch IsChecked="{Binding QueryLogApp}" IsEnabled="{Binding QueryLogEnabled}" Margin="12,0,0,0"
+                        OnContent="{Binding Loc[QueryLogAppLabel]}" OffContent="{Binding Loc[QueryLogAppLabel]}" />
+          <ToggleSwitch IsChecked="{Binding QueryLogMcp}" IsEnabled="{Binding QueryLogEnabled}" Margin="12,0,0,0"
+                        OnContent="{Binding Loc[QueryLogMcpLabel]}" OffContent="{Binding Loc[QueryLogMcpLabel]}" />
 
           <TextBlock Text="{Binding Loc[QueryLogHint]}" FontSize="11" TextWrapping="Wrap"
                      Foreground="{DynamicResource SETextFaintBrush}" Margin="0,4,0,0" />
@@ -359,7 +367,8 @@
             <TextBlock Text="{Binding Loc[McpDesc]}" FontSize="12" TextWrapping="Wrap"
                        Foreground="{DynamicResource SETextSecondaryBrush}" />
 
-            <CheckBox Content="{Binding Loc[McpEnabled]}" IsChecked="{Binding McpEnabled}" Margin="0,6,0,0" />
+            <ToggleSwitch IsChecked="{Binding McpEnabled}" Margin="0,6,0,0"
+                          OnContent="{Binding Loc[McpEnabled]}" OffContent="{Binding Loc[McpEnabled]}" />
 
             <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
               <TextBlock Grid.Column="0" Text="{Binding Loc[McpPort]}" VerticalAlignment="Center" />
@@ -378,7 +387,8 @@
               </Grid>
             </StackPanel>
 
-            <CheckBox Content="{Binding Loc[McpRequireAuth]}" IsChecked="{Binding McpRequireAuth}" Margin="0,6,0,0" />
+            <ToggleSwitch IsChecked="{Binding McpRequireAuth}" Margin="0,6,0,0"
+                          OnContent="{Binding Loc[McpRequireAuth]}" OffContent="{Binding Loc[McpRequireAuth]}" />
 
             <!-- No-auth warning (plan §6): non-dismissible while auth is off. -->
             <Border IsVisible="{Binding ShowNoAuthWarning}"
@@ -411,6 +421,19 @@
               <NumericUpDown Grid.Column="1" Width="150" Minimum="1" Maximum="3600" FormatString="0"
                              Value="{Binding McpTimeoutSeconds}" />
             </Grid>
+
+            <!-- Label sits where On/Off would be; the knob state already reads as on/off. -->
+            <ToggleSwitch IsChecked="{Binding McpScrubSecrets}" Margin="0,10,0,0"
+                          OnContent="{Binding Loc[McpScrubSecrets]}"
+                          OffContent="{Binding Loc[McpScrubSecrets]}" />
+            <TextBlock Text="{Binding Loc[McpScrubSecretsHint]}" FontSize="11"
+                       Foreground="{DynamicResource SETextFaintBrush}" TextWrapping="Wrap" />
+
+            <!-- Warning while scrubbing is off: live secrets in results may reach the AI (SE-145). -->
+            <Border IsVisible="{Binding ShowNoScrubWarning}"
+                    Background="#22D6A545" BorderBrush="#66D6A545" BorderThickness="1" CornerRadius="5" Padding="10,6">
+              <TextBlock Text="{Binding Loc[McpNoScrubWarning]}" FontSize="12" Foreground="#E7C77A" TextWrapping="Wrap" />
+            </Border>
           </StackPanel>
         </ScrollViewer>
 
