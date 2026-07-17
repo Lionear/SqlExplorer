@@ -254,11 +254,22 @@ jobs:
           ln -s /Applications "$STAGE/Applications"   # drag-to-install UX
 
           mkdir -p artifacts
-          hdiutil create \
-            -volname "SQL Explorer" \
-            -srcfolder "$STAGE" \
-            -ov -format UDZO \
-            "artifacts/LionearSqlExplorer-${{ steps.version.outputs.value }}-osx-arm64.dmg"
+          DMG="artifacts/LionearSqlExplorer-${{ steps.version.outputs.value }}-osx-arm64.dmg"
+
+          # hdiutil intermittently fails with "Resource busy" on CI: something (Spotlight indexing the
+          # freshly copied staging dir is the usual suspect) still holds it when the image is built. The
+          # step is otherwise deterministic, so retry rather than fail a whole build on a race.
+          for attempt in 1 2 3; do
+            if hdiutil create -volname "SQL Explorer" -srcfolder "$STAGE" -ov -format UDZO "$DMG"; then
+              echo "DMG created on attempt $attempt"
+              exit 0
+            fi
+            echo "::warning::hdiutil attempt $attempt failed; retrying in 10s"
+            sleep 10
+          done
+
+          echo "hdiutil failed three times" >&2
+          exit 1
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
