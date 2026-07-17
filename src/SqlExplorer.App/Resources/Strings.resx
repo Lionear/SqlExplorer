@@ -802,7 +802,10 @@
     <value>Version {0}</value>
   </data>
   <data name="AboutHostApiChip" xml:space="preserve">
-    <value>Host API {0} · min {1}</value>
+    <value>Host API · Provider {0} · Tool {1} · MCP {2}</value>
+  </data>
+  <data name="AboutHostApiTooltip" xml:space="preserve">
+    <value>Provider {0} (min {1}) · Tool {2} (min {3}) · MCP {4} (min {5})</value>
   </data>
   <data name="AboutSystem" xml:space="preserve">
     <value>System</value>

@@ -7,6 +7,8 @@ using SqlExplorer.Core.Localization;
 using SqlExplorer.Core.Plugins;
 using SqlExplorer.Core.Store;
 using SqlExplorer.Sdk;
+using SqlExplorer.Sdk.Mcp;
+using SqlExplorer.Sdk.Tools;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -92,8 +94,18 @@ public sealed partial class AboutViewModel : ViewModelBase
 
     public string VersionLine => Loc.Get("AboutVersion", AppVersion);
 
-    /// <summary>"Host API 24 · min 23" — decides which Store plugins this build is even offered.</summary>
-    public string HostApiChip => Loc.Get("AboutHostApiChip", ProviderHostApi.Version, ProviderHostApi.MinimumSupported);
+    /// <summary>"Host API · Provider 25 · Tool 2 · MCP 1" — the three independent plugin contracts, each
+    /// deciding which Store plugins of that kind this build is offered. The per-contract minimums live in
+    /// <see cref="HostApiTooltip"/> (and the copied diagnostics) to keep the hero chip compact.</summary>
+    public string HostApiChip =>
+        Loc.Get("AboutHostApiChip", ProviderHostApi.Version, ToolHostApi.Version, McpHostApi.Version);
+
+    /// <summary>Tooltip on the Host API chip: each contract's current version and oldest still-loadable one.</summary>
+    public string HostApiTooltip => Loc.Get(
+        "AboutHostApiTooltip",
+        ProviderHostApi.Version, ProviderHostApi.MinimumSupported,
+        ToolHostApi.Version, ToolHostApi.MinimumSupported,
+        McpHostApi.Version, McpHostApi.MinimumSupported);
 
     // --- System card --------------------------------------------------------------------------------
 
@@ -175,7 +187,9 @@ public sealed partial class AboutViewModel : ViewModelBase
         sb.AppendLine();
         sb.AppendLine("| | |");
         sb.AppendLine("|---|---|");
-        sb.AppendLine($"| Host API | {ProviderHostApi.Version} (min {ProviderHostApi.MinimumSupported}) |");
+        sb.AppendLine($"| Host API (provider) | {ProviderHostApi.Version} (min {ProviderHostApi.MinimumSupported}) |");
+        sb.AppendLine($"| Host API (tool) | {ToolHostApi.Version} (min {ToolHostApi.MinimumSupported}) |");
+        sb.AppendLine($"| Host API (mcp) | {McpHostApi.Version} (min {McpHostApi.MinimumSupported}) |");
         sb.AppendLine($"| OS | {OsInfo} |");
         sb.AppendLine($"| Runtime | {RuntimeInfo} |");
         sb.AppendLine($"| Avalonia | {AvaloniaVersion} |");
