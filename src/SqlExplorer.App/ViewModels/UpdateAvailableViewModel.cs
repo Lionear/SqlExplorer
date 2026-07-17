@@ -17,12 +17,15 @@ public sealed partial class UpdateAvailableViewModel : ViewModelBase
     private readonly UpdateManifest _manifest;
     private readonly UpdateAsset? _asset;
     private readonly UpdateDownloader _downloader;
+    private readonly IUpdateApplier _applier;
 
-    public UpdateAvailableViewModel(UpdateManifest manifest, UpdateAsset? asset, UpdateDownloader downloader, ILocalizer localizer)
+    public UpdateAvailableViewModel(
+        UpdateManifest manifest, UpdateAsset? asset, UpdateDownloader downloader, IUpdateApplier applier, ILocalizer localizer)
     {
         _manifest = manifest;
         _asset = asset;
         _downloader = downloader;
+        _applier = applier;
         Loc = localizer;
     }
 
@@ -46,8 +49,17 @@ public sealed partial class UpdateAvailableViewModel : ViewModelBase
     /// <summary>True when there's a downloadable asset for this platform (else only the changelog is shown).</summary>
     public bool HasAsset => _asset is not null;
 
+    /// <summary>True when this platform can install in place (Linux swap / Windows installer / macOS DMG).</summary>
+    public bool CanInstall => _asset is not null && _applier.CanApplyInPlace(_asset);
+
+    /// <summary>Show the plain "Download" hand-off only when an in-place install isn't available.</summary>
+    public bool ShowDownloadOnly => HasAsset && !CanInstall;
+
     /// <summary>Set by the view: opens/reveals the downloaded file (platform shell). The hand-off to the user.</summary>
     public Func<string, Task>? OpenRequested { get; set; }
+
+    /// <summary>Set by the view: carries out the apply result (relaunch/exit) via the desktop lifetime.</summary>
+    public Func<ApplyResult, Task>? ApplyRequested { get; set; }
 
     [ObservableProperty]
     private bool _isDownloading;
@@ -58,18 +70,59 @@ public sealed partial class UpdateAvailableViewModel : ViewModelBase
     [ObservableProperty]
     private string? _statusMessage;
 
-    private bool CanDownload => HasAsset && !IsDownloading;
+    private bool CanAct => HasAsset && !IsDownloading;
 
-    [RelayCommand(CanExecute = nameof(CanDownload))]
+    // Plain hand-off: download + verify, then reveal the file for the user to run themselves.
+    [RelayCommand(CanExecute = nameof(CanAct))]
     private async Task Download()
     {
-        if (_asset is null)
+        var path = await DownloadVerifiedAsync();
+        if (path is not null && OpenRequested is not null)
+        {
+            StatusMessage = Loc["UpdateDialogDownloaded"];
+            await OpenRequested(path);
+        }
+    }
+
+    // In-place: download + verify, then apply per platform and let the host relaunch/exit.
+    [RelayCommand(CanExecute = nameof(CanAct))]
+    private async Task InstallAndRestart()
+    {
+        var path = await DownloadVerifiedAsync();
+        if (path is null || _asset is null)
         {
             return;
         }
 
+        StatusMessage = Loc["UpdateDialogInstalling"];
+        var result = await _applier.ApplyAsync(path, _asset, CancellationToken.None);
+        if (result.Action == ApplyAction.Failed)
+        {
+            StatusMessage = result.Message ?? Loc["UpdateDialogDownloadFailed"];
+            return;
+        }
+
+        if (result.Action == ApplyAction.Guided)
+        {
+            StatusMessage = result.Message ?? Loc["UpdateDialogGuided"];
+        }
+
+        if (ApplyRequested is not null)
+        {
+            await ApplyRequested(result);
+        }
+    }
+
+    // Shared download + SHA-256 verify; returns the local path or null (with the reason in StatusMessage).
+    private async Task<string?> DownloadVerifiedAsync()
+    {
+        if (_asset is null)
+        {
+            return null;
+        }
+
         IsDownloading = true;
-        DownloadCommand.NotifyCanExecuteChanged();
+        NotifyActions();
         DownloadProgress = 0;
         StatusMessage = Loc["UpdateDialogDownloading"];
 
@@ -79,25 +132,27 @@ public sealed partial class UpdateAvailableViewModel : ViewModelBase
             var outcome = await _downloader.DownloadAsync(_asset, progress, CancellationToken.None);
             if (outcome is { Success: true, FilePath: { } path })
             {
-                StatusMessage = Loc["UpdateDialogDownloaded"];
-                if (OpenRequested is not null)
-                {
-                    await OpenRequested(path);
-                }
+                return path;
             }
-            else
-            {
-                StatusMessage = outcome.Error ?? Loc["UpdateDialogDownloadFailed"];
-            }
+
+            StatusMessage = outcome.Error ?? Loc["UpdateDialogDownloadFailed"];
+            return null;
         }
         catch (Exception ex)
         {
             StatusMessage = ex.Message;
+            return null;
         }
         finally
         {
             IsDownloading = false;
-            DownloadCommand.NotifyCanExecuteChanged();
+            NotifyActions();
         }
+    }
+
+    private void NotifyActions()
+    {
+        DownloadCommand.NotifyCanExecuteChanged();
+        InstallAndRestartCommand.NotifyCanExecuteChanged();
     }
 }

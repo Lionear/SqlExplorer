@@ -24,6 +24,11 @@ public sealed class AppUpdateService
         _runningRid = runningRid ?? CurrentRid();
     }
 
+    /// <summary>The channel of the running build, parsed from its version stamp. This is the default channel
+    /// a fresh install follows until the user picks one — so a nightly build tracks Nightly, not Stable.</summary>
+    public UpdateChannel RunningChannel =>
+        ChannelStamp.TryParse(_runningVersion, out var stamp) ? stamp.Channel : UpdateChannel.Stable;
+
     public async Task<UpdateCheckResult> CheckAsync(UpdateChannel channel, CancellationToken ct)
     {
         var manifest = await _source.FetchAsync(channel, ct);

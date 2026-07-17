@@ -20,9 +20,18 @@ public partial class UpdateAvailableWindow : Window
     {
         DataContext = viewModel;
         viewModel.OpenRequested = RevealAsync;
+        viewModel.ApplyRequested = ApplyAsync;
 
         // The notes are markdown; render them once into the placeholder (there's no in-app markdown control).
         NotesHost.Child = MiniMarkdown.Render(viewModel.Notes);
+    }
+
+    // Carry out the update result on the desktop lifetime: relaunch the new build and exit, or exit for the
+    // installer. A guided (macOS) or failed result just leaves the dialog as-is with its status message.
+    private Task ApplyAsync(SqlExplorer.Core.Update.ApplyResult result)
+    {
+        AppRestart.Execute(result);
+        return Task.CompletedTask;
     }
 
     // Hand-off (Fase 1): reveal the containing folder rather than launch the downloaded binary — the user

@@ -148,7 +148,10 @@ public static class AppServices
         services.AddSingleton(sp =>
             new AppUpdateService(sp.GetRequiredService<IUpdateManifestSource>(), RunningVersion()));
         services.AddSingleton(sp => new UpdateDownloader(sp.GetRequiredService<HttpClient>()));
-        services.AddTransient<AppUpdateViewModel>();
+        services.AddSingleton<IUpdateApplier>(new UpdateApplier());
+        // Singleton: one shared instance behind the main-window banner and the Settings check, so a manual
+        // check lights the same banner and offers the same "What's new" action.
+        services.AddSingleton<AppUpdateViewModel>();
 
         // Connections: metadata in a JSON file, secrets in the OS-native keychain.
         // Migrate pre-v10 configs (legacy "Kind" enum) to the manifest "ProviderId" once at startup.

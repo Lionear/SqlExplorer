@@ -167,9 +167,13 @@
           <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,2,0,0">
             <Button Content="{Binding Loc[UpdateCheckNow]}" Command="{Binding CheckForUpdatesNowCommand}"
                     IsEnabled="{Binding !IsCheckingUpdate}" />
+            <Button Classes="Accent" Content="{Binding Loc[UpdateBannerViewChangelog]}"
+                    Command="{Binding ShowWhatsNewCommand}" IsVisible="{Binding Update.HasUpdate}" />
             <TextBlock Text="{Binding UpdateCheckStatus}" VerticalAlignment="Center" FontSize="11.5"
                        Foreground="{DynamicResource SETextSecondaryBrush}" />
           </StackPanel>
+          <Button Content="{Binding Loc[UpdateRollback]}" Command="{Binding RollBackUpdateCommand}"
+                  IsVisible="{Binding CanRollback}" HorizontalAlignment="Left" Margin="0,2,0,0" />
         </StackPanel>
         </ScrollViewer>
 
