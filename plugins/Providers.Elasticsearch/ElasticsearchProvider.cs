@@ -51,7 +51,13 @@ public sealed class ElasticsearchProvider : IDbProvider
         // Alternative to user/pass: a base64-encoded API key (the value used in an "Authorization: ApiKey"
         // header). When set, it takes precedence over username/password.
         new("apiKey", "API key", ConnectionFieldType.Password, Advanced: true),
-        new("verifyTls", "Verify TLS certificate", ConnectionFieldType.Bool, Default: "true", Advanced: true)
+        new("verifyTls", "Verify TLS certificate", ConnectionFieldType.Bool, Default: "true", Advanced: true),
+        // Truncate long text/JSON cells in browse results to this many chars (0 = off) so a wide SELECT * over
+        // logs with stacktraces doesn't return 100s of KB (SE-141). Display/MCP only — never the stored data.
+        new("maxFieldChars", "Max field length (chars)", ConnectionFieldType.Text, Default: "2000", Advanced: true),
+        // Time zone injected into date range/date_histogram clauses that lack one (SE-144). Empty = the app's
+        // local offset; set an explicit offset ("+02:00") or IANA id ("Europe/Amsterdam"), or "UTC" to disable.
+        new("timeZone", "Time zone for date ranges", ConnectionFieldType.Text, Advanced: true)
     ];
 
     // Connection details are carried as an ADO-style key=value string (robust quoting/escaping via
@@ -64,6 +70,8 @@ public sealed class ElasticsearchProvider : IDbProvider
         if (Value(values, "password") is { } p) builder["Password"] = p;
         if (Value(values, "apiKey") is { } k) builder["ApiKey"] = k;
         builder["VerifyTls"] = Value(values, "verifyTls") is "false" or "False" ? "false" : "true";
+        if (Value(values, "maxFieldChars") is { } mf) builder["MaxFieldChars"] = mf;
+        if (Value(values, "timeZone") is { } tz) builder["TimeZone"] = tz;
         return builder.ConnectionString;
     }
 
@@ -84,6 +92,8 @@ public sealed class ElasticsearchProvider : IDbProvider
         if (builder.TryGetValue("Username", out var user)) result["username"] = user?.ToString();
         if (builder.TryGetValue("ApiKey", out _)) result["apiKey"] = "";       // present but never echoed back
         if (builder.TryGetValue("VerifyTls", out var tls)) result["verifyTls"] = tls?.ToString();
+        if (builder.TryGetValue("MaxFieldChars", out var mf)) result["maxFieldChars"] = mf?.ToString();
+        if (builder.TryGetValue("TimeZone", out var tz)) result["timeZone"] = tz?.ToString();
         return result;
     }
 
@@ -110,10 +120,11 @@ public sealed class ElasticsearchProvider : IDbProvider
         IReadOnlyList<DbNodeRef> ancestors,
         CancellationToken ct)
     {
-        // Indices are leaves (no child column nodes — an index is schemaless-ish and browsed directly).
+        // Expanding an index → its mapping fields as columns (SE-143), so an AI/user doesn't have to
+        // SELECT * LIMIT 1 to discover fields or guess .keyword sub-fields.
         if (ancestors.Count > 0)
         {
-            return [];
+            return await GetIndexFieldsAsync(profile, ancestors[^1].Name, ct);
         }
 
         var body = await SendAsync(profile, EsHttpMethod.GET,
@@ -134,7 +145,7 @@ public sealed class ElasticsearchProvider : IDbProvider
             {
                 Kind = DbNodeKind.Table,
                 Name = name,
-                HasChildren = false,
+                HasChildren = true,
                 IsSystem = name.StartsWith('.'),
                 Detail = detail
             });
@@ -143,6 +154,63 @@ public sealed class ElasticsearchProvider : IDbProvider
         nodes.Sort((a, b) => string.CompareOrdinal(a.Name, b.Name));
         return nodes;
     }
+
+    // GET <index>/_mapping → one Column node per leaf field (dot-paths for nested objects), Detail = ES type,
+    // with a ".keyword" marker where a keyword sub-field exists. Falls back to _id/_source when there is no
+    // usable mapping (a fully dynamic index, an alias with no properties, or any error).
+    private async Task<IReadOnlyList<DbTreeNode>> GetIndexFieldsAsync(
+        ConnectionProfile profile, string index, CancellationToken ct)
+    {
+        List<DbTreeNode> Fallback() => [Column("_id", "keyword"), Column("_source", "object")];
+
+        try
+        {
+            var body = await SendAsync(profile, EsHttpMethod.GET, $"{Encode(index)}/_mapping", null, ct);
+            using var doc = JsonDocument.Parse(body);
+
+            foreach (var idxProp in doc.RootElement.EnumerateObject())
+            {
+                if (idxProp.Value.TryGetProperty("mappings", out var mappings) &&
+                    mappings.TryGetProperty("properties", out var props) &&
+                    props.ValueKind == JsonValueKind.Object)
+                {
+                    var nodes = new List<DbTreeNode> { Column("_id", "keyword") };
+                    CollectFields(props, null, nodes);
+                    return nodes.Count > 1 ? nodes : Fallback();
+                }
+            }
+
+            return Fallback();
+        }
+        catch
+        {
+            return Fallback();
+        }
+    }
+
+    private static void CollectFields(JsonElement properties, string? prefix, List<DbTreeNode> nodes)
+    {
+        foreach (var field in properties.EnumerateObject())
+        {
+            var path = prefix is null ? field.Name : $"{prefix}.{field.Name}";
+            var def = field.Value;
+
+            // An object/nested field has its own `properties` — recurse and expose dot-paths.
+            if (def.TryGetProperty("properties", out var nested) && nested.ValueKind == JsonValueKind.Object)
+            {
+                CollectFields(nested, path, nodes);
+                continue;
+            }
+
+            var type = def.TryGetProperty("type", out var t) ? t.GetString() ?? "object" : "object";
+            var hasKeyword = def.TryGetProperty("fields", out var f) && f.ValueKind == JsonValueKind.Object &&
+                             f.TryGetProperty("keyword", out _);
+            nodes.Add(Column(path, hasKeyword ? $"{type} · .keyword" : type));
+        }
+    }
+
+    private static DbTreeNode Column(string name, string detail) =>
+        new() { Kind = DbNodeKind.Column, Name = name, Detail = detail, HasChildren = false };
 
     // Elasticsearch has no database layer — the index lives in the REST path, so the toolbar's database
     // switcher stays empty.
@@ -154,16 +222,27 @@ public sealed class ElasticsearchProvider : IDbProvider
     {
         var stopwatch = Stopwatch.StartNew();
         var query = ElasticQuery.Parse(sql);
+        var cap = ReadMaxFieldChars(profile);
 
         string body;
         if (query.Kind == ElasticQueryKind.Browse)
         {
+            var tz = ReadTimeZone(profile);
+            var q = query.Query?.DeepClone() ?? new JsonObject { ["match_all"] = new JsonObject() };
+            ElasticQuery.ApplyTimeZone(q, tz);
+
+            if (query.Aggregation is { } agg)
+            {
+                return await RunAggregationAsync(profile, query.Index, q, agg, tz, cap, stopwatch, ct);
+            }
+
             var search = new JsonObject
             {
-                ["query"] = query.Query?.DeepClone() ?? new JsonObject { ["match_all"] = new JsonObject() },
+                ["query"] = q,
                 ["size"] = query.Size ?? DefaultSize,
                 ["from"] = query.From ?? 0
             };
+            if (query.Projection is { } proj) search["_source"] = BuildSourceFilter(proj);
             if (query.Sort is { } sort) search["sort"] = sort.DeepClone();
 
             body = await SendAsync(profile, EsHttpMethod.POST, $"{Encode(query.Index)}/_search", search.ToJsonString(), ct);
@@ -174,7 +253,114 @@ public sealed class ElasticsearchProvider : IDbProvider
                 query.Body.Length == 0 ? null : query.Body, ct);
         }
 
-        return Project(body, stopwatch.Elapsed);
+        return Project(body, stopwatch.Elapsed, cap);
+    }
+
+    private static JsonArray BuildSourceFilter(IReadOnlyList<string> fields)
+    {
+        var arr = new JsonArray();
+        foreach (var f in fields) arr.Add(f);
+        return arr;
+    }
+
+    // Run a translated aggregation as a size:0 search. A plain COUNT(*) (no GROUP BY, no metrics) reads the
+    // total hit count — never a document dump (SE-140). Bucket/metric aggregations project via FlattenAggregations.
+    private async Task<QueryResult> RunAggregationAsync(
+        ConnectionProfile profile, string index, JsonNode query, ElasticAggregation agg,
+        string? timeZone, int cap, Stopwatch stopwatch, CancellationToken ct)
+    {
+        var search = new JsonObject { ["size"] = 0, ["query"] = query };
+
+        if (agg.Bucket is null && agg.Metrics.Count == 0)
+        {
+            search["track_total_hits"] = true;
+            var totalBody = await SendAsync(profile, EsHttpMethod.POST, $"{Encode(index)}/_search", search.ToJsonString(), ct);
+            using var doc = JsonDocument.Parse(totalBody);
+            long total = 0;
+            if (doc.RootElement.TryGetProperty("hits", out var h) && h.TryGetProperty("total", out var tot))
+            {
+                total = tot.ValueKind == JsonValueKind.Object && tot.TryGetProperty("value", out var v)
+                    ? v.GetInt64() : tot.ValueKind == JsonValueKind.Number ? tot.GetInt64() : 0;
+            }
+
+            return new QueryResult
+            {
+                Columns = [new ResultColumn("count", typeof(long))],
+                Rows = [[total]],
+                Elapsed = stopwatch.Elapsed
+            };
+        }
+
+        search["aggs"] = BuildAggs(agg, timeZone);
+        var body = await SendAsync(profile, EsHttpMethod.POST, $"{Encode(index)}/_search", search.ToJsonString(), ct);
+        return Project(body, stopwatch.Elapsed, cap);
+    }
+
+    // Translate the aggregation model into an ES `aggs` block. The bucket agg is named after its field so the
+    // projected key column is meaningful; metrics become sibling sub-aggregations (or top-level for a global agg).
+    private static JsonObject BuildAggs(ElasticAggregation agg, string? timeZone)
+    {
+        var metrics = new JsonObject();
+        foreach (var m in agg.Metrics)
+        {
+            metrics[m.Name] = new JsonObject { [m.EsAggType] = new JsonObject { ["field"] = m.Field } };
+        }
+
+        if (agg.Bucket is null)
+        {
+            return metrics; // global metrics, no bucketing
+        }
+
+        JsonObject bucketDef = agg.Bucket switch
+        {
+            TermsBucket t => new JsonObject
+            {
+                ["terms"] = new JsonObject { ["field"] = t.Field, ["size"] = agg.Size ?? DefaultSize }
+            },
+            DateHistogramBucket d => BuildDateHistogram(d, timeZone),
+            _ => throw new InvalidOperationException("Unknown aggregation bucket.")
+        };
+
+        if (agg.Metrics.Count > 0) bucketDef["aggs"] = metrics;
+        return new JsonObject { [agg.Bucket.Field] = bucketDef };
+    }
+
+    private static JsonObject BuildDateHistogram(DateHistogramBucket bucket, string? timeZone)
+    {
+        var dh = new JsonObject { ["field"] = bucket.Field };
+        dh[IsCalendarInterval(bucket.Interval) ? "calendar_interval" : "fixed_interval"] = bucket.Interval;
+        if (!string.IsNullOrWhiteSpace(timeZone)) dh["time_zone"] = timeZone;
+        return new JsonObject { ["date_histogram"] = dh };
+    }
+
+    // ES calendar intervals (week/month/quarter/year) need calendar_interval; ms/s/m/h/d use fixed_interval.
+    private static bool IsCalendarInterval(string interval)
+    {
+        var s = interval.Trim();
+        if (s.StartsWith('1')) s = s[1..];
+        return s is "w" or "M" or "q" or "y" or "week" or "month" or "quarter" or "year";
+    }
+
+    private static int ReadMaxFieldChars(ConnectionProfile profile)
+    {
+        var builder = new DbConnectionStringBuilder { ConnectionString = profile.ConnectionString };
+        return builder.TryGetValue("MaxFieldChars", out var v) &&
+               int.TryParse(v?.ToString(), out var n) && n >= 0 ? n : 2000;
+    }
+
+    // The time zone to inject into bare date range/date_histogram clauses (SE-144). An explicit connection
+    // value wins; otherwise the app's local UTC offset, so bare ranges match the user's wall clock.
+    private static string? ReadTimeZone(ConnectionProfile profile)
+    {
+        var builder = new DbConnectionStringBuilder { ConnectionString = profile.ConnectionString };
+        if (builder.TryGetValue("TimeZone", out var v) && v?.ToString() is { Length: > 0 } tz)
+        {
+            return tz;
+        }
+
+        var offset = DateTimeOffset.Now.Offset;
+        var sign = offset < TimeSpan.Zero ? "-" : "+";
+        return $"{sign}{Math.Abs(offset.Hours):D2}:{Math.Abs(offset.Minutes):D2}";
     }
 
     // Elasticsearch Dev-Tools runs one request at a time; a "script" is just one request here.
@@ -224,11 +410,16 @@ public sealed class ElasticsearchProvider : IDbProvider
     {
         var stopwatch = Stopwatch.StartNew();
         var query = ElasticQuery.Parse(sql);
-        if (query.Kind != ElasticQueryKind.Browse)
+        if (query.Kind != ElasticQueryKind.Browse || query.Aggregation is not null)
         {
-            // The host only cursor-pages a browse; anything else just runs normally (no cursor).
+            // The host only cursor-pages a document browse; a console request or an aggregation (a single
+            // fixed-size result) just runs normally (no cursor).
             return await ExecuteQueryAsync(profile, sql, ct);
         }
+
+        var cap = ReadMaxFieldChars(profile);
+        var q = query.Query?.DeepClone() ?? new JsonObject { ["match_all"] = new JsonObject() };
+        ElasticQuery.ApplyTimeZone(q, ReadTimeZone(profile));
 
         string pitId;
         JsonArray? after = null;
@@ -243,17 +434,18 @@ public sealed class ElasticsearchProvider : IDbProvider
 
         var body = new JsonObject
         {
-            ["query"] = query.Query?.DeepClone() ?? new JsonObject { ["match_all"] = new JsonObject() },
+            ["query"] = q,
             ["size"] = pageSize,
             ["pit"] = new JsonObject { ["id"] = pitId, ["keep_alive"] = PitKeepAlive },
             ["track_total_hits"] = false,
             ["sort"] = BuildSort(query.Sort)
         };
+        if (query.Projection is { } proj) body["_source"] = BuildSourceFilter(proj);
         if (after is not null) body["search_after"] = after;
 
         // A PIT search addresses the snapshot, not an index, so there is no index in the path.
         var responseBody = await SendAsync(profile, EsHttpMethod.POST, "_search", body.ToJsonString(), ct);
-        return ProjectCursorPage(responseBody, pageSize, stopwatch.Elapsed);
+        return ProjectCursorPage(responseBody, pageSize, stopwatch.Elapsed, cap);
     }
 
     // Stream every matching document (no 10k ceiling) for export/backup: same PIT + search_after walk, but
@@ -280,6 +472,11 @@ public sealed class ElasticsearchProvider : IDbProvider
         await visitor.OnColumnsAsync(
             [new ResultColumn("_id", typeof(string)), new ResultColumn("_source", typeof(string))], ct);
 
+        // Timezone-normalise the filter once (SE-144); the full _source is streamed verbatim for export
+        // fidelity, so the field-length cap deliberately does not apply here.
+        var streamQuery = query.Query?.DeepClone() ?? new JsonObject { ["match_all"] = new JsonObject() };
+        ElasticQuery.ApplyTimeZone(streamQuery, ReadTimeZone(profile));
+
         var pitId = await OpenPitAsync(profile, query.Index, ct);
         try
         {
@@ -289,7 +486,7 @@ public sealed class ElasticsearchProvider : IDbProvider
                 ct.ThrowIfCancellationRequested();
                 var body = new JsonObject
                 {
-                    ["query"] = query.Query?.DeepClone() ?? new JsonObject { ["match_all"] = new JsonObject() },
+                    ["query"] = streamQuery.DeepClone(),
                     ["size"] = StreamPageSize,
                     ["pit"] = new JsonObject { ["id"] = pitId, ["keep_alive"] = PitKeepAlive },
                     ["track_total_hits"] = false,
@@ -354,13 +551,13 @@ public sealed class ElasticsearchProvider : IDbProvider
         return sort;
     }
 
-    private static QueryResult ProjectCursorPage(string body, int pageSize, TimeSpan elapsed)
+    private static QueryResult ProjectCursorPage(string body, int pageSize, TimeSpan elapsed, int cap)
     {
         using var doc = JsonDocument.Parse(body);
         var root = doc.RootElement;
         var pitId = root.TryGetProperty("pit_id", out var p) ? p.GetString() : null;
         var hits = root.GetProperty("hits").GetProperty("hits");
-        var page = FlattenHits(hits, elapsed);
+        var page = FlattenHits(hits, elapsed, cap);
 
         // A full page implies there may be more; carry the last hit's sort values as the next cursor. A
         // short page is the end of the scan — no cursor (the PIT will expire on its own).
@@ -561,7 +758,7 @@ public sealed class ElasticsearchProvider : IDbProvider
     // --- Response projection ------------------------------------------------------------------------
     // Three shapes: a search response (hits.hits → hybrid, editable grid), a top-level JSON array
     // (_cat/*?format=json → flat read-only grid), or anything else (one JSON cell).
-    private static QueryResult Project(string body, TimeSpan elapsed)
+    private static QueryResult Project(string body, TimeSpan elapsed, int cap)
     {
         if (string.IsNullOrWhiteSpace(body))
         {
@@ -571,17 +768,27 @@ public sealed class ElasticsearchProvider : IDbProvider
         using var doc = JsonDocument.Parse(body);
         var root = doc.RootElement;
 
+        // Aggregations take precedence over hits: a size:0 aggregation response has an empty hits.hits but a
+        // populated top-level "aggregations" that would otherwise be silently dropped (SE-140).
+        if (root.ValueKind == JsonValueKind.Object &&
+            root.TryGetProperty("aggregations", out var aggregations) &&
+            aggregations.ValueKind == JsonValueKind.Object &&
+            aggregations.EnumerateObject().Any())
+        {
+            return FlattenAggregations(aggregations, elapsed, cap);
+        }
+
         if (root.ValueKind == JsonValueKind.Object &&
             root.TryGetProperty("hits", out var hits) &&
             hits.TryGetProperty("hits", out var hitArray) &&
             hitArray.ValueKind == JsonValueKind.Array)
         {
-            return FlattenHits(hitArray, elapsed);
+            return FlattenHits(hitArray, elapsed, cap);
         }
 
         if (root.ValueKind == JsonValueKind.Array)
         {
-            return FlattenArray(root, elapsed);
+            return FlattenArray(root, elapsed, cap);
         }
 
         return new QueryResult
@@ -592,11 +799,101 @@ public sealed class ElasticsearchProvider : IDbProvider
         };
     }
 
+    // --- Aggregation projection (SE-140) ------------------------------------------------------------
+    // Flatten a top-level "aggregations" object into a read-only grid. The first bucket aggregation (a child
+    // with a "buckets" array — terms/date_histogram/histogram/composite) becomes rows of key + doc_count +
+    // any nested metric values. A metric-only response (no buckets) becomes a single row of metric columns.
+    private static QueryResult FlattenAggregations(JsonElement aggregations, TimeSpan elapsed, int cap)
+    {
+        foreach (var agg in aggregations.EnumerateObject())
+        {
+            if (agg.Value.ValueKind == JsonValueKind.Object &&
+                agg.Value.TryGetProperty("buckets", out var buckets) &&
+                buckets.ValueKind == JsonValueKind.Array)
+            {
+                return FlattenBuckets(agg.Name, buckets, elapsed, cap);
+            }
+        }
+
+        // No bucket aggregation → global metrics (e.g. a bare AVG/SUM): one row, one column per metric.
+        var columns = new List<ResultColumn>();
+        var values = new List<object?>();
+        foreach (var agg in aggregations.EnumerateObject())
+        {
+            if (agg.Value.ValueKind == JsonValueKind.Object && agg.Value.TryGetProperty("value", out var val))
+            {
+                columns.Add(new ResultColumn(agg.Name, val.ValueKind == JsonValueKind.Number ? typeof(double) : typeof(string)));
+                values.Add(MetricValue(agg.Value, cap));
+            }
+        }
+
+        return columns.Count > 0
+            ? new QueryResult { Columns = columns, Rows = [values.ToArray()], Elapsed = elapsed }
+            : new QueryResult
+            {
+                Columns = [new ResultColumn("aggregations", typeof(string))],
+                Rows = [[Prettify(aggregations.GetRawText())]],
+                Elapsed = elapsed
+            };
+    }
+
+    private static QueryResult FlattenBuckets(string keyHeader, JsonElement buckets, TimeSpan elapsed, int cap)
+    {
+        // Collect metric sub-agg names (child objects carrying a "value"), in first-seen order across buckets.
+        var metricNames = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var bucket in buckets.EnumerateArray())
+        {
+            foreach (var child in bucket.EnumerateObject())
+            {
+                if (child.Name is "key" or "key_as_string" or "doc_count") continue;
+                if (child.Value.ValueKind == JsonValueKind.Object && child.Value.TryGetProperty("value", out _)
+                    && seen.Add(child.Name))
+                {
+                    metricNames.Add(child.Name);
+                }
+            }
+        }
+
+        var columns = new List<ResultColumn>
+        {
+            new(keyHeader, typeof(string)),
+            new("doc_count", typeof(long))
+        };
+        columns.AddRange(metricNames.Select(m => new ResultColumn(m, typeof(double))));
+
+        var rows = new List<object?[]>();
+        foreach (var bucket in buckets.EnumerateArray())
+        {
+            var row = new object?[columns.Count];
+            row[0] = bucket.TryGetProperty("key_as_string", out var kas) ? kas.GetString()
+                : bucket.TryGetProperty("key", out var k) ? Render(k, cap) : null;
+            row[1] = bucket.TryGetProperty("doc_count", out var dc) && dc.ValueKind == JsonValueKind.Number
+                ? dc.GetInt64() : null;
+            for (var i = 0; i < metricNames.Count; i++)
+            {
+                if (bucket.TryGetProperty(metricNames[i], out var metric))
+                {
+                    row[2 + i] = MetricValue(metric, cap);
+                }
+            }
+
+            rows.Add(row);
+        }
+
+        return new QueryResult { Columns = columns, Rows = rows, Elapsed = elapsed };
+    }
+
+    // A metric sub-agg value: prefer value_as_string (formatted dates, etc.) else the raw value.
+    private static object? MetricValue(JsonElement metric, int cap) =>
+        metric.TryGetProperty("value_as_string", out var vs) ? vs.GetString()
+        : metric.TryGetProperty("value", out var v) ? Render(v, cap) : null;
+
     // hits.hits → hybrid grid: _id first (key), then the union of top-level _source fields. Every column
     // is tagged BaseTable=<index> and _id IsKey/IsReadOnly, so the grid is editable via the same mechanism
     // SQL providers use — but only when all hits share one index (otherwise there is no single write target,
     // so the grid stays read-only).
-    private static QueryResult FlattenHits(JsonElement hitArray, TimeSpan elapsed)
+    private static QueryResult FlattenHits(JsonElement hitArray, TimeSpan elapsed, int cap)
     {
         var order = new List<string> { "_id" };
         var seen = new HashSet<string>(StringComparer.Ordinal) { "_id" };
@@ -634,7 +931,7 @@ public sealed class ElasticsearchProvider : IDbProvider
             {
                 if (src.ValueKind == JsonValueKind.Object && src.TryGetProperty(order[i], out var value))
                 {
-                    var rendered = Render(value);
+                    var rendered = Render(value, cap);
                     row[i] = rendered;
                     clrTypes[i] ??= rendered?.GetType();
                 }
@@ -656,7 +953,7 @@ public sealed class ElasticsearchProvider : IDbProvider
 
     // A top-level JSON array (e.g. _cat/indices?format=json) → a flat, read-only grid: the union of object
     // keys as columns, or a single "value" column when the elements aren't objects.
-    private static QueryResult FlattenArray(JsonElement array, TimeSpan elapsed)
+    private static QueryResult FlattenArray(JsonElement array, TimeSpan elapsed, int cap)
     {
         var order = new List<string>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -673,7 +970,7 @@ public sealed class ElasticsearchProvider : IDbProvider
 
         if (!allObjects || order.Count == 0)
         {
-            var valueRows = array.EnumerateArray().Select(el => new object?[] { Render(el) }).ToList();
+            var valueRows = array.EnumerateArray().Select(el => new object?[] { Render(el, cap) }).ToList();
             return new QueryResult
             {
                 Columns = [new ResultColumn("value", typeof(string))],
@@ -688,7 +985,7 @@ public sealed class ElasticsearchProvider : IDbProvider
             var row = new object?[order.Count];
             for (var i = 0; i < order.Count; i++)
             {
-                if (el.TryGetProperty(order[i], out var value)) row[i] = Render(value);
+                if (el.TryGetProperty(order[i], out var value)) row[i] = Render(value, cap);
             }
 
             rows.Add(row);
@@ -700,16 +997,23 @@ public sealed class ElasticsearchProvider : IDbProvider
 
     // Render a JSON value as a CLR value the grid can display. Scalars map to their natural CLR type;
     // objects and arrays become compact JSON text (one cell).
-    private static object? Render(JsonElement value) => value.ValueKind switch
+    private static object? Render(JsonElement value, int cap) => value.ValueKind switch
     {
         JsonValueKind.Null or JsonValueKind.Undefined => null,
-        JsonValueKind.String => value.GetString(),
+        JsonValueKind.String => Cap(value.GetString(), cap),
         JsonValueKind.True => true,
         JsonValueKind.False => false,
         JsonValueKind.Number => value.TryGetInt64(out var l) ? l : value.GetDouble(),
-        JsonValueKind.Object or JsonValueKind.Array => value.GetRawText(),
-        _ => value.GetRawText()
+        JsonValueKind.Object or JsonValueKind.Array => Cap(value.GetRawText(), cap),
+        _ => Cap(value.GetRawText(), cap)
     };
+
+    // Truncate an over-long text/JSON cell to the field cap with a marker (SE-141). cap <= 0 disables it.
+    private static string? Cap(string? s, int cap)
+    {
+        if (cap <= 0 || s is null || s.Length <= cap) return s;
+        return string.Concat(s.AsSpan(0, cap), $"…[+{s.Length - cap} chars]");
+    }
 
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
 

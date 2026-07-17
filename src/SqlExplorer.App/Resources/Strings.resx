@@ -1299,6 +1299,33 @@
   <data name="UpdateBannerLater" xml:space="preserve">
     <value>Later</value>
   </data>
+  <data name="UpdateBannerDownload" xml:space="preserve">
+    <value>Download</value>
+  </data>
+  <data name="UpdateBannerDownloading" xml:space="preserve">
+    <value>Downloading {0}…</value>
+  </data>
+  <data name="UpdateBannerReady" xml:space="preserve">
+    <value>{0} downloaded — install and restart now?</value>
+  </data>
+  <data name="UpdateBannerUpdateNow" xml:space="preserve">
+    <value>Update now</value>
+  </data>
+  <data name="UpdateBannerOpenFolder" xml:space="preserve">
+    <value>Open folder</value>
+  </data>
+  <data name="UpdateBannerCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="UpdateBannerRetry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="UpdateBannerRefetched" xml:space="preserve">
+    <value>Newer build {0} downloaded — install and restart now?</value>
+  </data>
+  <data name="UpdateBannerUpToDate" xml:space="preserve">
+    <value>You're already on the latest build.</value>
+  </data>
   <data name="UpdateDialogTitle" xml:space="preserve">
     <value>Update available</value>
   </data>
