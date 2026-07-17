@@ -48,7 +48,8 @@
           <TextBlock Text="{Binding VersionLine}" FontSize="12"
                      Foreground="{DynamicResource SETextSecondaryBrush}" VerticalAlignment="Center" />
           <TextBlock Text="·" Foreground="{DynamicResource SETextFaintBrush}" VerticalAlignment="Center" />
-          <Border Background="#223574F0" CornerRadius="9" Padding="7,1" VerticalAlignment="Center">
+          <Border Background="#223574F0" CornerRadius="9" Padding="7,1" VerticalAlignment="Center"
+                  ToolTip.Tip="{Binding HostApiTooltip}">
             <TextBlock Text="{Binding HostApiChip}" FontSize="10.5"
                        Foreground="{DynamicResource SEAccentBrush}" />
           </Border>

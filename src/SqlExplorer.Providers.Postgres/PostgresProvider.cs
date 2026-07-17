@@ -89,6 +89,13 @@ public sealed class PostgresProvider : IDbProvider
         return connection.State == ConnectionState.Open;
     }
 
+    // Npgsql exposes the PostgreSQL server version (e.g. "16.2") on the open connection, so no round-trip.
+    public async Task<string?> GetServerVersionAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        await using var connection = await OpenAsync(profile, ct);
+        return string.IsNullOrWhiteSpace(connection.ServerVersion) ? null : connection.ServerVersion;
+    }
+
     public async Task<QueryResult> ExecuteQueryAsync(ConnectionProfile profile, string sql, CancellationToken ct)
     {
         var stopwatch = Stopwatch.StartNew();

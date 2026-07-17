@@ -72,6 +72,13 @@ public sealed class MySqlProvider : IDbProvider
         return connection.State == ConnectionState.Open;
     }
 
+    // MySqlConnector reports the server version (e.g. "8.0.34" / "11.4.2-MariaDB") on the open connection.
+    public async Task<string?> GetServerVersionAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        await using var connection = await OpenAsync(profile, ct);
+        return string.IsNullOrWhiteSpace(connection.ServerVersion) ? null : connection.ServerVersion;
+    }
+
     public async Task<QueryResult> ExecuteQueryAsync(ConnectionProfile profile, string sql, CancellationToken ct)
     {
         var stopwatch = Stopwatch.StartNew();

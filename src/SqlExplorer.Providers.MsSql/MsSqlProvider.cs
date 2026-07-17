@@ -241,6 +241,13 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi, ICustomNod
         return connection.State == ConnectionState.Open;
     }
 
+    // SqlClient reports the engine version (e.g. "16.00.1000") on the open connection — no extra query.
+    public async Task<string?> GetServerVersionAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        await using var connection = await OpenAsync(profile, ct);
+        return string.IsNullOrWhiteSpace(connection.ServerVersion) ? null : connection.ServerVersion;
+    }
+
     public async Task<QueryResult> ExecuteQueryAsync(ConnectionProfile profile, string sql, CancellationToken ct)
     {
         var stopwatch = Stopwatch.StartNew();

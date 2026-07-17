@@ -1,3 +1,5 @@
+using SqlExplorer.Core.Update;
+
 namespace SqlExplorer.Core.Settings;
 
 /// <summary>Preferred colour scheme; <see cref="System"/> follows the OS setting live.</summary>
@@ -132,4 +134,17 @@ public sealed class AppSettings
 
     /// <summary>Server-side query timeout (seconds) for MCP queries.</summary>
     public int McpTimeoutSeconds { get; set; } = 30;
+
+    // ── App updates (SE-137) ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Release channel the in-app updater follows. Null = never chosen → follow the channel of the
+    /// running build (a nightly build tracks Nightly, a release tracks Stable), until the user picks one.</summary>
+    public UpdateChannel? UpdateChannel { get; set; }
+
+    /// <summary>Whether to check the chosen channel for a newer build once on startup. On by default.</summary>
+    public bool CheckForUpdatesOnStartup { get; set; } = true;
+
+    /// <summary>The version the user dismissed with "Later"; the startup banner stays hidden for it until a
+    /// newer build appears. Null = nothing dismissed.</summary>
+    public string? DismissedUpdateVersion { get; set; }
 }

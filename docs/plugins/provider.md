@@ -147,14 +147,32 @@ which its `ExecuteDdlAsync` then runs. Because such text is not database-qualifi
 (the mongo shell binds `db` to the current database), the host binds the generated
 query tab to the node's database via `ConnectionProfile.Database`.
 
+#### Server version (host API v25)
+
+Report the engine's user-facing version and the host shows it next to your
+`DisplayName` — `PostgreSQL 16.2` in the status bar and the connect message.
+Return `null` (the default) and the host shows the name alone, exactly as before.
+
+```csharp
+// Fetched once per connection at connect and cached by the host (the value can't
+// change mid-session), so a single cheap call is enough — no per-query round-trip.
+Task<string?> GetServerVersionAsync(ConnectionProfile profile, CancellationToken ct)
+    => Task.FromResult<string?>(null);
+```
+
+The four ADO.NET providers read `DbConnection.ServerVersion` off the already-open
+connection (no extra round-trip). Non-SQL providers use their own version command:
+MongoDB's `buildInfo`, Redis/DragonflyDB's `INFO server`, Elasticsearch's `GET /`.
+
 ### Host API versioning
 
-`ProviderHostApi.Version` (currently `20`) is the contract version. Every
+`ProviderHostApi.Version` (currently `25`) is the contract version. Every
 plugin declares the version it was built against in its manifest
-(`hostApiVersion`); the loader rejects a plugin whose version does not match,
-rather than risk loading against a contract it doesn't fully implement.
-Check `src/Sdk/ProviderHostApi.cs` for the current value and its
-changelog comments before starting a new provider.
+(`hostApiVersion`); the loader accepts any version in `[MinimumSupported,
+Version]` — additive bumps (new default-interface members, enum values, DTOs)
+stay binary-compatible, so an older plugin keeps loading. A breaking change
+raises `MinimumSupported`. Check `src/Sdk/ProviderHostApi.cs` for the current
+values and its changelog comments before starting a new provider.
 
 ## Building a provider plugin, step by step
 
@@ -251,7 +269,7 @@ Every plugin folder needs a `plugin.json` describing it:
   "type": "provider",
   "name": "MyEngine",
   "version": "1.0.0",
-  "hostApiVersion": 20,
+  "hostApiVersion": 25,
   "entryAssembly": "SqlExplorer.Providers.MyEngine.dll"
 }
 ```
@@ -263,7 +281,7 @@ Every plugin folder needs a `plugin.json` describing it:
 | `type` | Plugin kind discriminator. Must be `"provider"` — the only value the loader currently accepts. |
 | `name` | Display name (informational; `IDbProvider.DisplayName` is what the UI actually shows). |
 | `version` | Your plugin's own version string. |
-| `hostApiVersion` | Must equal `ProviderHostApi.Version` at build time (currently 20). A mismatch causes the loader to skip the plugin rather than risk a broken contract. |
+| `hostApiVersion` | The `ProviderHostApi.Version` you built against (currently 25). The host loads any version in `[MinimumSupported, Version]`, so an additive bump doesn't force a rebuild — but declare the newest whose members you use. |
 | `entryAssembly` | Path (relative to the plugin's own folder) to the compiled plugin DLL. |
 
 ### 4. Ship it

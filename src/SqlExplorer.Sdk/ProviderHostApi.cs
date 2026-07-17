@@ -106,7 +106,15 @@ public static class ProviderHostApi
     //                   leave SupportsCursorPaging false and are paged exactly as before, so v23 (and older)
     //                   plugins keep loading. Also added plugins/Providers.Elasticsearch (SE-3), the first
     //                   provider to use it (plus a search_after/PIT StreamQueryAsync for unbounded export).
-    public const int Version = 24;
+    // v25 (2026-07-17): added IDbProvider.GetServerVersionAsync (default null) — the engine's user-facing
+    //                   version string, fetched once per connection at connect and cached by the host, shown
+    //                   next to DisplayName in the status bar ("PostgreSQL 16.2") and the connect message
+    //                   (SE-128). Purely additive: a provider that does not override it returns null and the
+    //                   host falls back to DisplayName alone (current behaviour), so v23/v24 plugins keep
+    //                   loading unchanged. The four ADO.NET providers read DbConnection.ServerVersion off the
+    //                   already-open connection (no extra round-trip); the non-SQL providers use their own
+    //                   version command (Mongo buildInfo, Redis INFO server, Elasticsearch GET /).
+    public const int Version = 25;
 
     /// <summary>Oldest plugin ABI this host still loads. Additive bumps (v11→v22 style) keep this fixed;
     /// only a breaking change raises it. Raised to 23 by the v23 BuildNodeQuery signature change above —

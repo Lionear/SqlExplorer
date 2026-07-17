@@ -92,6 +92,14 @@ public sealed class RedisProvider : IDbProvider
         return pong >= TimeSpan.Zero;
     }
 
+    // Redis reports redis_version in INFO server; StackExchange.Redis parses it into IServer.Version.
+    public async Task<string?> GetServerVersionAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        await using var multiplexer = await ConnectAsync(profile);
+        var server = multiplexer.GetServer(multiplexer.GetEndPoints()[0]);
+        return server.Version?.ToString();
+    }
+
     // --- Schema tree: root -> DB indices -> keys (grouped one level by ':'-prefix) --------------------
     public async Task<IReadOnlyList<DbTreeNode>> GetChildNodesAsync(
         ConnectionProfile profile,

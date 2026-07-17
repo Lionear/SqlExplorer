@@ -1,0 +1,48 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SqlExplorer.App.ViewModels"
+        x:Class="SqlExplorer.App.Views.UpdateAvailableWindow"
+        x:DataType="vm:UpdateAvailableViewModel"
+        Title="{Binding Loc[UpdateDialogTitle]}"
+        Width="560" Height="580" MinWidth="440" MinHeight="360"
+        WindowStartupLocation="CenterOwner">
+
+  <DockPanel Margin="20">
+
+    <!-- Header: version, date, commit -->
+    <StackPanel DockPanel.Dock="Top" Spacing="3" Margin="0,0,0,12">
+      <TextBlock Text="{Binding VersionLine}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+      <TextBlock Text="{Binding PublishedLine}" IsVisible="{Binding HasPublished}"
+                 FontSize="11.5" Foreground="{DynamicResource SETextSecondaryBrush}" />
+      <TextBlock Text="{Binding CommitLine}" IsVisible="{Binding HasCommit}"
+                 FontSize="11.5" Foreground="{DynamicResource SETextFaintBrush}"
+                 FontFamily="Cascadia Code,Consolas,Menlo,monospace" />
+    </StackPanel>
+
+    <!-- Footer: progress/status on the left, actions on the right -->
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="0,14,0,0">
+      <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="4">
+        <ProgressBar Value="{Binding DownloadProgress}" Maximum="1" Height="4"
+                     IsVisible="{Binding IsDownloading}" />
+        <TextBlock Text="{Binding StatusMessage}" FontSize="11.5"
+                   Foreground="{DynamicResource SETextSecondaryBrush}" TextWrapping="Wrap" />
+      </StackPanel>
+      <Button Grid.Column="1" Classes="Accent" Margin="0,0,8,0"
+              Content="{Binding Loc[UpdateDialogInstall]}"
+              Command="{Binding InstallAndRestartCommand}" IsVisible="{Binding CanInstall}" />
+      <Button Grid.Column="1" Classes="Accent" Margin="0,0,8,0"
+              Content="{Binding Loc[UpdateDialogDownload]}"
+              Command="{Binding DownloadCommand}" IsVisible="{Binding ShowDownloadOnly}" />
+      <Button Grid.Column="2" Content="{Binding Loc[Close]}" Click="OnClose" />
+    </Grid>
+
+    <!-- Release notes (rendered from markdown in code-behind) -->
+    <Border Background="{DynamicResource SEPanelBgBrush}"
+            BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1" CornerRadius="6">
+      <ScrollViewer Padding="14,12">
+        <Border x:Name="NotesHost" />
+      </ScrollViewer>
+    </Border>
+
+  </DockPanel>
+</Window>

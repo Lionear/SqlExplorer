@@ -1,3 +1,4 @@
+using System.Reflection;
 using SqlExplorer.App.Localization;
 using SqlExplorer.App.ViewModels;
 using SqlExplorer.Core.Connections;
@@ -15,12 +16,14 @@ using SqlExplorer.Core.Settings;
 using SqlExplorer.Core.Shortcuts;
 using SqlExplorer.Core.Store;
 using SqlExplorer.Core.Tools;
+using SqlExplorer.Core.Update;
 using SqlExplorer.Sdk.Shortcuts;
 using SqlExplorer.Sdk.Localization;
 using SqlExplorer.Sdk.Tools;
 using SqlExplorer.Infrastructure.Persistence;
 using SqlExplorer.Infrastructure.Secrets;
 using SqlExplorer.Infrastructure.Store;
+using SqlExplorer.Infrastructure.Update;
 using SqlExplorer.Mcp.Hosting;
 using SqlExplorer.Sdk;
 using SqlExplorer.Sdk.Mcp;
@@ -138,6 +141,18 @@ public static class AppServices
         services.AddTransient<PluginStoreViewModel>();
         services.AddSingleton<Func<PluginStoreViewModel>>(sp => sp.GetRequiredService<PluginStoreViewModel>);
 
+        // In-app updater (SE-137): the same shared HttpClient fetches each channel's update.json and the
+        // chosen asset. The running version is the informational stamp About also reads.
+        services.AddSingleton<IUpdateManifestSource>(sp =>
+            new HttpUpdateManifestSource(sp.GetRequiredService<HttpClient>()));
+        services.AddSingleton(sp =>
+            new AppUpdateService(sp.GetRequiredService<IUpdateManifestSource>(), RunningVersion()));
+        services.AddSingleton(sp => new UpdateDownloader(sp.GetRequiredService<HttpClient>()));
+        services.AddSingleton<IUpdateApplier>(new UpdateApplier());
+        // Singleton: one shared instance behind the main-window banner and the Settings check, so a manual
+        // check lights the same banner and offers the same "What's new" action.
+        services.AddSingleton<AppUpdateViewModel>();
+
         // Connections: metadata in a JSON file, secrets in the OS-native keychain.
         // Migrate pre-v10 configs (legacy "Kind" enum) to the manifest "ProviderId" once at startup.
         var connectionStore = new JsonConnectionStore();
@@ -180,6 +195,10 @@ public static class AppServices
         // Per-connection schema snapshot (tables/views/columns), built by walking the lazy tree at
         // connect. Powers object-search and schema-aware completion.
         services.AddSingleton<ISchemaCache, SchemaCache>();
+
+        // Per-connection engine version string (e.g. "PostgreSQL 16.2"), fetched once at connect. Shown in
+        // the status bar and the connect message; null when the provider reports no version (host-API v25).
+        services.AddSingleton<IServerVersionCache, ServerVersionCache>();
 
         // The connection form VM — now embedded as the Connection Manager's detail panel (the standalone
         // modal it used to back was retired), so it's resolved per-connection via this factory.
@@ -278,6 +297,22 @@ public static class AppServices
         KeymapService.Current = provider.GetRequiredService<KeymapService>();
 
         return provider;
+    }
+
+    // The running build's channel stamp (e.g. 0.2.0-nightly.20260717.42) — the informational version, the
+    // only one that survives the stamp (AssemblyVersion is truncated to 0.2.0.0). Same read as About.
+    private static string RunningVersion()
+    {
+        var informational = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+
+        if (string.IsNullOrWhiteSpace(informational))
+        {
+            return Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
+        }
+
+        var plus = informational.IndexOf('+');
+        return plus < 0 ? informational : informational[..plus];
     }
 
     // Flatten IShortcutContributor across providers and tools into namespaced host shortcuts. The id is

@@ -34,7 +34,7 @@
     <value>Language</value>
   </data>
   <data name="StatusConnected" xml:space="preserve">
-    <value>Connected · {0} schema(s)</value>
+    <value>Connected to {0} · {1} schema(s)</value>
   </data>
   <data name="StatusRows" xml:space="preserve">
     <value>{0} rows · {1:F0} ms</value>
@@ -802,7 +802,10 @@
     <value>Version {0}</value>
   </data>
   <data name="AboutHostApiChip" xml:space="preserve">
-    <value>Host API {0} · min {1}</value>
+    <value>Host API · Provider {0} · Tool {1} · MCP {2}</value>
+  </data>
+  <data name="AboutHostApiTooltip" xml:space="preserve">
+    <value>Provider {0} (min {1}) · Tool {2} (min {3}) · MCP {4} (min {5})</value>
   </data>
   <data name="AboutSystem" xml:space="preserve">
     <value>System</value>
@@ -1277,5 +1280,98 @@
   </data>
   <data name="MainRestartNow" xml:space="preserve">
     <value>Restart now</value>
+  </data>
+  <data name="UpdateBannerAvailable" xml:space="preserve">
+    <value>An update is available: {0}</value>
+  </data>
+  <data name="UpdateBannerViewChangelog" xml:space="preserve">
+    <value>What's new</value>
+  </data>
+  <data name="UpdateBannerLater" xml:space="preserve">
+    <value>Later</value>
+  </data>
+  <data name="UpdateDialogTitle" xml:space="preserve">
+    <value>Update available</value>
+  </data>
+  <data name="UpdateDialogVersion" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="UpdateDialogPublished" xml:space="preserve">
+    <value>Published {0}</value>
+  </data>
+  <data name="UpdateDialogCommit" xml:space="preserve">
+    <value>Commit {0}</value>
+  </data>
+  <data name="UpdateDialogDownload" xml:space="preserve">
+    <value>Download</value>
+  </data>
+  <data name="UpdateDialogInstall" xml:space="preserve">
+    <value>Install and restart</value>
+  </data>
+  <data name="UpdateDialogInstalling" xml:space="preserve">
+    <value>Installing…</value>
+  </data>
+  <data name="UpdateDialogGuided" xml:space="preserve">
+    <value>Downloaded — drag SQL Explorer to Applications, then reopen it.</value>
+  </data>
+  <data name="UpdateRollback" xml:space="preserve">
+    <value>Roll back to the previous version</value>
+  </data>
+  <data name="UpdateDialogDownloading" xml:space="preserve">
+    <value>Downloading…</value>
+  </data>
+  <data name="UpdateDialogDownloaded" xml:space="preserve">
+    <value>Downloaded — opening the folder.</value>
+  </data>
+  <data name="UpdateDialogDownloadFailed" xml:space="preserve">
+    <value>The download failed.</value>
+  </data>
+  <data name="SettingsUpdates" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="SettingsUpdatesHint" xml:space="preserve">
+    <value>Choose which builds SQL Explorer checks for. You can switch anytime.</value>
+  </data>
+  <data name="UpdateChannelLabel" xml:space="preserve">
+    <value>Release channel</value>
+  </data>
+  <data name="UpdateChannelStable" xml:space="preserve">
+    <value>Stable</value>
+  </data>
+  <data name="UpdateChannelStableBadge" xml:space="preserve">
+    <value>recommended</value>
+  </data>
+  <data name="UpdateChannelStableDesc" xml:space="preserve">
+    <value>Deliberately released builds. Most stable.</value>
+  </data>
+  <data name="UpdateChannelPreview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="UpdateChannelPreviewDesc" xml:space="preserve">
+    <value>What's merged into main, ahead of the next Stable.</value>
+  </data>
+  <data name="UpdateChannelNightly" xml:space="preserve">
+    <value>Nightly</value>
+  </data>
+  <data name="UpdateChannelNightlyDesc" xml:space="preserve">
+    <value>Nightly build. Newest features, may be rough.</value>
+  </data>
+  <data name="CheckForUpdatesOnStartup" xml:space="preserve">
+    <value>Automatically check for updates on startup</value>
+  </data>
+  <data name="UpdateCheckNow" xml:space="preserve">
+    <value>Check for updates</value>
+  </data>
+  <data name="UpdateCheckChecking" xml:space="preserve">
+    <value>Checking…</value>
+  </data>
+  <data name="UpdateCheckAvailable" xml:space="preserve">
+    <value>Update available: {0}</value>
+  </data>
+  <data name="UpdateCheckUpToDate" xml:space="preserve">
+    <value>You're on the latest build.</value>
+  </data>
+  <data name="UpdateCheckFailed" xml:space="preserve">
+    <value>Couldn't check for updates.</value>
   </data>
 </root>

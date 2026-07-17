@@ -31,6 +31,18 @@ public interface IDbProvider
     ISqlDialect Dialect { get; }
 
     /// <summary>
+    /// The engine's user-facing version string (e.g. "16.2"), shown next to <see cref="DisplayName"/> in the
+    /// status bar and the connect message. The host fetches it once per connection at connect and caches it —
+    /// the value does not change during a session, so a single cheap call is enough (no per-query round-trip).
+    /// Returns <c>null</c> (the default) when the provider cannot or chooses not to report a version; the host
+    /// then shows <see cref="DisplayName"/> alone, exactly as before — the same "null = not supported"
+    /// convention as <see cref="ParseConnectionString"/>. The four ADO.NET providers get it for free from
+    /// <see cref="System.Data.Common.DbConnection.ServerVersion"/> on the already-open connection.
+    /// </summary>
+    Task<string?> GetServerVersionAsync(ConnectionProfile profile, CancellationToken ct) =>
+        Task.FromResult<string?>(null);
+
+    /// <summary>
     /// False when this provider is not a SQL engine (e.g. a document store like MongoDB). The host then
     /// suppresses its built-in SQL scaffolds — the tree's "SQL commands" submenu (SELECT/INSERT/UPDATE/
     /// DELETE templates) — and relies on <see cref="BuildNodeQuery"/> for any node-action query text.

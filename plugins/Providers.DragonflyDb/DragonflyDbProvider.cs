@@ -95,6 +95,22 @@ public sealed class DragonflyDbProvider : IDbProvider
         return pong >= TimeSpan.Zero;
     }
 
+    // DragonflyDB's INFO server carries dragonfly_version (the real build, e.g. "v1.14.0") alongside the
+    // emulated redis_version; prefer the former so the label isn't the Redis compatibility number.
+    public async Task<string?> GetServerVersionAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        await using var multiplexer = await ConnectAsync(profile);
+        var server = multiplexer.GetServer(multiplexer.GetEndPoints()[0]);
+        var info = (await server.InfoAsync("server")).SelectMany(g => g)
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
+        if (info.TryGetValue("dragonfly_version", out var df) && !string.IsNullOrWhiteSpace(df))
+        {
+            return df.TrimStart('v');
+        }
+
+        return info.TryGetValue("redis_version", out var rv) ? rv : server.Version?.ToString();
+    }
+
     // --- Schema tree: root -> DB indices -> keys (grouped one level by ':'-prefix) --------------------
     public async Task<IReadOnlyList<DbTreeNode>> GetChildNodesAsync(
         ConnectionProfile profile,

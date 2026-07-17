@@ -110,6 +110,15 @@ public sealed class MongoDbProvider : IDbProvider
         return result.GetValue("ok", 0).ToDouble() == 1.0;
     }
 
+    // MongoDB reports its server version via the buildInfo admin command (e.g. "7.0.5").
+    public async Task<string?> GetServerVersionAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        var client = CreateClient(profile);
+        var command = (Command<BsonDocument>)new BsonDocument("buildInfo", 1);
+        var result = await client.GetDatabase("admin").RunCommandAsync(command, cancellationToken: ct);
+        return result.TryGetValue("version", out var version) ? version.AsString : null;
+    }
+
     // --- Schema tree: root → databases → collections ------------------------------------------------
     public async Task<IReadOnlyList<DbTreeNode>> GetChildNodesAsync(
         ConnectionProfile profile,

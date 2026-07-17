@@ -44,6 +44,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly Func<QueryLogViewModel> _queryLogFactory;
     private readonly Func<AboutViewModel> _aboutFactory;
     private readonly ISchemaCache _schemaCache;
+    private readonly IServerVersionCache _serverVersions;
     private readonly Func<ConnectionManagerViewModel> _connectionManagerFactory;
     private readonly Func<CreateObjectDialogViewModel> _createDialogFactory;
     private readonly Func<NewUserDialogViewModel> _newUserDialogFactory;
@@ -86,6 +87,7 @@ public partial class MainViewModel : ViewModelBase
         Func<QueryLogViewModel> queryLogFactory,
         Func<AboutViewModel> aboutFactory,
         ISchemaCache schemaCache,
+        IServerVersionCache serverVersions,
         Func<ConnectionManagerViewModel> connectionManagerFactory,
         Func<CreateObjectDialogViewModel> createDialogFactory,
         Func<NewUserDialogViewModel> newUserDialogFactory,
@@ -99,6 +101,7 @@ public partial class MainViewModel : ViewModelBase
         Core.Plugins.PluginCatalogService pluginCatalog,
         IAppSettingsStore settingsStore,
         IOpenTabsStore openTabsStore,
+        AppUpdateViewModel appUpdate,
         ILocalizer localizer)
     {
         _providers = providers;
@@ -109,6 +112,7 @@ public partial class MainViewModel : ViewModelBase
         _queryLogFactory = queryLogFactory;
         _aboutFactory = aboutFactory;
         _schemaCache = schemaCache;
+        _serverVersions = serverVersions;
         _connectionManagerFactory = connectionManagerFactory;
         _createDialogFactory = createDialogFactory;
         _newUserDialogFactory = newUserDialogFactory;
@@ -122,6 +126,7 @@ public partial class MainViewModel : ViewModelBase
         _pluginCatalog = pluginCatalog;
         _settingsStore = settingsStore;
         _openTabsStore = openTabsStore;
+        Update = appUpdate;
         Loc = localizer;
 
         // Tool windows: sizes come from settings (null = the default the panel declares), so a resize
@@ -528,6 +533,9 @@ public partial class MainViewModel : ViewModelBase
 
     public ILocalizer Loc { get; }
 
+    /// <summary>The in-app updater's banner state (SE-137); the main view binds its "update available" bar.</summary>
+    public AppUpdateViewModel Update { get; }
+
     /// <summary>The sidebar tree: one root node per saved connection, children loaded lazily.</summary>
     public ObservableCollection<TreeNodeViewModel> ConnectionNodes { get; } = [];
 
@@ -686,6 +694,7 @@ public partial class MainViewModel : ViewModelBase
                 break;
             case ConnectionState.Disconnected or ConnectionState.Error:
                 _schemaCache.Invalidate(node.Connection.Id);
+                _serverVersions.Invalidate(node.Connection.Id);
                 break;
         }
     }
@@ -842,6 +851,7 @@ public partial class MainViewModel : ViewModelBase
             if (!savedIds.Contains(node.Connection.Id))
             {
                 _schemaCache.Invalidate(node.Connection.Id);
+                _serverVersions.Invalidate(node.Connection.Id);
                 RemoveConnectionNode(node.Connection.Id);
             }
         }
@@ -947,7 +957,23 @@ public partial class MainViewModel : ViewModelBase
             var nodes = await provider.GetChildNodesAsync(profile, ancestors, CancellationToken.None);
             if (ancestors.Count == 0)
             {
-                ReportInfo(connection.Name, Loc.Get("StatusConnected", nodes.Count));
+                // Fetch the engine version once per connection (it can't change mid-session) and cache it
+                // so the status bar and this message can show "PostgreSQL 16.2" instead of just the name.
+                // Best-effort and cosmetic: a failure here must not fail an otherwise-working connection,
+                // so swallow it and fall back to the display name alone.
+                string? version = null;
+                try
+                {
+                    version = await provider.GetServerVersionAsync(profile, CancellationToken.None);
+                }
+                catch
+                {
+                    // ignored — version stays null, label falls back to DisplayName
+                }
+
+                _serverVersions.Set(connection.Id, version);
+                ReportInfo(connection.Name,
+                    Loc.Get("StatusConnected", ProviderLabel.Engine(provider.DisplayName, version), nodes.Count));
             }
 
             // Hide engine-managed system databases unless the user opted in.
@@ -1037,6 +1063,7 @@ public partial class MainViewModel : ViewModelBase
 
         _connections.Delete(connection.Id);
         _schemaCache.Invalidate(connection.Id);
+        _serverVersions.Invalidate(connection.Id);
         RemoveConnectionNode(connection.Id);
     }
 
@@ -2102,7 +2129,7 @@ public partial class MainViewModel : ViewModelBase
 
     private DocumentViewModel NewDocument()
     {
-        var document = new DocumentViewModel(_providers, _connections, _formatter, _history, _queryLog, _schemaCache, _settingsStore, Loc);
+        var document = new DocumentViewModel(_providers, _connections, _formatter, _history, _queryLog, _schemaCache, _serverVersions, _settingsStore, Loc);
         // Surface every execution outcome (row counts, cancellations, failures) in the shared Output panel.
         document.Reported += (level, message) => ReportOutput(level, document.Connection?.Name, message);
         // A query auto-connects outside the tree's connect flow, so reflect that on the connection's status dot.

@@ -93,6 +93,17 @@ public sealed class ElasticsearchProvider : IDbProvider
         return true;
     }
 
+    // The Elasticsearch root endpoint (GET /) returns version.number, e.g. "8.13.4".
+    public async Task<string?> GetServerVersionAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        var body = await SendAsync(profile, EsHttpMethod.GET, "/", null, ct);
+        using var doc = JsonDocument.Parse(body);
+        return doc.RootElement.TryGetProperty("version", out var version)
+            && version.TryGetProperty("number", out var number)
+            ? number.GetString()
+            : null;
+    }
+
     // --- Schema tree: root → indices ----------------------------------------------------------------
     public async Task<IReadOnlyList<DbTreeNode>> GetChildNodesAsync(
         ConnectionProfile profile,

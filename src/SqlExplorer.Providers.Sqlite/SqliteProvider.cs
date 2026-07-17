@@ -43,6 +43,14 @@ public sealed class SqliteProvider : IDbProvider
         return connection.State == ConnectionState.Open;
     }
 
+    // Microsoft.Data.Sqlite surfaces the SQLite library version (e.g. "3.45.1") as ServerVersion.
+    public async Task<string?> GetServerVersionAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        await using var connection = new SqliteConnection(profile.ConnectionString);
+        await connection.OpenAsync(ct);
+        return string.IsNullOrWhiteSpace(connection.ServerVersion) ? null : connection.ServerVersion;
+    }
+
     public async Task<QueryResult> ExecuteQueryAsync(ConnectionProfile profile, string sql, CancellationToken ct)
     {
         var stopwatch = Stopwatch.StartNew();

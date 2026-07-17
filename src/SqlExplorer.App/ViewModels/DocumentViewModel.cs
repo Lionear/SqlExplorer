@@ -83,6 +83,7 @@ public partial class DocumentViewModel : ViewModelBase
     private readonly IQueryHistoryStore _history;
     private readonly IQueryLog _queryLog;
     private readonly ISchemaCache _schemaCache;
+    private readonly IServerVersionCache _serverVersions;
 
     private string? _database;
     private string? _schema;
@@ -194,14 +195,16 @@ public partial class DocumentViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(StatusLine))]
     private string? _engineLabel;
 
-    // Stamp the status-bar stats after a run. Engine comes from the provider's DisplayName — the SDK
-    // exposes no server version today (the mockup's "PostgreSQL 16.2" would need an SDK addition), so
-    // this shows the engine only.
+    // Stamp the status-bar stats after a run. Engine is the provider's DisplayName plus the server version
+    // the host cached at connect (host-API v25) — "PostgreSQL 16.2" — falling back to the name alone when
+    // no version is known.
     private void SetRunStats(int rows, double ms)
     {
         LastRunRows = rows;
         LastRunMs = ms;
-        EngineLabel = _providers.TryGet(Connection.ProviderId, out var provider) ? provider.DisplayName : null;
+        EngineLabel = _providers.TryGet(Connection.ProviderId, out var provider)
+            ? ProviderLabel.Engine(provider.DisplayName, _serverVersions.Get(Connection.Id))
+            : null;
     }
 
     /// <summary>"{rows} rows · {ms} ms · {engine}" for the status bar; empty until this tab has run
@@ -270,6 +273,7 @@ public partial class DocumentViewModel : ViewModelBase
         IQueryHistoryStore history,
         IQueryLog queryLog,
         ISchemaCache schemaCache,
+        IServerVersionCache serverVersions,
         IAppSettingsStore settingsStore,
         ILocalizer localizer)
     {
@@ -279,6 +283,7 @@ public partial class DocumentViewModel : ViewModelBase
         _history = history;
         _queryLog = queryLog;
         _schemaCache = schemaCache;
+        _serverVersions = serverVersions;
         _settingsStore = settingsStore;
         Loc = localizer;
 

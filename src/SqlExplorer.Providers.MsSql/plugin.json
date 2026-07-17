@@ -3,7 +3,7 @@
   "id": "sqlserver",
   "type": "provider",
   "name": "SQL Server",
-  "version": "0.2.1",
-  "hostApiVersion": 23,
+  "version": "0.3.0",
+  "hostApiVersion": 25,
   "entryAssembly": "SqlExplorer.Providers.MsSql.dll"
 }
