@@ -1,21 +1,35 @@
 name: Build
 
-# Runs nightly at 02:00 UTC and on manual dispatch. To pause the nightly build,
-# comment out the `schedule` block below; `workflow_dispatch` keeps manual runs.
+# Two rolling builds, one workflow:
+#   schedule    -> builds `develop`, publishes the `nightly` release  (what we are working on)
+#   push main   -> builds `main`,    publishes the `preview` release  (what has been merged)
+#
+# GitHub only fires `schedule` from the default branch, so the nightly cannot live on develop: this
+# file has to sit on main and check develop out explicitly. Consequence worth remembering — the nightly
+# always runs the workflow *as committed on main*, so workflow edits made on develop only take effect
+# once merged. Cron is a hint, not a promise: GitHub delays scheduled runs under load, routinely by
+# hours (02:00 UTC has been landing near 05:00).
+#
+# To pause the nightly, comment out the `schedule` block; `workflow_dispatch` keeps manual runs.
 on:
   workflow_dispatch:
     inputs:
+      ref:
+        description: "Branch to build"
+        type: choice
+        options: [develop, main]
+        default: develop
       version:
-        description: "Version stamp (leave empty for nightly-<date>-<run>)"
+        description: "Version stamp (leave empty to derive from Directory.Build.props)"
         required: false
         default: ""
       publish_release:
-        description: "Also refresh the 'nightly' GitHub release with these builds"
+        description: "Also refresh the rolling release for that branch"
         type: boolean
         required: false
         default: false
   schedule:
-    - cron: "0 2 * * *"   # nightly at 02:00 UTC
+    - cron: "0 2 * * *"   # nightly (develop) — expect drift, see note above
   push:
     branches: [main]
     paths-ignore:      # docs / non-code changes shouldn't spend a full build
@@ -36,8 +50,40 @@ permissions:
   contents: read
 
 jobs:
+  # Decide once what we are building and where it lands, so the build matrix and the release job can
+  # never disagree about it.
+  setup:
+    name: Resolve target
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.target.outputs.ref }}
+      tag: ${{ steps.target.outputs.tag }}
+      channel: ${{ steps.target.outputs.channel }}
+    steps:
+      - name: Resolve ref and release tag
+        id: target
+        run: |
+          set -euo pipefail
+          case "${{ github.event_name }}" in
+            schedule)          REF=develop ;;
+            workflow_dispatch) REF="${{ inputs.ref }}" ;;
+            *)                 REF=main ;;   # push to main
+          esac
+
+          if [ "$REF" = "main" ]; then
+            TAG=preview; CHANNEL=preview
+          else
+            TAG=nightly; CHANNEL=nightly
+          fi
+
+          echo "ref=$REF"         >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG"         >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "Building $REF -> release '$TAG'"
+
   build:
     name: ${{ matrix.name }}
+    needs: setup
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -68,6 +114,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup.outputs.ref }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -90,10 +138,10 @@ jobs:
           if [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
           else
-            VERSION="$BASE-nightly.$(date -u +%Y%m%d).${{ github.run_number }}"
+            VERSION="$BASE-${{ needs.setup.outputs.channel }}.$(date -u +%Y%m%d).${{ github.run_number }}"
           fi
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Version: $VERSION (base $BASE)"
+          echo "Version: $VERSION (base $BASE, ref ${{ needs.setup.outputs.ref }})"
 
       - name: Publish
         shell: bash
@@ -220,12 +268,13 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-  # Publishes a rolling "nightly" prerelease with fixed asset download links:
-  #   https://github.com/Lionear/SqlExplorer/releases/download/nightly/<file>
-  # Runs on the scheduled nightly build, or on a manual run when publish_release is ticked.
+  # Publishes a rolling prerelease per channel, with stable asset download links:
+  #   https://github.com/Lionear/SqlExplorer/releases/download/nightly/<file>   (develop)
+  #   https://github.com/Lionear/SqlExplorer/releases/download/preview/<file>   (main)
+  # Runs on the scheduled build, on a push to main, or on a manual run with publish_release ticked.
   release:
-    name: Nightly release
-    needs: build
+    name: Publish ${{ needs.setup.outputs.tag }} release
+    needs: [setup, build]
     if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.publish_release }}
     runs-on: ubuntu-latest
     permissions:
@@ -236,14 +285,15 @@ jobs:
         with:
           path: dist   # each artifact lands in dist/<rid>/<file>
 
-      - name: Publish/refresh nightly release
+      - name: Publish/refresh rolling release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}   # gh has no checkout here; resolve the repo via API, not git
         run: |
           set -euo pipefail
-          TAG=nightly
-          NOTES="Automated nightly build from ${GITHUB_SHA:0:7} on $(date -u +'%Y-%m-%d %H:%M UTC').
+          TAG=${{ needs.setup.outputs.tag }}
+          REF=${{ needs.setup.outputs.ref }}
+          NOTES="Automated build of \`$REF\` on $(date -u +'%Y-%m-%d %H:%M UTC').
 
           These builds are unsigned / not notarized.
 
@@ -254,8 +304,11 @@ jobs:
 
           # Recreate the release so the tag, date and notes track the latest build.
           gh release delete "$TAG" --yes --cleanup-tag || true
+          if [ "$TAG" = "nightly" ]; then TITLE="Nightly build (develop)"; else TITLE="Preview build (main)"; fi
+          # Target the branch we built: on a scheduled run GITHUB_SHA is main's head, but the artifacts
+          # came from develop — tagging the SHA would attach the release to the wrong commit.
           gh release create "$TAG" dist/*/* \
-            --title "Nightly build" \
+            --title "$TITLE" \
             --notes "$NOTES" \
             --prerelease \
-            --target "$GITHUB_SHA"
+            --target "$REF"
