@@ -1252,7 +1252,10 @@
     <value>{0} plugins geïnstalleerd</value>
   </data>
   <data name="StoreManualHint" xml:space="preserve">
-    <value>Voor stores die (nog) niet in Discovery staan — privé, intern of bewust niet geregistreerd. Volledig zelf te beheren.</value>
+    <value>Voor stores die (nog) niet in Discovery staan — privé, intern of bewust niet geregistreerd. Volledig zelf te beheren. Plug-ins uit een bron draaien in de app en hebben toegang tot je opgeslagen verbindingen, dus voeg alleen bronnen toe die je vertrouwt. Alleen https.</value>
+  </data>
+  <data name="StoreSourceInsecure" xml:space="preserve">
+    <value>Een store-bron moet een https-URL zijn (http mag alleen voor localhost). Plug-in-code draait in het app-proces en wordt daarom niet over een onbeveiligde verbinding opgehaald.</value>
   </data>
   <data name="StoreReadOnly" xml:space="preserve">
     <value>alleen-lezen</value>

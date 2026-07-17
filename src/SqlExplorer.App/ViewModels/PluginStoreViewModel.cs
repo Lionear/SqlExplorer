@@ -465,9 +465,13 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         {
             item.MarkStaged(version.Version);
             // Pin whenever the user picks a version that isn't the highest compatible one — that's an
-            // explicit "hold this version" signal. Picking the top version clears any prior pin so
+            // explicit "hold this version" signal. Picking that version clears any prior pin so
             // Update All resumes auto-updates without a separate button.
-            var top = item.Versions.FirstOrDefault()?.Version;
+            //
+            // Compare against the highest *compatible* version, not item.Versions[0] (the newest published
+            // one, compatible or not) — those differ whenever the newest release needs a host API this build
+            // predates, and then installing the pre-selected default silently pinned it (SE-130).
+            var top = entry.HighestCompatibleVersion(HostApiVersions.CompatFor(entry.Type))?.Version;
             if (top is not null && version.Version != top)
             {
                 _pins.Pin(item.Id, version.Version);

@@ -432,6 +432,8 @@
                 <TextBox Grid.Column="0" PlaceholderText="{Binding Loc[StoreAddSourceHint]}" Text="{Binding NewSourceUrl}" />
                 <Button Grid.Column="1" Classes="Subtle" Margin="8,0,0,0" Content="{Binding Loc[Add]}" Command="{Binding AddManualSourceCommand}" />
               </Grid>
+              <TextBlock Text="{Binding SourceError}" IsVisible="{Binding HasSourceError}" FontSize="11.5"
+                         TextWrapping="Wrap" Foreground="{DynamicResource SEStatusErrorBrush}" />
               <ItemsControl ItemsSource="{Binding ManualSources}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>

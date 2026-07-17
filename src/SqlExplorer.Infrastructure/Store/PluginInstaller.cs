@@ -177,6 +177,11 @@ public sealed class PluginInstaller(HttpClient http, IPluginStateStore stateStor
     private async Task DownloadAsync(
         string url, string destPath, long cap, string id, IProgress<InstallProgress>? progress, CancellationToken ct)
     {
+        // Checked here and not only on the index URL: a DownloadUrl is a separate field and an https index is
+        // free to point its downloads at http. That is the one hop where the checksum below stops meaning
+        // anything, since an attacker rewriting the zip serves the matching hash too (SE-134).
+        StoreUrl.EnsureAllowed(url);
+
         using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
 

@@ -285,6 +285,13 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private string? _newSourceUrl;
 
+    /// <summary>Why the last Add was refused; null when there is nothing to report.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSourceError))]
+    private string? _sourceError;
+
+    public bool HasSourceError => SourceError is not null;
+
     private void LoadManualSources()
     {
         ManualSources.Clear();
@@ -350,12 +357,22 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private async Task AddManualSourceAsync()
     {
+        SourceError = null;
         if (string.IsNullOrWhiteSpace(NewSourceUrl))
         {
             return;
         }
 
-        _sources.AddManualSource(NewSourceUrl);
+        // Rejected here so the user finds out while typing rather than through a failed install later; the
+        // fetch paths enforce the same rule themselves, since a URL can also reach the file by hand-editing.
+        var url = NewSourceUrl.Trim();
+        if (!StoreUrl.IsAllowed(url))
+        {
+            SourceError = Loc["StoreSourceInsecure"];
+            return;
+        }
+
+        _sources.AddManualSource(url);
         NewSourceUrl = null;
         LoadManualSources();
         await RefreshDiscoverySourcesAsync();

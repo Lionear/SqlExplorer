@@ -1252,7 +1252,10 @@
     <value>{0} plugins installed</value>
   </data>
   <data name="StoreManualHint" xml:space="preserve">
-    <value>For stores not (yet) in Discovery — private, internal, or intentionally unregistered. Fully self-managed.</value>
+    <value>For stores not (yet) in Discovery — private, internal, or intentionally unregistered. Fully self-managed. Plugins from a source run inside the app with access to your saved connections, so only add sources you trust. https only.</value>
+  </data>
+  <data name="StoreSourceInsecure" xml:space="preserve">
+    <value>Store sources must be an https URL (http is only allowed for localhost). Plugin code is run in-process, so it is not fetched over an unprotected connection.</value>
   </data>
   <data name="StoreReadOnly" xml:space="preserve">
     <value>read-only</value>

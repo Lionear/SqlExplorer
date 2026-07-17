@@ -33,6 +33,7 @@ public sealed class HttpStoreCatalog(
         {
             try
             {
+                StoreUrl.EnsureAllowed(source.Url);
                 var json = await http.GetStringAsync(source.Url, ct);
                 var index = StoreIndex.Parse(json);
 
