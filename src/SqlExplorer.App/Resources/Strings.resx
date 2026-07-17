@@ -1305,6 +1305,18 @@
   <data name="UpdateDialogDownload" xml:space="preserve">
     <value>Download</value>
   </data>
+  <data name="UpdateDialogInstall" xml:space="preserve">
+    <value>Install and restart</value>
+  </data>
+  <data name="UpdateDialogInstalling" xml:space="preserve">
+    <value>Installing…</value>
+  </data>
+  <data name="UpdateDialogGuided" xml:space="preserve">
+    <value>Downloaded — drag SQL Explorer to Applications, then reopen it.</value>
+  </data>
+  <data name="UpdateRollback" xml:space="preserve">
+    <value>Roll back to the previous version</value>
+  </data>
   <data name="UpdateDialogDownloading" xml:space="preserve">
     <value>Downloading…</value>
   </data>

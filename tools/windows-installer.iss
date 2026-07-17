@@ -50,6 +50,11 @@ WizardStyle=modern
 LicenseFile={#SourceDir}\LICENSE
 UninstallDisplayIcon={app}\{#ExeName}
 UninstallDisplayName={#AppName}
+; In-app updater (SE-137): when the running app launches this installer silently to update itself, let
+; Restart Manager close the running instance so its files can be replaced. We relaunch it ourselves in
+; [Run] (see the silent entry), so Inno's own restart is off.
+CloseApplications=yes
+RestartApplications=no
 ; "x64" over the newer "x64compatible": the latter needs Inno Setup 6.3+, and this has to compile on
 ; whatever 6.x the runner happens to ship. 6.3+ treats x64 as an alias, so both work.
 #if Arch == "arm64"
@@ -79,6 +84,8 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#ExeName}"; Tasks: desktopic
 
 [Run]
 Filename: "{app}\{#ExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+; Silent self-update path: no wizard to tick "launch", so relaunch the app automatically once files are in.
+Filename: "{app}\{#ExeName}"; Flags: nowait postinstall; Check: WizardSilent
 
 [UninstallDelete]
 ; Plugins the Store installed live in %APPDATA% and are deliberately left behind on uninstall — the same

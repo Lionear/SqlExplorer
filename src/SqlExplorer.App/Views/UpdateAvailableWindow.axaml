@@ -28,8 +28,11 @@
                    Foreground="{DynamicResource SETextSecondaryBrush}" TextWrapping="Wrap" />
       </StackPanel>
       <Button Grid.Column="1" Classes="Accent" Margin="0,0,8,0"
+              Content="{Binding Loc[UpdateDialogInstall]}"
+              Command="{Binding InstallAndRestartCommand}" IsVisible="{Binding CanInstall}" />
+      <Button Grid.Column="1" Classes="Accent" Margin="0,0,8,0"
               Content="{Binding Loc[UpdateDialogDownload]}"
-              Command="{Binding DownloadCommand}" IsVisible="{Binding HasAsset}" />
+              Command="{Binding DownloadCommand}" IsVisible="{Binding ShowDownloadOnly}" />
       <Button Grid.Column="2" Content="{Binding Loc[Close]}" Click="OnClose" />
     </Grid>
 

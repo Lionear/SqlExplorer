@@ -1305,6 +1305,18 @@
   <data name="UpdateDialogDownload" xml:space="preserve">
     <value>Downloaden</value>
   </data>
+  <data name="UpdateDialogInstall" xml:space="preserve">
+    <value>Installeren en herstarten</value>
+  </data>
+  <data name="UpdateDialogInstalling" xml:space="preserve">
+    <value>Bezig met installeren…</value>
+  </data>
+  <data name="UpdateDialogGuided" xml:space="preserve">
+    <value>Gedownload — sleep SQL Explorer naar Programma's en open het opnieuw.</value>
+  </data>
+  <data name="UpdateRollback" xml:space="preserve">
+    <value>Terug naar de vorige versie</value>
+  </data>
   <data name="UpdateDialogDownloading" xml:space="preserve">
     <value>Bezig met downloaden…</value>
   </data>

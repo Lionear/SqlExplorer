@@ -43,7 +43,8 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly IStoreSourcesStore _sources;
     private readonly IStoreCatalog _catalog;
     private readonly System.Net.Http.HttpClient _http;
-    private readonly Core.Update.AppUpdateService _appUpdate;
+    private readonly AppUpdateViewModel _update;
+    private readonly Core.Update.IUpdateApplier _updateApplier;
 
     // Idle auto-lock options (minutes; 0 = Never), index-matched to the Security-page dropdown.
     private static readonly int[] LockMinuteOptions = [0, 15, 30, 60];
@@ -131,7 +132,37 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isCheckingUpdate;
 
-    /// <summary>Manual "Check now" from the Updates pane — reports inline; the main-window banner is separate.</summary>
+    /// <summary>True when a previous build is staged to roll back to (Linux AppImage only, Fase 2).</summary>
+    public bool CanRollback => _updateApplier.CanRollback;
+
+    /// <summary>Set by the view: carries out the rollback result (relaunch + exit) on the desktop lifetime.</summary>
+    public Func<Core.Update.ApplyResult, System.Threading.Tasks.Task>? RollbackRequested { get; set; }
+
+    /// <summary>Roll back to the previous app version from the Updates pane.</summary>
+    [RelayCommand]
+    private async System.Threading.Tasks.Task RollBackUpdate()
+    {
+        var result = _updateApplier.Rollback();
+        if (result.Action == Core.Update.ApplyAction.Failed)
+        {
+            UpdateCheckStatus = result.Message;
+            return;
+        }
+
+        if (RollbackRequested is not null)
+        {
+            await RollbackRequested(result);
+        }
+    }
+
+    /// <summary>The shared updater VM — Settings binds its "What's new" button to the same banner state, so a
+    /// manual check here lights the main-window banner too.</summary>
+    public AppUpdateViewModel Update => _update;
+
+    /// <summary>Set by the view: shows the changelog dialog owned by the Settings window.</summary>
+    public Func<UpdateAvailableViewModel, System.Threading.Tasks.Task>? ChangelogRequested { get; set; }
+
+    /// <summary>Manual "Check for updates": routes through the shared VM so the banner + "What's new" light up.</summary>
     [RelayCommand]
     private async System.Threading.Tasks.Task CheckForUpdatesNow()
     {
@@ -139,10 +170,10 @@ public partial class SettingsViewModel : ViewModelBase
         UpdateCheckStatus = Loc["UpdateCheckChecking"];
         try
         {
-            var result = await _appUpdate.CheckAsync(SelectedUpdateChannel, System.Threading.CancellationToken.None);
-            UpdateCheckStatus = result.Status switch
+            var status = await _update.RunCheckAsync(SelectedUpdateChannel, System.Threading.CancellationToken.None);
+            UpdateCheckStatus = status switch
             {
-                Core.Update.UpdateStatus.Available => Loc.Get("UpdateCheckAvailable", result.Manifest!.Version),
+                Core.Update.UpdateStatus.Available => Loc.Get("UpdateCheckAvailable", _update.OfferedVersion ?? string.Empty),
                 Core.Update.UpdateStatus.UpToDate => Loc["UpdateCheckUpToDate"],
                 _ => Loc["UpdateCheckFailed"]
             };
@@ -150,6 +181,17 @@ public partial class SettingsViewModel : ViewModelBase
         finally
         {
             IsCheckingUpdate = false;
+        }
+    }
+
+    /// <summary>Open the changelog dialog (with Install/Download) for the found update, from Settings.</summary>
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ShowWhatsNew()
+    {
+        var dialog = _update.BuildDialog();
+        if (dialog is not null && ChangelogRequested is not null)
+        {
+            await ChangelogRequested(dialog);
         }
     }
 
@@ -300,7 +342,8 @@ public partial class SettingsViewModel : ViewModelBase
         IStoreSourcesStore sources,
         IStoreCatalog catalog,
         System.Net.Http.HttpClient http,
-        Core.Update.AppUpdateService appUpdate,
+        AppUpdateViewModel appUpdate,
+        Core.Update.IUpdateApplier updateApplier,
         ILocalizer localizer)
     {
         _store = store;
@@ -314,7 +357,8 @@ public partial class SettingsViewModel : ViewModelBase
         _sources = sources;
         _catalog = catalog;
         _http = http;
-        _appUpdate = appUpdate;
+        _update = appUpdate;
+        _updateApplier = updateApplier;
         Loc = localizer;
 
         UpdateChannels =
@@ -506,7 +550,7 @@ public partial class SettingsViewModel : ViewModelBase
         QueryTimeoutSeconds = settings.QueryTimeoutSeconds;
         BrowsePageSize = settings.BrowsePageSize;
         RestoreTabsOnStartup = settings.RestoreTabsOnStartup;
-        SelectedUpdateChannel = settings.UpdateChannel;
+        SelectedUpdateChannel = settings.UpdateChannel ?? _update.RunningChannel;
         CheckForUpdatesOnStartup = settings.CheckForUpdatesOnStartup;
         UpdateCheckStatus = null;
         ShowSystemDatabases = settings.ShowSystemDatabases;
@@ -646,7 +690,8 @@ public partial class SettingsViewModel : ViewModelBase
         QueryTimeoutSeconds = defaults.QueryTimeoutSeconds;
         BrowsePageSize = defaults.BrowsePageSize;
         RestoreTabsOnStartup = defaults.RestoreTabsOnStartup;
-        SelectedUpdateChannel = defaults.UpdateChannel;
+        // No explicit default channel: fall back to the running build's channel, same as a fresh install.
+        SelectedUpdateChannel = defaults.UpdateChannel ?? _update.RunningChannel;
         CheckForUpdatesOnStartup = defaults.CheckForUpdatesOnStartup;
         ShowSystemDatabases = defaults.ShowSystemDatabases;
         ConfirmOnExit = defaults.ConfirmOnExit;

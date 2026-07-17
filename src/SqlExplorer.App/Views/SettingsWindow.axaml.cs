@@ -19,6 +19,14 @@ public partial class SettingsWindow : Window
                 // Master-password prompts (Set/Change/Disable) — no inline validator; the service verifies.
                 vm.PromptMasterPassword = mode =>
                     new MasterPasswordDialog(mode, vm.Loc, null).ShowDialog<MasterPasswordDialogResult?>(this);
+                // Update rollback (SE-137): relaunch the previous build and exit via the desktop lifetime.
+                vm.RollbackRequested = result =>
+                {
+                    AppRestart.Execute(result);
+                    return System.Threading.Tasks.Task.CompletedTask;
+                };
+                // "What's new" from the Updates pane opens the changelog dialog owned by this window.
+                vm.ChangelogRequested = dialog => new UpdateAvailableWindow(dialog).ShowDialog(this);
             }
         };
     }
