@@ -101,6 +101,7 @@ public partial class MainViewModel : ViewModelBase
         Core.Plugins.PluginCatalogService pluginCatalog,
         IAppSettingsStore settingsStore,
         IOpenTabsStore openTabsStore,
+        AppUpdateViewModel appUpdate,
         ILocalizer localizer)
     {
         _providers = providers;
@@ -125,6 +126,7 @@ public partial class MainViewModel : ViewModelBase
         _pluginCatalog = pluginCatalog;
         _settingsStore = settingsStore;
         _openTabsStore = openTabsStore;
+        Update = appUpdate;
         Loc = localizer;
 
         // Tool windows: sizes come from settings (null = the default the panel declares), so a resize
@@ -530,6 +532,9 @@ public partial class MainViewModel : ViewModelBase
     }
 
     public ILocalizer Loc { get; }
+
+    /// <summary>The in-app updater's banner state (SE-137); the main view binds its "update available" bar.</summary>
+    public AppUpdateViewModel Update { get; }
 
     /// <summary>The sidebar tree: one root node per saved connection, children loaded lazily.</summary>
     public ObservableCollection<TreeNodeViewModel> ConnectionNodes { get; } = [];

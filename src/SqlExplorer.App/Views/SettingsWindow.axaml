@@ -71,9 +71,10 @@
     <Grid Grid.Column="1" RowDefinitions="*,Auto">
       <Panel Grid.Row="0" Margin="24,20">
 
-        <!-- General -->
-        <StackPanel Spacing="10"
-                    IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=General}">
+        <!-- General (scrollable: the Updates cards can push it past the window height) -->
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                      IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=General}">
+        <StackPanel Spacing="10">
           <TextBlock Text="{Binding Loc[SettingsGeneralCat]}" FontSize="14" FontWeight="SemiBold" />
           <TextBlock Text="{Binding Loc[SettingsGeneral]}" FontSize="12" Foreground="{DynamicResource SETextSecondaryBrush}" />
           <TextBlock Text="{Binding Loc[Language]}" FontWeight="SemiBold" Margin="0,6,0,0" />
@@ -93,7 +94,84 @@
                      Foreground="{DynamicResource SETextFaintBrush}" Margin="24,0,0,0" />
           <TextBlock Text="{Binding Loc[SettingsSchemaTree]}" FontWeight="SemiBold" Margin="0,10,0,0" />
           <CheckBox Content="{Binding Loc[ShowSystemDatabases]}" IsChecked="{Binding ShowSystemDatabases}" />
+
+          <TextBlock Text="{Binding Loc[SettingsUpdates]}" FontWeight="SemiBold" FontSize="14" Margin="0,14,0,0" />
+          <TextBlock Text="{Binding Loc[SettingsUpdatesHint]}" FontSize="12" TextWrapping="Wrap"
+                     Foreground="{DynamicResource SETextSecondaryBrush}" Margin="0,0,0,4" />
+
+          <!-- Channel selector as radio-cards (SE-137 mockup) -->
+          <ListBox ItemsSource="{Binding UpdateChannels}" SelectedItem="{Binding SelectedUpdateChannelOption}"
+                   Background="Transparent" BorderThickness="0" Padding="0" MaxWidth="620" HorizontalAlignment="Stretch"
+                   ScrollViewer.VerticalScrollBarVisibility="Disabled">
+            <ListBox.Styles>
+              <Style Selector="ListBoxItem">
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="0,0,0,8" />
+                <Setter Property="Background" Value="Transparent" />
+              </Style>
+              <Style Selector="ListBoxItem Border.channelCard">
+                <Setter Property="Background" Value="{DynamicResource SEPanelBgBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource SEHairlineBrush}" />
+              </Style>
+              <Style Selector="ListBoxItem:selected Border.channelCard">
+                <Setter Property="BorderBrush" Value="{DynamicResource SEAccentBrush}" />
+                <Setter Property="Background" Value="#243B82F6" />
+              </Style>
+              <!-- Default hidden via a style (not a local value, which a style setter can't override). -->
+              <Style Selector="ListBoxItem Ellipse.radioDot">
+                <Setter Property="IsVisible" Value="False" />
+              </Style>
+              <Style Selector="ListBoxItem:selected Ellipse.radioDot">
+                <Setter Property="IsVisible" Value="True" />
+              </Style>
+              <Style Selector="ListBoxItem:selected Ellipse.radioRing">
+                <Setter Property="Stroke" Value="{DynamicResource SEAccentBrush}" />
+              </Style>
+            </ListBox.Styles>
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Border Classes="channelCard" BorderThickness="1" CornerRadius="6" Padding="14,11">
+                  <Grid ColumnDefinitions="Auto,Auto,*">
+                    <!-- radio indicator -->
+                    <Grid Grid.Column="0" Width="16" Height="16" Margin="0,2,12,0" VerticalAlignment="Top">
+                      <Ellipse Classes="radioRing" Stroke="{DynamicResource SETextFaintBrush}" StrokeThickness="1.5" />
+                      <Ellipse Classes="radioDot" Width="8" Height="8"
+                               Fill="{DynamicResource SEAccentBrush}" />
+                    </Grid>
+                    <!-- channel colour dot -->
+                    <Ellipse Grid.Column="1" Width="9" Height="9" Margin="0,5,9,0" VerticalAlignment="Top"
+                             Fill="{Binding DotBrush}" />
+                    <StackPanel Grid.Column="2" Spacing="3">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Border Background="{Binding BadgeBg}" CornerRadius="3"
+                                Padding="5,1" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding Badge}" FontSize="10.5"
+                                     FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                                     Foreground="{Binding DotBrush}" />
+                        </Border>
+                      </StackPanel>
+                      <TextBlock Text="{Binding Description}" FontSize="11.5" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource SETextSecondaryBrush}" />
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <!-- Label sits where On/Off would be; the knob state already reads as on/off. -->
+          <ToggleSwitch IsChecked="{Binding CheckForUpdatesOnStartup}" Margin="0,4,0,0"
+                        OnContent="{Binding Loc[CheckForUpdatesOnStartup]}"
+                        OffContent="{Binding Loc[CheckForUpdatesOnStartup]}" />
+          <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,2,0,0">
+            <Button Content="{Binding Loc[UpdateCheckNow]}" Command="{Binding CheckForUpdatesNowCommand}"
+                    IsEnabled="{Binding !IsCheckingUpdate}" />
+            <TextBlock Text="{Binding UpdateCheckStatus}" VerticalAlignment="Center" FontSize="11.5"
+                       Foreground="{DynamicResource SETextSecondaryBrush}" />
+          </StackPanel>
         </StackPanel>
+        </ScrollViewer>
 
         <!-- Appearance -->
         <StackPanel Spacing="10"

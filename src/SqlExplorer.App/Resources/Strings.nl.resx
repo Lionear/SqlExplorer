@@ -1281,4 +1281,85 @@
   <data name="MainRestartNow" xml:space="preserve">
     <value>Nu herstarten</value>
   </data>
+  <data name="UpdateBannerAvailable" xml:space="preserve">
+    <value>Er is een update beschikbaar: {0}</value>
+  </data>
+  <data name="UpdateBannerViewChangelog" xml:space="preserve">
+    <value>Wat is nieuw</value>
+  </data>
+  <data name="UpdateBannerLater" xml:space="preserve">
+    <value>Later</value>
+  </data>
+  <data name="UpdateDialogTitle" xml:space="preserve">
+    <value>Update beschikbaar</value>
+  </data>
+  <data name="UpdateDialogVersion" xml:space="preserve">
+    <value>Versie {0}</value>
+  </data>
+  <data name="UpdateDialogPublished" xml:space="preserve">
+    <value>Gepubliceerd {0}</value>
+  </data>
+  <data name="UpdateDialogCommit" xml:space="preserve">
+    <value>Commit {0}</value>
+  </data>
+  <data name="UpdateDialogDownload" xml:space="preserve">
+    <value>Downloaden</value>
+  </data>
+  <data name="UpdateDialogDownloading" xml:space="preserve">
+    <value>Bezig met downloaden…</value>
+  </data>
+  <data name="UpdateDialogDownloaded" xml:space="preserve">
+    <value>Gedownload — map wordt geopend.</value>
+  </data>
+  <data name="UpdateDialogDownloadFailed" xml:space="preserve">
+    <value>De download is mislukt.</value>
+  </data>
+  <data name="SettingsUpdates" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="SettingsUpdatesHint" xml:space="preserve">
+    <value>Kies op welke builds SQL Explorer controleert. Je kunt altijd wisselen.</value>
+  </data>
+  <data name="UpdateChannelLabel" xml:space="preserve">
+    <value>Release-kanaal</value>
+  </data>
+  <data name="UpdateChannelStable" xml:space="preserve">
+    <value>Stable</value>
+  </data>
+  <data name="UpdateChannelStableBadge" xml:space="preserve">
+    <value>aanbevolen</value>
+  </data>
+  <data name="UpdateChannelStableDesc" xml:space="preserve">
+    <value>Bewust uitgebrachte builds. Meest stabiel.</value>
+  </data>
+  <data name="UpdateChannelPreview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="UpdateChannelPreviewDesc" xml:space="preserve">
+    <value>Wat er in main is gemerged, vóór de volgende Stable.</value>
+  </data>
+  <data name="UpdateChannelNightly" xml:space="preserve">
+    <value>Nightly</value>
+  </data>
+  <data name="UpdateChannelNightlyDesc" xml:space="preserve">
+    <value>Nightly build. Nieuwste features, kan ruw zijn.</value>
+  </data>
+  <data name="CheckForUpdatesOnStartup" xml:space="preserve">
+    <value>Automatisch controleren op updates bij opstarten</value>
+  </data>
+  <data name="UpdateCheckNow" xml:space="preserve">
+    <value>Controleren op updates</value>
+  </data>
+  <data name="UpdateCheckChecking" xml:space="preserve">
+    <value>Bezig met controleren…</value>
+  </data>
+  <data name="UpdateCheckAvailable" xml:space="preserve">
+    <value>Update beschikbaar: {0}</value>
+  </data>
+  <data name="UpdateCheckUpToDate" xml:space="preserve">
+    <value>Je hebt de nieuwste versie.</value>
+  </data>
+  <data name="UpdateCheckFailed" xml:space="preserve">
+    <value>Controleren op updates is mislukt.</value>
+  </data>
 </root>

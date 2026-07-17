@@ -105,6 +105,11 @@ public partial class App : Application
                 services.GetRequiredService<Core.Security.IMasterKeyProvider>().Locked += () =>
                     Avalonia.Threading.Dispatcher.UIThread.Post(
                         () => _ = GateUnlockAsync(mainWindow, masterPassword, desktop, loc));
+
+                // In-app updater (SE-137): check the chosen channel once the window is up. Fully async and
+                // fault-tolerant — offline or a fetch failure is silent; the banner appears via binding only
+                // if a newer, non-dismissed build is found.
+                mainWindow.Opened += (_, _) => _ = viewModel.Update.CheckOnStartupAsync(_shutdownCts.Token);
                 break;
             case ISingleViewApplicationLifetime singleView:
                 singleView.MainView = new MainView { DataContext = viewModel };
