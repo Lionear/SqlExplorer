@@ -74,3 +74,9 @@ This project is **source-available**, split across two licenses:
   product or service (including paid hosting or support) whose value derives
   substantially from it. To sell or redistribute commercially, contact
   rick@bonkestoter.com for a separate license.
+
+The bundled open-source dependencies keep their own licenses; the attribution
+they require lives in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), which
+ships alongside the binaries. It is generated from the NuGet dependency closure
+by `tools/generate-third-party-notices.py` — re-run that after changing
+dependencies (`--check` verifies the committed file is current).
