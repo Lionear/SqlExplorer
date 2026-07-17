@@ -62,12 +62,25 @@ jobs:
     steps:
       - name: Resolve ref and release tag
         id: target
+        # Workflow inputs reach bash through env, never through `${{ }}`: GitHub substitutes those
+        # textually before the shell parses the line, so an input can close the quote and append
+        # commands. Env values are data to bash, whatever they contain.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_REF: ${{ inputs.ref }}
         run: |
           set -euo pipefail
-          case "${{ github.event_name }}" in
+          case "$EVENT_NAME" in
             schedule)          REF=develop ;;
-            workflow_dispatch) REF="${{ inputs.ref }}" ;;
+            workflow_dispatch) REF="${INPUT_REF:-develop}" ;;
             *)                 REF=main ;;   # push to main
+          esac
+
+          # `type: choice` already limits this to develop/main, but the checkout below turns it into
+          # code execution, so it gets a second gate that does not depend on the UI.
+          case "$REF" in
+            develop|main) ;;
+            *) echo "Refusing to build unexpected ref: $REF" >&2; exit 1 ;;
           esac
 
           if [ "$REF" = "main" ]; then
@@ -125,6 +138,12 @@ jobs:
       - name: Resolve version
         id: version
         shell: bash
+        # See the note in `setup`: inputs come in as env, not as `${{ }}` inside the script.
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ needs.setup.outputs.channel }}
+          RUN_NUMBER: ${{ github.run_number }}
+          TARGET_REF: ${{ needs.setup.outputs.ref }}
         run: |
           set -euo pipefail
           # Single source of truth: the same <Version> the assemblies get. Hardcoding it here once meant
@@ -135,13 +154,23 @@ jobs:
             exit 1
           fi
 
-          if [ -n "${{ inputs.version }}" ]; then
-            VERSION="${{ inputs.version }}"
+          if [ -n "${INPUT_VERSION:-}" ]; then
+            VERSION="$INPUT_VERSION"
           else
-            VERSION="$BASE-${{ needs.setup.outputs.channel }}.$(date -u +%Y%m%d).${{ github.run_number }}"
+            VERSION="$BASE-$CHANNEL.$(date -u +%Y%m%d).$RUN_NUMBER"
           fi
+
+          # This value becomes a step output that later steps splice into a pwsh command line, MSBuild
+          # arguments and file names. Passing it as env everywhere is the main defence; this gate is the
+          # backstop that keeps the value boring in the first place, and blocks the newline that would
+          # otherwise let it forge extra entries in $GITHUB_OUTPUT.
+          if ! printf '%s' "$VERSION" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9.+-]*$'; then
+            echo "Refusing version '$VERSION': expected only letters, digits, dot, plus and hyphen" >&2
+            exit 1
+          fi
+
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Version: $VERSION (base $BASE, ref ${{ needs.setup.outputs.ref }})"
+          echo "Version: $VERSION (base $BASE, ref $TARGET_REF)"
 
       - name: Publish
         shell: bash
@@ -170,17 +199,25 @@ jobs:
       - name: Package (Windows installer)
         if: matrix.package == 'windows'
         shell: pwsh
+        # Version/arch/rid reach pwsh as env, not `${{ }}` spliced into the command line. Version is the
+        # tainted one (it can trace back to inputs.version); the Resolve version step already whitelists
+        # it, this keeps the sink from re-opening the hole.
+        env:
+          APP_VERSION: ${{ steps.version.outputs.value }}
+          APP_ARCH: ${{ matrix.arch }}
+          PUBLISH_RID: ${{ matrix.rid }}
         run: |
+          # Pin the Inno Setup version so a build today and one last month use the same ISCC.
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) {
-            choco install innosetup --no-progress -y
+            choco install innosetup --version=6.7.1 --no-progress -y
           }
           if (-not (Test-Path $iscc)) { throw "ISCC.exe not found at $iscc" }
 
           & $iscc tools/windows-installer.iss `
-            "/DAppVersion=${{ steps.version.outputs.value }}" `
-            "/DArch=${{ matrix.arch }}" `
-            "/DSourceDir=$(Resolve-Path publish/${{ matrix.rid }})" `
+            "/DAppVersion=$env:APP_VERSION" `
+            "/DArch=$env:APP_ARCH" `
+            "/DSourceDir=$(Resolve-Path "publish/$env:PUBLISH_RID")" `
             "/DOutputDir=$(Resolve-Path artifacts)"
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with $LASTEXITCODE" }
 
@@ -220,7 +257,14 @@ jobs:
           EOF
           chmod +x "$APPDIR/AppRun"
 
-          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          # appimagetool is the one external binary this pipeline runs, so it gets verified before it
+          # runs, not just pinned. The tag is only a download location: AppImage re-uploads assets onto
+          # existing tags (the "1.9.1" asset is itself a re-pushed continuous build), so a tag pin proves
+          # nothing. The sha256 is the actual lock — bump it deliberately when you choose a new build.
+          APPIMAGETOOL_URL="https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage"
+          APPIMAGETOOL_SHA256="ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0"
+          wget -q "$APPIMAGETOOL_URL" -O appimagetool
+          echo "$APPIMAGETOOL_SHA256  appimagetool" | sha256sum -c -
           chmod +x appimagetool
 
           mkdir -p artifacts

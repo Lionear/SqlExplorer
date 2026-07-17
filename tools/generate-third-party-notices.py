@@ -99,7 +99,12 @@ def read_license(name, version):
 
     if license_el is not None and license_el.get("type") == "file":
         # The licence text ships inside the package; include it verbatim rather than guessing an SPDX id.
-        text_path = path.parent / (license_el.text or "").strip()
+        # The path comes from the package's own .nuspec, so keep it inside the package directory: an
+        # absolute path or ../ would otherwise read an arbitrary file straight into the notices output.
+        base = path.parent.resolve()
+        text_path = (base / (license_el.text or "").strip()).resolve()
+        if not text_path.is_relative_to(base):
+            return "See licence text below", project_url, None
         text = text_path.read_text(encoding="utf-8", errors="replace") if text_path.exists() else None
         return "See licence text below", project_url, text
 

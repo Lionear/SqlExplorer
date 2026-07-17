@@ -60,8 +60,28 @@ public sealed partial class AboutViewModel : ViewModelBase
         _pins = pins;
         Loc = localizer;
 
-        AppVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "—";
+        AppVersion = ReadAppVersion();
         BuildPluginRows();
+    }
+
+    /// <summary>
+    /// The informational version, because that is the only one that survives the build's channel stamp:
+    /// CI publishes with <c>-p:Version=0.1.0-nightly.20260717.42</c>, and .NET drops everything after the
+    /// numbers from AssemblyVersion/FileVersion (both become 0.1.0.0). Reading <see cref="Assembly.GetName"/>
+    /// therefore reported a bare "0.1.0" for nightly, preview and local builds alike.
+    /// The trailing <c>+&lt;sha&gt;</c> is SourceLink's build metadata — the commit is already in the
+    /// diagnostics via the channel stamp, and it makes the hero line unreadable.
+    /// </summary>
+    private static string ReadAppVersion()
+    {
+        var informational = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+
+        if (string.IsNullOrWhiteSpace(informational))
+            return Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "—";
+
+        var plus = informational.IndexOf('+');
+        return plus < 0 ? informational : informational[..plus];
     }
 
     public ILocalizer Loc { get; }
