@@ -337,6 +337,64 @@ public partial class SettingsViewModel : ViewModelBase
     private void RegenerateMcpToken() =>
         McpToken = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
 
+    /// <summary>Live running-state of the MCP server, mirrored from <see cref="Mcp.Hosting.McpService"/> so the
+    /// Settings pane reflects startup auto-start, Save-restarts and the manual toggle (SE-147).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(McpStatusText))]
+    [NotifyPropertyChangedFor(nameof(McpToggleLabel))]
+    private bool _mcpRunning;
+
+    /// <summary>Status line for the MCP pane: "running — &lt;url&gt;" or "stopped".</summary>
+    public string McpStatusText => McpRunning ? $"{Loc["McpServerRunning"]} — {McpUrl}" : Loc["McpServerStopped"];
+
+    /// <summary>Label for the Start/Stop button, following the live state.</summary>
+    public string McpToggleLabel => McpRunning ? Loc["McpStop"] : Loc["McpStart"];
+
+    /// <summary>Start the server (persisting the current MCP settings first so a just-changed port/auth/token
+    /// takes effect) or stop it, depending on the live state. The <c>StateChanged</c> handler updates
+    /// <see cref="McpRunning"/>, so the button/status follow automatically.</summary>
+    [RelayCommand]
+    private async Task ToggleMcpServerAsync()
+    {
+        if (McpRunning)
+        {
+            await _mcp.StopAsync();
+            return;
+        }
+
+        var settings = _store.Load();
+        PersistMcpSettings(settings);
+        _store.Save(settings);
+        await _mcp.ApplyAsync();
+    }
+
+    private void OnMcpStateChanged() =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => McpRunning = _mcp.IsRunning);
+
+    /// <summary>Unsubscribe from the long-lived <see cref="Mcp.Hosting.McpService"/> singleton so the transient
+    /// settings VM doesn't leak a handler each time the window opens. Called from the window's Closed event.</summary>
+    public void Cleanup() => _mcp.StateChanged -= OnMcpStateChanged;
+
+    /// <summary>Copy the edited MCP fields onto <paramref name="settings"/>, generating a bearer token first if
+    /// auth is on and none is set. Shared by full Save and the Start-half of the Start/Stop toggle so both
+    /// routes persist an identical, valid MCP configuration.</summary>
+    private void PersistMcpSettings(AppSettings settings)
+    {
+        // Generate a token on enabling auth if none is set yet, so the field is never empty when required.
+        if (McpEnabled && McpRequireAuth && string.IsNullOrEmpty(McpToken))
+        {
+            RegenerateMcpToken();
+        }
+
+        settings.McpEnabled = McpEnabled;
+        settings.McpPort = McpPort;
+        settings.McpRequireAuth = McpRequireAuth;
+        settings.McpToken = McpToken;
+        settings.McpMaxRows = McpMaxRows;
+        settings.McpTimeoutSeconds = McpTimeoutSeconds;
+        settings.McpScrubSecrets = McpScrubSecrets;
+    }
+
     public SettingsViewModel(
         IAppSettingsStore store,
         IPluginSettingsStore pluginStore,
@@ -401,6 +459,11 @@ public partial class SettingsViewModel : ViewModelBase
         BuildShortcutCatalog();
         LoadManualSources();
         _ = RefreshDiscoverySourcesAsync();
+
+        // Reflect the MCP server's live state (SE-147). Seed from the current state, then track changes;
+        // Cleanup() unsubscribes when the window closes so this transient VM doesn't leak on the singleton.
+        McpRunning = _mcp.IsRunning;
+        _mcp.StateChanged += OnMcpStateChanged;
     }
 
     /// <summary>Open on a specific category (deep-link from another window, e.g. Plugin Store's
@@ -765,19 +828,7 @@ public partial class SettingsViewModel : ViewModelBase
         // Master-password enable/change/disable persist themselves immediately; here we only carry the
         // idle-lock interval (a plain preference) and re-apply it.
         settings.MasterPasswordLockMinutes = LockMinuteOptions[Math.Clamp(MasterPasswordLockIndex, 0, LockMinuteOptions.Length - 1)];
-        // Generate a token on enabling auth if none is set yet, so the field is never empty when required.
-        if (McpEnabled && McpRequireAuth && string.IsNullOrEmpty(McpToken))
-        {
-            RegenerateMcpToken();
-        }
-
-        settings.McpEnabled = McpEnabled;
-        settings.McpPort = McpPort;
-        settings.McpRequireAuth = McpRequireAuth;
-        settings.McpToken = McpToken;
-        settings.McpMaxRows = McpMaxRows;
-        settings.McpTimeoutSeconds = McpTimeoutSeconds;
-        settings.McpScrubSecrets = McpScrubSecrets;
+        PersistMcpSettings(settings);
         _store.Save(settings);
 
         // Apply MCP changes immediately (start/stop/restart the server with the new settings).

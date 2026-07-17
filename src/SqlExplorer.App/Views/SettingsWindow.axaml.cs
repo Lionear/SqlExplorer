@@ -29,6 +29,10 @@ public partial class SettingsWindow : Window
                 vm.ChangelogRequested = dialog => new UpdateAvailableWindow(dialog).ShowDialog(this);
             }
         };
+
+        // Unsubscribe the VM from the MCP service singleton when the window closes (SE-147) — the transient VM
+        // would otherwise leak a StateChanged handler on the long-lived service each time Settings opens.
+        Closed += (_, _) => (DataContext as SettingsViewModel)?.Cleanup();
     }
 
     // A File/Folder plugin setting: pick a path (a binary like mysqldump, or a default folder).

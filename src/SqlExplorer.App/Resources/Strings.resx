@@ -249,6 +249,18 @@
   <data name="McpTimeout" xml:space="preserve">
     <value>Query timeout (seconds)</value>
   </data>
+  <data name="McpStart" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="McpStop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="McpServerRunning" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="McpServerStopped" xml:space="preserve">
+    <value>Not running</value>
+  </data>
   <data name="McpScrubSecrets" xml:space="preserve">
     <value>Redact secrets from query results</value>
   </data>

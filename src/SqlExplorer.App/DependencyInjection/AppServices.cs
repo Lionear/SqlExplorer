@@ -259,7 +259,11 @@ public static class AppServices
                 };
             }
 
-            void Audit(string message) => Console.Error.WriteLine(message);
+            // Route MCP audit/status to Trace, not Console: under WinExe (SE-147) there is no console on
+            // Windows, and Console.Error would write to a dead handle. Trace stays visible in the debugger /
+            // dotnet-trace, matching Program.cs's .LogToTrace(). Covers "[MCP] server started" and the
+            // "[MCP DENY]" audit lines from McpHost.
+            void Audit(string message) => System.Diagnostics.Trace.WriteLine(message);
 
             var mcpHost = new McpHost(
                 sp.GetRequiredService<ConnectionService>(),

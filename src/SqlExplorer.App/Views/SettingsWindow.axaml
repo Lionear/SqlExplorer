@@ -370,6 +370,23 @@
             <ToggleSwitch IsChecked="{Binding McpEnabled}" Margin="0,6,0,0"
                           OnContent="{Binding Loc[McpEnabled]}" OffContent="{Binding Loc[McpEnabled]}" />
 
+            <!-- Live status + Start/Stop, only while MCP is enabled (SE-147). The knob's master-switch stays
+                 the launch/Save behaviour; this is runtime control for the current session. -->
+            <Border IsVisible="{Binding McpEnabled}"
+                    Background="{DynamicResource SEPanelBgBrush}" CornerRadius="5" Padding="10,8">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" Text="●" VerticalAlignment="Center" Margin="0,0,8,0"
+                           Foreground="#3FB950" IsVisible="{Binding McpRunning}" />
+                <TextBlock Grid.Column="0" Text="○" VerticalAlignment="Center" Margin="0,0,8,0"
+                           Foreground="{DynamicResource SETextFaintBrush}" IsVisible="{Binding !McpRunning}" />
+                <TextBlock Grid.Column="1" Text="{Binding McpStatusText}" VerticalAlignment="Center"
+                           FontSize="12" TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="2" Classes="Accent" Margin="8,0,0,0" MinWidth="76"
+                        HorizontalContentAlignment="Center"
+                        Content="{Binding McpToggleLabel}" Command="{Binding ToggleMcpServerCommand}" />
+              </Grid>
+            </Border>
+
             <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
               <TextBlock Grid.Column="0" Text="{Binding Loc[McpPort]}" VerticalAlignment="Center" />
               <NumericUpDown Grid.Column="1" Width="150" Minimum="1024" Maximum="65535" FormatString="0"
