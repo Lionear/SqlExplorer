@@ -1017,6 +1017,21 @@
   <data name="StoreTabBrowse" xml:space="preserve">
     <value>Browse</value>
   </data>
+  <data name="StoreCategoryAll" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="StoreCategoryProviders" xml:space="preserve">
+    <value>Providers</value>
+  </data>
+  <data name="StoreCategoryTools" xml:space="preserve">
+    <value>Tools</value>
+  </data>
+  <data name="StoreCategoryMcpTools" xml:space="preserve">
+    <value>MCP Tools</value>
+  </data>
+  <data name="StoreCategoryOther" xml:space="preserve">
+    <value>Other</value>
+  </data>
   <data name="StoreTabInstalled" xml:space="preserve">
     <value>Installed</value>
   </data>

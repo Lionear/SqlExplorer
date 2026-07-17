@@ -38,8 +38,30 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     private TaskCompletionSource<bool>? _consent;
     private InstallPhase? _lastPhase;
 
+    /// <summary>Top-level tab: Browse / Installed / Sources. Categories live inside Browse as a chip-row
+    /// filter (see <see cref="SelectedCategory"/>) — VS Code / JetBrains / DBeaver pattern, so the tab
+    /// strip stays compact and adding a new category doesn't add a top-level tab.</summary>
     [ObservableProperty]
-    private string _selectedTab = "Browse";
+    [NotifyPropertyChangedFor(nameof(HasBrowseItems))]
+    [NotifyPropertyChangedFor(nameof(IsBrowseTabActive))]
+    private string _selectedTab = TabBrowse;
+
+    /// <summary>Active category chip inside Browse. Backed by <see cref="PluginManifest.Types"/> so the
+    /// chip set stays canonical — a new category = new <c>type</c> = deliberate SDK-bump. Default
+    /// <see cref="CategoryAll"/> so nothing is hidden by default.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBrowseItems))]
+    private string _selectedCategory = CategoryAll;
+
+    public const string TabBrowse = "Browse";
+    public const string TabInstalled = "Installed";
+    public const string TabSources = "Sources";
+
+    public const string CategoryAll = "All";
+    public const string CategoryProviders = "Providers";
+    public const string CategoryTools = "Tools";
+    public const string CategoryMcpTools = "McpTools";
+    public const string CategoryOther = "Other";
 
     [ObservableProperty]
     private bool _isLoading;
@@ -116,6 +138,15 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     public ObservableCollection<string> ProgressLog { get; } = [];
 
     public bool HasBrowseItems => BrowseItems.Count > 0;
+
+    public bool IsBrowseTabActive => SelectedTab == TabBrowse;
+
+    // Chip counts. Recomputed on every rebuild; XAML binds to these to render "Providers (8)" etc.
+    public int AllCount => _allBrowse.Count(i => !i.IsBundle);
+    public int ProvidersCount => _allBrowse.Count(i => TabForItem(i) == CategoryProviders);
+    public int ToolsCount => _allBrowse.Count(i => TabForItem(i) == CategoryTools);
+    public int McpToolsCount => _allBrowse.Count(i => TabForItem(i) == CategoryMcpTools);
+    public int OtherCount => _allBrowse.Count(i => !i.IsBundle && TabForItem(i) == CategoryOther);
     public bool HasUserPlugins => UserPlugins.Count > 0;
     public int UpdateCount => UserPlugins.Count(p => p.UpdateAvailable);
     public bool HasUpdates => UpdateCount > 0;
@@ -286,6 +317,13 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
 
         ApplyBrowseFilter();
 
+        OnPropertyChanged(nameof(AllCount));
+        OnPropertyChanged(nameof(ProvidersCount));
+        OnPropertyChanged(nameof(ToolsCount));
+        OnPropertyChanged(nameof(McpToolsCount));
+        OnPropertyChanged(nameof(OtherCount));
+        OnPropertyChanged(nameof(HasOtherItems));
+
         foreach (var item in _allBrowse)
         {
             _ = LoadIconAsync(item.IconUrl, image => item.Icon = image);
@@ -293,6 +331,15 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     }
 
     partial void OnSearchTextChanged(string? value) => ApplyBrowseFilter();
+
+    partial void OnSelectedCategoryChanged(string value) => ApplyBrowseFilter();
+
+    /// <summary>True when any browsable item has an unknown <c>type</c> — the "Other" chip surfaces so a
+    /// mistyped or forward-compat plugin doesn't silently disappear from the Store.</summary>
+    public bool HasOtherItems => OtherCount > 0;
+
+    [RelayCommand]
+    private void SelectCategory(string category) => SelectedCategory = category;
 
     // Keep the selected-card highlight in sync (ItemsControl has no built-in selection).
     partial void OnSelectedBrowseItemChanged(StoreListItem? oldValue, StoreListItem? newValue)
@@ -308,11 +355,37 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         }
     }
 
+    // Bundles are cross-type (they can bundle a provider + a tool), so they show on every category
+    // chip except "Other". Single-plugin cards are filtered by their declared type; an unknown/absent
+    // type lands in "Other" so a mistyped or forward-compat plugin stays visible.
+    private bool BelongsToActiveCategory(StoreListItem item)
+    {
+        if (SelectedCategory == CategoryAll)
+        {
+            return true;
+        }
+
+        if (item.IsBundle)
+        {
+            return SelectedCategory != CategoryOther;
+        }
+
+        return TabForItem(item) == SelectedCategory;
+    }
+
+    private static string TabForItem(StoreListItem item) => item.Entry?.Type switch
+    {
+        PluginManifest.Types.Provider => CategoryProviders,
+        PluginManifest.Types.Tool => CategoryTools,
+        PluginManifest.Types.Mcp => CategoryMcpTools,
+        _ => CategoryOther
+    };
+
     private void ApplyBrowseFilter()
     {
         BrowseItems.Clear();
         var query = SearchText?.Trim();
-        IEnumerable<StoreListItem> items = _allBrowse;
+        IEnumerable<StoreListItem> items = _allBrowse.Where(BelongsToActiveCategory);
         if (!string.IsNullOrEmpty(query))
         {
             items = items.Where(i =>
@@ -324,6 +397,8 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         {
             BrowseItems.Add(item);
         }
+
+        OnPropertyChanged(nameof(HasOtherItems));
 
         // Default to the first card, and keep it selected if the current one was filtered out.
         if (SelectedBrowseItem is null || !BrowseItems.Contains(SelectedBrowseItem))

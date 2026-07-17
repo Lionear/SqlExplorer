@@ -89,6 +89,22 @@
       <Setter Property="Foreground" Value="{DynamicResource SEAccentBrush}" />
     </Style>
 
+    <!-- Category-filter chips inside Browse: compact pill buttons with a subtle background;
+         VS Code / JetBrains / DBeaver pattern. Selected = accent-filled. -->
+    <Style Selector="Button.Chip">
+      <Setter Property="Background" Value="{DynamicResource SEToolbarBgBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SEHairlineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="11" />
+      <Setter Property="Padding" Value="9,3" />
+      <Setter Property="FontSize" Value="11.5" />
+    </Style>
+    <Style Selector="Button.Chip.selected">
+      <Setter Property="Background" Value="{DynamicResource SEAccentBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SEAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SEAccentFgBrush}" />
+    </Style>
+
     <!-- Store-local: give Subtle buttons a visible border/fill here so row actions read as buttons
          (the app-wide Subtle is intentionally borderless text; the tabstrip uses its own .Tab class). -->
     <Style Selector="Button.Subtle">
@@ -181,14 +197,56 @@
     <!-- ===== Content ===== -->
     <Panel Grid.Row="3">
 
-      <!-- ===== BROWSE ===== -->
+      <!-- ===== BROWSE (per-category tabs share one content pane; ApplyBrowseFilter picks the type) ===== -->
       <Grid ColumnDefinitions="360,*"
-            IsVisible="{Binding SelectedTab, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Browse}">
-        <Grid Grid.Column="0" RowDefinitions="Auto,*">
-          <TextBox Grid.Row="0" Margin="12,10" PlaceholderText="{Binding Loc[StoreSearch]}" Text="{Binding SearchText}" />
-          <TextBlock Grid.Row="1" IsVisible="{Binding IsLoading}" Margin="16" Text="{Binding Loc[StoreLoading]}"
+            IsVisible="{Binding IsBrowseTabActive}">
+        <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*">
+          <TextBox Grid.Row="0" Margin="12,10,12,6" PlaceholderText="{Binding Loc[StoreSearch]}" Text="{Binding SearchText}" />
+          <!-- Category chip-row (VS Code / JetBrains / DBeaver pattern): flat filter, "All" default,
+               counts per category, "Other" only appears when there's an unknown-type plugin. -->
+          <ScrollViewer Grid.Row="1" Margin="8,0,8,8" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <Button Classes="Chip" Classes.selected="{Binding SelectedCategory, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=All}"
+                      Command="{Binding SelectCategoryCommand}" CommandParameter="All">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <TextBlock Text="{Binding Loc[StoreCategoryAll]}" />
+                  <TextBlock Text="{Binding AllCount}" FontSize="10.5" Foreground="{DynamicResource SETextFaintBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Classes="Chip" Classes.selected="{Binding SelectedCategory, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Providers}"
+                      Command="{Binding SelectCategoryCommand}" CommandParameter="Providers">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <TextBlock Text="{Binding Loc[StoreCategoryProviders]}" />
+                  <TextBlock Text="{Binding ProvidersCount}" FontSize="10.5" Foreground="{DynamicResource SETextFaintBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Classes="Chip" Classes.selected="{Binding SelectedCategory, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Tools}"
+                      Command="{Binding SelectCategoryCommand}" CommandParameter="Tools">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <TextBlock Text="{Binding Loc[StoreCategoryTools]}" />
+                  <TextBlock Text="{Binding ToolsCount}" FontSize="10.5" Foreground="{DynamicResource SETextFaintBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Classes="Chip" Classes.selected="{Binding SelectedCategory, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=McpTools}"
+                      Command="{Binding SelectCategoryCommand}" CommandParameter="McpTools">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <TextBlock Text="{Binding Loc[StoreCategoryMcpTools]}" />
+                  <TextBlock Text="{Binding McpToolsCount}" FontSize="10.5" Foreground="{DynamicResource SETextFaintBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Classes="Chip" IsVisible="{Binding HasOtherItems}"
+                      Classes.selected="{Binding SelectedCategory, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Other}"
+                      Command="{Binding SelectCategoryCommand}" CommandParameter="Other">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <TextBlock Text="{Binding Loc[StoreCategoryOther]}" />
+                  <TextBlock Text="{Binding OtherCount}" FontSize="10.5" Foreground="{DynamicResource SETextFaintBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </ScrollViewer>
+          <TextBlock Grid.Row="2" IsVisible="{Binding IsLoading}" Margin="16" Text="{Binding Loc[StoreLoading]}"
                      Foreground="{DynamicResource SETextFaintBrush}" />
-          <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsLoading}">
+          <ScrollViewer Grid.Row="2" IsVisible="{Binding !IsLoading}">
             <ItemsControl ItemsSource="{Binding BrowseItems}" Margin="12,0,12,12">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
