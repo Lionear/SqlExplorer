@@ -1,7 +1,3 @@
-using System;
-using System.Diagnostics;
-using System.IO;
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using SqlExplorer.App.Markdown;
@@ -19,35 +15,10 @@ public partial class UpdateAvailableWindow : Window
     public UpdateAvailableWindow(UpdateAvailableViewModel viewModel) : this()
     {
         DataContext = viewModel;
-        viewModel.OpenRequested = RevealAsync;
-        viewModel.ApplyRequested = ApplyAsync;
 
         // The notes are markdown; render them once into the placeholder (there's no in-app markdown control).
+        // Download/install now live in the main-window banner (SE-151), so this dialog is notes-only.
         NotesHost.Child = MiniMarkdown.Render(viewModel.Notes);
-    }
-
-    // Carry out the update result on the desktop lifetime: relaunch the new build and exit, or exit for the
-    // installer. A guided (macOS) or failed result just leaves the dialog as-is with its status message.
-    private Task ApplyAsync(SqlExplorer.Core.Update.ApplyResult result)
-    {
-        AppRestart.Execute(result);
-        return Task.CompletedTask;
-    }
-
-    // Hand-off (Fase 1): reveal the containing folder rather than launch the downloaded binary — the user
-    // runs the installer themselves. Best-effort: a missing shell handler must not take the dialog down.
-    private static Task RevealAsync(string filePath)
-    {
-        try
-        {
-            var folder = Path.GetDirectoryName(filePath) ?? filePath;
-            Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
-        }
-        catch (Exception)
-        {
-        }
-
-        return Task.CompletedTask;
     }
 
     private void OnClose(object? sender, RoutedEventArgs e) => Close();

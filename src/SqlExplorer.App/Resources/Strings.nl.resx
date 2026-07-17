@@ -1311,6 +1311,33 @@
   <data name="UpdateBannerLater" xml:space="preserve">
     <value>Later</value>
   </data>
+  <data name="UpdateBannerDownload" xml:space="preserve">
+    <value>Downloaden</value>
+  </data>
+  <data name="UpdateBannerDownloading" xml:space="preserve">
+    <value>{0} downloaden…</value>
+  </data>
+  <data name="UpdateBannerReady" xml:space="preserve">
+    <value>{0} gedownload — nu installeren en herstarten?</value>
+  </data>
+  <data name="UpdateBannerUpdateNow" xml:space="preserve">
+    <value>Nu updaten</value>
+  </data>
+  <data name="UpdateBannerOpenFolder" xml:space="preserve">
+    <value>Map openen</value>
+  </data>
+  <data name="UpdateBannerCancel" xml:space="preserve">
+    <value>Annuleren</value>
+  </data>
+  <data name="UpdateBannerRetry" xml:space="preserve">
+    <value>Opnieuw</value>
+  </data>
+  <data name="UpdateBannerRefetched" xml:space="preserve">
+    <value>Nieuwere build {0} gedownload — nu installeren en herstarten?</value>
+  </data>
+  <data name="UpdateBannerUpToDate" xml:space="preserve">
+    <value>Je hebt al de nieuwste build.</value>
+  </data>
   <data name="UpdateDialogTitle" xml:space="preserve">
     <value>Update beschikbaar</value>
   </data>

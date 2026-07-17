@@ -19,21 +19,9 @@
                  FontFamily="Cascadia Code,Consolas,Menlo,monospace" />
     </StackPanel>
 
-    <!-- Footer: progress/status on the left, actions on the right -->
-    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="0,14,0,0">
-      <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="4">
-        <ProgressBar Value="{Binding DownloadProgress}" Maximum="1" Height="4"
-                     IsVisible="{Binding IsDownloading}" />
-        <TextBlock Text="{Binding StatusMessage}" FontSize="11.5"
-                   Foreground="{DynamicResource SETextSecondaryBrush}" TextWrapping="Wrap" />
-      </StackPanel>
-      <Button Grid.Column="1" Classes="Accent" Margin="0,0,8,0"
-              Content="{Binding Loc[UpdateDialogInstall]}"
-              Command="{Binding InstallAndRestartCommand}" IsVisible="{Binding CanInstall}" />
-      <Button Grid.Column="1" Classes="Accent" Margin="0,0,8,0"
-              Content="{Binding Loc[UpdateDialogDownload]}"
-              Command="{Binding DownloadCommand}" IsVisible="{Binding ShowDownloadOnly}" />
-      <Button Grid.Column="2" Content="{Binding Loc[Close]}" Click="OnClose" />
+    <!-- Footer: close only. Download/install live in the main-window banner now (SE-151). -->
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+      <Button Grid.Column="1" Content="{Binding Loc[Close]}" Click="OnClose" />
     </Grid>
 
     <!-- Release notes (rendered from markdown in code-behind) -->

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Cryptography;
 using SqlExplorer.Core.Plugins;
 using SqlExplorer.Core.Store;
@@ -5,8 +6,11 @@ using SqlExplorer.Core.Update;
 
 namespace SqlExplorer.Infrastructure.Update;
 
-/// <summary>Result of a <see cref="UpdateDownloader.DownloadAsync"/>: the verified file, or why it failed.</summary>
-public sealed record UpdateDownloadOutcome(bool Success, string? FilePath, string? Kind, string? Error)
+/// <summary>Result of a <see cref="UpdateDownloader.DownloadAsync"/>: the verified file, or why it failed.
+/// <see cref="AssetUnavailable"/> is set when the asset URL 404/410'd — a rotating nightly asset that expired
+/// between the check and the download (SE-153); the caller can re-fetch update.json and retry with the fresh asset.</summary>
+public sealed record UpdateDownloadOutcome(
+    bool Success, string? FilePath, string? Kind, string? Error, bool AssetUnavailable = false)
 {
     public static UpdateDownloadOutcome Ok(string filePath, string? kind) => new(true, filePath, kind, null);
     public static UpdateDownloadOutcome Fail(string error) => new(false, null, null, error);
@@ -51,6 +55,11 @@ public sealed class UpdateDownloader(HttpClient http, string? downloadRoot = nul
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             throw;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
+        {
+            // The asset URL expired (a rotating nightly rolled on). Signal the caller to re-fetch update.json.
+            return UpdateDownloadOutcome.Fail(ex.Message) with { AssetUnavailable = true };
         }
         catch (Exception ex) when (
             ex is HttpRequestException or TaskCanceledException or InvalidDataException or IOException)

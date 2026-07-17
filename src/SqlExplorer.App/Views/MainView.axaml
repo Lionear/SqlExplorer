@@ -90,18 +90,78 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
-      <!-- App update available banner (blue) — SE-137 startup check found a newer build on the channel. -->
-      <Border IsVisible="{Binding Update.HasUpdate}" Background="#1F3B82F6"
-              BorderBrush="#593B82F6" BorderThickness="0,0,0,1" Padding="12,7">
-        <StackPanel Orientation="Horizontal" Spacing="12">
-          <TextBlock Text="{Binding Update.BannerText}" Foreground="{DynamicResource SEAccentBrush}"
-                     FontSize="12" VerticalAlignment="Center" />
-          <Button Classes="Subtle" Content="{Binding Loc[UpdateBannerViewChangelog]}"
-                  Command="{Binding Update.ViewChangelogCommand}" />
-          <Button Classes="Subtle" Content="{Binding Loc[UpdateBannerLater]}"
-                  Command="{Binding Update.LaterCommand}" />
-        </StackPanel>
-      </Border>
+      <!-- App update banner (SE-137 / SE-151): download + install happen inline, so the content switches
+           per banner state. Only one variant is ever visible; the whole group is gated on HasUpdate. -->
+      <StackPanel IsVisible="{Binding Update.HasUpdate}">
+        <!-- Available (blue) -->
+        <Border IsVisible="{Binding Update.IsAvailable}" Background="#1F3B82F6"
+                BorderBrush="#593B82F6" BorderThickness="0,0,0,1" Padding="12,7">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Text="{Binding Update.BannerText}" Foreground="{DynamicResource SEAccentBrush}"
+                       FontSize="12" VerticalAlignment="Center" />
+            <Button Classes="Accent" Content="{Binding Loc[UpdateBannerDownload]}"
+                    Command="{Binding Update.DownloadCommand}" />
+            <Button Classes="Subtle" Content="{Binding Loc[UpdateBannerViewChangelog]}"
+                    Command="{Binding Update.ViewChangelogCommand}" />
+            <Button Classes="Subtle" Content="{Binding Loc[UpdateBannerLater]}"
+                    Command="{Binding Update.LaterCommand}" />
+          </StackPanel>
+        </Border>
+
+        <!-- Downloading (blue) — inline progress -->
+        <Border IsVisible="{Binding Update.IsDownloading}" Background="#1F3B82F6"
+                BorderBrush="#593B82F6" BorderThickness="0,0,0,1" Padding="12,7">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Text="{Binding Update.StatusMessage}" Foreground="{DynamicResource SEAccentBrush}"
+                       FontSize="12" VerticalAlignment="Center" />
+            <ProgressBar Width="160" Height="4" Minimum="0" Maximum="1"
+                         Value="{Binding Update.DownloadProgress}" VerticalAlignment="Center" />
+            <Button Classes="Subtle" Content="{Binding Loc[UpdateBannerCancel]}"
+                    Command="{Binding Update.CancelDownloadCommand}" />
+          </StackPanel>
+        </Border>
+
+        <!-- Ready to install (green) -->
+        <Border IsVisible="{Binding Update.IsReadyToInstall}" Background="#1F4FB06A"
+                BorderBrush="#594FB06A" BorderThickness="0,0,0,1" Padding="12,7">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Text="{Binding Update.StatusMessage}" Foreground="#4FB06A"
+                       FontSize="12" VerticalAlignment="Center" />
+            <Button Classes="Accent" Content="{Binding Loc[UpdateBannerUpdateNow]}"
+                    Command="{Binding Update.InstallAndRestartCommand}" />
+            <Button Classes="Subtle" Content="{Binding Loc[UpdateBannerViewChangelog]}"
+                    Command="{Binding Update.ViewChangelogCommand}" />
+            <Button Classes="Subtle" Content="{Binding Loc[UpdateBannerLater]}"
+                    Command="{Binding Update.LaterCommand}" />
+          </StackPanel>
+        </Border>
+
+        <!-- Guided / hand-off (green) — macOS drag or a download-only asset -->
+        <Border IsVisible="{Binding Update.IsGuided}" Background="#1F4FB06A"
+                BorderBrush="#594FB06A" BorderThickness="0,0,0,1" Padding="12,7">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Text="{Binding Update.StatusMessage}" Foreground="#4FB06A"
+                       FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Classes="Subtle" Content="{Binding Loc[UpdateBannerOpenFolder]}"
+                    Command="{Binding Update.OpenFolderCommand}" />
+            <Button Classes="Subtle" Content="{Binding Loc[UpdateBannerLater]}"
+                    Command="{Binding Update.LaterCommand}" />
+          </StackPanel>
+        </Border>
+
+        <!-- Failed (red) -->
+        <Border IsVisible="{Binding Update.IsFailed}" Background="#1FE5686A"
+                BorderBrush="#59E5686A" BorderThickness="0,0,0,1" Padding="12,7">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Text="{Binding Update.StatusMessage}" Foreground="#E5686A"
+                       FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Classes="Accent" Content="{Binding Loc[UpdateBannerRetry]}"
+                    Command="{Binding Update.RetryCommand}" />
+            <Button Classes="Subtle" Content="{Binding Loc[UpdateBannerLater]}"
+                    Command="{Binding Update.LaterCommand}" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
 
       <!-- Plugin "restart needed" banner (amber) — shown when the Store staged install/enable/remove changes. -->
       <Border IsVisible="{Binding PluginRestartRequired}" Background="#1FE0A33E"

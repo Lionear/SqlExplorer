@@ -47,6 +47,9 @@ public partial class MainWindow : Window
             {
                 vm.AboutRequested = ShowAboutAsync;
                 vm.Update.ChangelogRequested = ShowUpdateChangelogAsync;
+                // SE-151: the banner now downloads + installs inline, so wire its apply/reveal callbacks here.
+                vm.Update.ApplyRequested = result => { AppRestart.Execute(result); return Task.CompletedTask; };
+                vm.Update.OpenRequested = RevealFolderAsync;
                 RebuildKeyBindings();
 
                 // A language switch fires Loc.PropertyChanged(null) — the correct "everything on
@@ -133,6 +136,22 @@ public partial class MainWindow : Window
 
     private async Task ShowUpdateChangelogAsync(ViewModels.UpdateAvailableViewModel viewModel) =>
         await new UpdateAvailableWindow(viewModel).ShowDialog(this);
+
+    // The guided hand-off (SE-151): reveal the containing folder rather than launch the binary — the user
+    // runs the installer themselves. Best-effort: a missing shell handler must not take the window down.
+    private static Task RevealFolderAsync(string filePath)
+    {
+        try
+        {
+            var folder = System.IO.Path.GetDirectoryName(filePath) ?? filePath;
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(folder) { UseShellExecute = true });
+        }
+        catch (Exception)
+        {
+        }
+
+        return Task.CompletedTask;
+    }
 
     private void RestoreLayout()
     {
