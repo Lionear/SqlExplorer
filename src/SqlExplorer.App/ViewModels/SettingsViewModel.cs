@@ -43,6 +43,7 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly IStoreSourcesStore _sources;
     private readonly IStoreCatalog _catalog;
     private readonly System.Net.Http.HttpClient _http;
+    private readonly Core.Update.AppUpdateService _appUpdate;
 
     // Idle auto-lock options (minutes; 0 = Never), index-matched to the Security-page dropdown.
     private static readonly int[] LockMinuteOptions = [0, 15, 30, 60];
@@ -79,6 +80,78 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLanguageChanged(string? value) => OnPropertyChanged(nameof(SelectedLanguage));
+
+    // ── App updates (SE-137) ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>A selectable release channel card in the Updates pane: label, a badge (recommended / the
+    /// branch it tracks), a one-line description and the accent dot colour.</summary>
+    public sealed record UpdateChannelOption(
+        Core.Update.UpdateChannel Channel, string Label, string Badge, string Description,
+        IBrush DotBrush, IBrush BadgeBg);
+
+    public IReadOnlyList<UpdateChannelOption> UpdateChannels { get; }
+
+    private static IBrush ChannelDot(string hex) => new SolidColorBrush(Color.Parse(hex));
+
+    // A translucent tint of the channel colour, for the badge background behind the coloured label.
+    private static IBrush ChannelTint(string hex)
+    {
+        var c = Color.Parse(hex);
+        return new SolidColorBrush(new Color(0x33, c.R, c.G, c.B));
+    }
+
+    [ObservableProperty]
+    private Core.Update.UpdateChannel _selectedUpdateChannel;
+
+    /// <summary>Two-way bridge between the channel dropdown and <see cref="SelectedUpdateChannel"/>.</summary>
+    public UpdateChannelOption? SelectedUpdateChannelOption
+    {
+        get => UpdateChannels.FirstOrDefault(o => o.Channel == SelectedUpdateChannel);
+        set
+        {
+            if (value is not null)
+            {
+                SelectedUpdateChannel = value.Channel;
+            }
+        }
+    }
+
+    partial void OnSelectedUpdateChannelChanged(Core.Update.UpdateChannel value)
+    {
+        OnPropertyChanged(nameof(SelectedUpdateChannelOption));
+        UpdateCheckStatus = null;
+    }
+
+    [ObservableProperty]
+    private bool _checkForUpdatesOnStartup;
+
+    [ObservableProperty]
+    private string? _updateCheckStatus;
+
+    [ObservableProperty]
+    private bool _isCheckingUpdate;
+
+    /// <summary>Manual "Check now" from the Updates pane — reports inline; the main-window banner is separate.</summary>
+    [RelayCommand]
+    private async System.Threading.Tasks.Task CheckForUpdatesNow()
+    {
+        IsCheckingUpdate = true;
+        UpdateCheckStatus = Loc["UpdateCheckChecking"];
+        try
+        {
+            var result = await _appUpdate.CheckAsync(SelectedUpdateChannel, System.Threading.CancellationToken.None);
+            UpdateCheckStatus = result.Status switch
+            {
+                Core.Update.UpdateStatus.Available => Loc.Get("UpdateCheckAvailable", result.Manifest!.Version),
+                Core.Update.UpdateStatus.UpToDate => Loc["UpdateCheckUpToDate"],
+                _ => Loc["UpdateCheckFailed"]
+            };
+        }
+        finally
+        {
+            IsCheckingUpdate = false;
+        }
+    }
 
     [ObservableProperty]
     private AppTheme _theme;
@@ -227,6 +300,7 @@ public partial class SettingsViewModel : ViewModelBase
         IStoreSourcesStore sources,
         IStoreCatalog catalog,
         System.Net.Http.HttpClient http,
+        Core.Update.AppUpdateService appUpdate,
         ILocalizer localizer)
     {
         _store = store;
@@ -240,7 +314,21 @@ public partial class SettingsViewModel : ViewModelBase
         _sources = sources;
         _catalog = catalog;
         _http = http;
+        _appUpdate = appUpdate;
         Loc = localizer;
+
+        UpdateChannels =
+        [
+            new(Core.Update.UpdateChannel.Stable, localizer["UpdateChannelStable"],
+                localizer["UpdateChannelStableBadge"], localizer["UpdateChannelStableDesc"],
+                ChannelDot("#3FB950"), ChannelTint("#3FB950")),
+            new(Core.Update.UpdateChannel.Preview, localizer["UpdateChannelPreview"],
+                "main", localizer["UpdateChannelPreviewDesc"],
+                ChannelDot("#3B82F6"), ChannelTint("#3B82F6")),
+            new(Core.Update.UpdateChannel.Nightly, localizer["UpdateChannelNightly"],
+                "develop", localizer["UpdateChannelNightlyDesc"],
+                ChannelDot("#E0A33E"), ChannelTint("#E0A33E")),
+        ];
 
         Categories =
         [
@@ -418,6 +506,9 @@ public partial class SettingsViewModel : ViewModelBase
         QueryTimeoutSeconds = settings.QueryTimeoutSeconds;
         BrowsePageSize = settings.BrowsePageSize;
         RestoreTabsOnStartup = settings.RestoreTabsOnStartup;
+        SelectedUpdateChannel = settings.UpdateChannel;
+        CheckForUpdatesOnStartup = settings.CheckForUpdatesOnStartup;
+        UpdateCheckStatus = null;
         ShowSystemDatabases = settings.ShowSystemDatabases;
         ConfirmOnExit = settings.ConfirmOnExit;
         CloseToTray = settings.CloseToTray;
@@ -555,6 +646,8 @@ public partial class SettingsViewModel : ViewModelBase
         QueryTimeoutSeconds = defaults.QueryTimeoutSeconds;
         BrowsePageSize = defaults.BrowsePageSize;
         RestoreTabsOnStartup = defaults.RestoreTabsOnStartup;
+        SelectedUpdateChannel = defaults.UpdateChannel;
+        CheckForUpdatesOnStartup = defaults.CheckForUpdatesOnStartup;
         ShowSystemDatabases = defaults.ShowSystemDatabases;
         ConfirmOnExit = defaults.ConfirmOnExit;
         CloseToTray = defaults.CloseToTray;
@@ -602,6 +695,13 @@ public partial class SettingsViewModel : ViewModelBase
         settings.QueryTimeoutSeconds = QueryTimeoutSeconds;
         settings.BrowsePageSize = BrowsePageSize;
         settings.RestoreTabsOnStartup = RestoreTabsOnStartup;
+        // Switching channels clears the "Later" dismissal so the new channel's build can notify afresh.
+        if (settings.UpdateChannel != SelectedUpdateChannel)
+        {
+            settings.DismissedUpdateVersion = null;
+        }
+        settings.UpdateChannel = SelectedUpdateChannel;
+        settings.CheckForUpdatesOnStartup = CheckForUpdatesOnStartup;
         settings.ShowSystemDatabases = ShowSystemDatabases;
         settings.ConfirmOnExit = ConfirmOnExit;
         settings.CloseToTray = CloseToTray;

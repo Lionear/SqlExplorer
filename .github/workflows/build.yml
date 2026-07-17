@@ -32,6 +32,7 @@ on:
     - cron: "0 2 * * *"   # nightly (develop) — expect drift, see note above
   push:
     branches: [main]
+    tags: ["v*"]       # stable channel: a version tag cuts a real, latest release
     paths-ignore:      # docs / non-code changes shouldn't spend a full build
       - "**.md"
       - "docs/**"
@@ -58,9 +59,14 @@ jobs:
     outputs:
       ref: ${{ steps.target.outputs.ref }}
       tag: ${{ steps.target.outputs.tag }}
+      release_tag: ${{ steps.target.outputs.release_tag }}
       channel: ${{ steps.target.outputs.channel }}
+      version: ${{ steps.target.outputs.version }}
     steps:
-      - name: Resolve ref and release tag
+      # Needed to read the base <Version> from Directory.Build.props for rolling stamps.
+      - uses: actions/checkout@v4
+
+      - name: Resolve ref, channel and version
         id: target
         # Workflow inputs reach bash through env, never through `${{ }}`: GitHub substitutes those
         # textually before the shell parses the line, so an input can close the quote and append
@@ -68,31 +74,73 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_REF: ${{ inputs.ref }}
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_NUMBER: ${{ github.run_number }}
         run: |
           set -euo pipefail
+
+          IS_TAG=no
           case "$EVENT_NAME" in
             schedule)          REF=develop ;;
             workflow_dispatch) REF="${INPUT_REF:-develop}" ;;
-            *)                 REF=main ;;   # push to main
+            push)
+              if [ "$REF_TYPE" = tag ]; then REF="$REF_NAME"; IS_TAG=yes; else REF=main; fi ;;
+            *)                 REF=main ;;
           esac
 
-          # `type: choice` already limits this to develop/main, but the checkout below turns it into
-          # code execution, so it gets a second gate that does not depend on the UI.
-          case "$REF" in
-            develop|main) ;;
-            *) echo "Refusing to build unexpected ref: $REF" >&2; exit 1 ;;
-          esac
-
-          if [ "$REF" = "main" ]; then
-            TAG=preview; CHANNEL=preview
+          # Both branches and tags become a checkout ref (code execution), so gate hard, not via the UI:
+          # branch builds are develop/main only; a tag build must be a v<semver> tag.
+          if [ "$IS_TAG" = yes ]; then
+            if ! printf '%s' "$REF" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.]+)?$'; then
+              echo "Refusing tag ref: $REF" >&2; exit 1
+            fi
           else
-            TAG=nightly; CHANNEL=nightly
+            case "$REF" in
+              develop|main) ;;
+              *) echo "Refusing to build unexpected ref: $REF" >&2; exit 1 ;;
+            esac
           fi
 
-          echo "ref=$REF"         >> "$GITHUB_OUTPUT"
-          echo "tag=$TAG"         >> "$GITHUB_OUTPUT"
-          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          echo "Building $REF -> release '$TAG'"
+          # Channel + two tags. TAG carries the rolling update.json manifest (one per channel). RELEASE_TAG
+          # is where the build assets land: the v-tag itself for Stable (a real latest release), the rolling
+          # tag otherwise.
+          if [ "$IS_TAG" = yes ]; then
+            CHANNEL=stable;  TAG=stable;  RELEASE_TAG="$REF"
+          elif [ "$REF" = main ]; then
+            CHANNEL=preview; TAG=preview; RELEASE_TAG=preview
+          else
+            CHANNEL=nightly; TAG=nightly; RELEASE_TAG=nightly
+          fi
+
+          # Version: Stable takes the tag verbatim (v0.2.0 -> 0.2.0); rolling channels stamp the base
+          # <Version> with channel.date.run; an explicit dispatch input overrides.
+          BASE=$(sed -n 's|.*<Version>\(.*\)</Version>.*|\1|p' Directory.Build.props)
+          if [ "$CHANNEL" = stable ]; then
+            VERSION="${REF#v}"
+          elif [ -n "${INPUT_VERSION:-}" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            if [ -z "$BASE" ]; then echo "No <Version> in Directory.Build.props" >&2; exit 1; fi
+            VERSION="$BASE-$CHANNEL.$(date -u +%Y%m%d).$RUN_NUMBER"
+          fi
+
+          # This value later reaches MSBuild args, pwsh command lines and file names. Keeping it boring
+          # (letters/digits/dot/plus/hyphen) is the backstop that also blocks a newline forging output.
+          if ! printf '%s' "$VERSION" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9.+-]*$'; then
+            echo "Refusing version '$VERSION': expected only letters, digits, dot, plus and hyphen" >&2
+            exit 1
+          fi
+
+          {
+            echo "ref=$REF"
+            echo "tag=$TAG"
+            echo "release_tag=$RELEASE_TAG"
+            echo "channel=$CHANNEL"
+            echo "version=$VERSION"
+          } >> "$GITHUB_OUTPUT"
+          echo "Building $REF -> channel '$CHANNEL' (assets on '$RELEASE_TAG', manifest on '$TAG'), version $VERSION"
 
   build:
     name: ${{ matrix.name }}
@@ -138,39 +186,19 @@ jobs:
       - name: Resolve version
         id: version
         shell: bash
-        # See the note in `setup`: inputs come in as env, not as `${{ }}` inside the script.
+        # The version is decided once in `setup` (so build and release can't disagree). Re-validate it
+        # here as a backstop before it reaches MSBuild args, pwsh command lines and file names.
         env:
-          INPUT_VERSION: ${{ inputs.version }}
-          CHANNEL: ${{ needs.setup.outputs.channel }}
-          RUN_NUMBER: ${{ github.run_number }}
-          TARGET_REF: ${{ needs.setup.outputs.ref }}
+          VERSION_IN: ${{ needs.setup.outputs.version }}
         run: |
           set -euo pipefail
-          # Single source of truth: the same <Version> the assemblies get. Hardcoding it here once meant
-          # the workflow and Directory.Build.props could drift apart without anything failing.
-          BASE=$(sed -n 's|.*<Version>\(.*\)</Version>.*|\1|p' Directory.Build.props)
-          if [ -z "$BASE" ]; then
-            echo "No <Version> in Directory.Build.props" >&2
-            exit 1
-          fi
-
-          if [ -n "${INPUT_VERSION:-}" ]; then
-            VERSION="$INPUT_VERSION"
-          else
-            VERSION="$BASE-$CHANNEL.$(date -u +%Y%m%d).$RUN_NUMBER"
-          fi
-
-          # This value becomes a step output that later steps splice into a pwsh command line, MSBuild
-          # arguments and file names. Passing it as env everywhere is the main defence; this gate is the
-          # backstop that keeps the value boring in the first place, and blocks the newline that would
-          # otherwise let it forge extra entries in $GITHUB_OUTPUT.
+          VERSION="$VERSION_IN"
           if ! printf '%s' "$VERSION" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9.+-]*$'; then
             echo "Refusing version '$VERSION': expected only letters, digits, dot, plus and hyphen" >&2
             exit 1
           fi
-
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Version: $VERSION (base $BASE, ref $TARGET_REF)"
+          echo "Version: $VERSION"
 
       - name: Publish
         shell: bash
@@ -323,47 +351,88 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-  # Publishes a rolling prerelease per channel, with stable asset download links:
-  #   https://github.com/Lionear/SqlExplorer/releases/download/nightly/<file>   (develop)
-  #   https://github.com/Lionear/SqlExplorer/releases/download/preview/<file>   (main)
-  # Runs on the scheduled build, on a push to main, or on a manual run with publish_release ticked.
+  # Publishes each channel's release plus its update.json manifest (the in-app updater's source of truth):
+  #   Stable  : a real, latest, non-prerelease release on the v-tag (assets), and a rolling `stable`
+  #             release carrying only update.json (links point at the v-tag assets).
+  #   Preview : rolling prerelease `preview` with assets + update.json   (main)
+  #   Nightly : rolling prerelease `nightly` with assets + update.json   (develop)
+  # Download links are stable per channel:
+  #   https://github.com/Lionear/SqlExplorer/releases/download/{stable|preview|nightly}/update.json
+  # Runs on the scheduled build, on a push (branch or tag), or on a manual run with publish_release ticked.
   release:
-    name: Publish ${{ needs.setup.outputs.tag }} release
+    name: Publish ${{ needs.setup.outputs.channel }} release
     needs: [setup, build]
     if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.publish_release }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      # Full history + tags so the changelog can diff against the previous v-tag.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup.outputs.ref }}
+          fetch-depth: 0
+          fetch-tags: true
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist   # each artifact lands in dist/<rid>/<file>
 
-      - name: Publish/refresh rolling release
+      - name: Publish release + update.json
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}   # gh has no checkout here; resolve the repo via API, not git
+          GH_REPO: ${{ github.repository }}
+          CHANNEL: ${{ needs.setup.outputs.channel }}
+          TAG: ${{ needs.setup.outputs.tag }}
+          RELEASE_TAG: ${{ needs.setup.outputs.release_tag }}
+          REF: ${{ needs.setup.outputs.ref }}
+          VERSION: ${{ needs.setup.outputs.version }}
         run: |
           set -euo pipefail
-          TAG=${{ needs.setup.outputs.tag }}
-          REF=${{ needs.setup.outputs.ref }}
-          NOTES="Automated build of \`$REF\` on $(date -u +'%Y-%m-%d %H:%M UTC').
+
+          # One flat dir for the manifest scanner and the upload glob.
+          mkdir -p assets
+          find dist -type f -exec cp {} assets/ \;
+
+          # Changelog since the previous v-tag. Head of the range is the tag for Stable, the branch tip
+          # otherwise. A first release with no prior tag lists everything.
+          if [ "$CHANNEL" = stable ]; then HEAD_REF="$RELEASE_TAG"; else HEAD_REF=HEAD; fi
+          PREV=$(git describe --tags --abbrev=0 --match 'v*' "${HEAD_REF}^" 2>/dev/null || true)
+          if [ -n "$PREV" ]; then RANGE="$PREV..$HEAD_REF"; else RANGE="$HEAD_REF"; fi
+          RANGE="$RANGE" tools/make-changelog.sh > notes.md || echo "No changes recorded." > notes.md
+
+          COMMIT=$(git rev-parse --short "$HEAD_REF")
+          PUBLISHED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          DOWNLOAD_BASE="https://github.com/$GH_REPO/releases/download/$RELEASE_TAG"
+
+          CHANNEL="$CHANNEL" VERSION="$VERSION" COMMIT="$COMMIT" PUBLISHED_AT="$PUBLISHED_AT" \
+            ASSET_DIR=assets DOWNLOAD_BASE="$DOWNLOAD_BASE" NOTES_FILE=notes.md OUT=update.json \
+            tools/make-update-manifest.sh
+
+          BODY="$(cat notes.md)
 
           These builds are unsigned / not notarized.
+          macOS: after moving to /Applications, clear quarantine: xattr -cr \"/Applications/SQL Explorer.app\".
+          Windows: pick the -setup.exe (per-user, no admin) or the .zip; SmartScreen may warn on first launch."
 
-          macOS: the app is ad-hoc signed but not notarized, so a downloaded copy is quarantined and macOS reports \"is damaged and can't be opened\". After moving it to /Applications, clear the quarantine flag, then open normally:
-              xattr -cr \"/Applications/SQL Explorer.app\"
-
-          Windows: pick the -setup.exe installer (Start-menu entry + uninstaller, no admin needed) or the .zip for a portable copy. SmartScreen may warn on first launch (More info -> Run anyway)."
-
-          # Recreate the release so the tag, date and notes track the latest build.
-          gh release delete "$TAG" --yes --cleanup-tag || true
-          if [ "$TAG" = "nightly" ]; then TITLE="Nightly build (develop)"; else TITLE="Preview build (main)"; fi
-          # Target the branch we built: on a scheduled run GITHUB_SHA is main's head, but the artifacts
-          # came from develop — tagging the SHA would attach the release to the wrong commit.
-          gh release create "$TAG" dist/*/* \
-            --title "$TITLE" \
-            --notes "$NOTES" \
-            --prerelease \
-            --target "$REF"
+          if [ "$CHANNEL" = stable ]; then
+            # Real latest release on the human-pushed v-tag (assets here). Delete only the release, never
+            # the tag — the tag is what we checked out and what users cite.
+            gh release delete "$RELEASE_TAG" --yes || true
+            gh release create "$RELEASE_TAG" assets/* \
+              --title "SQL Explorer $VERSION" --notes "$BODY" --latest --target "$REF"
+            # Rolling `stable` pointer: only update.json, whose asset URLs point at the v-tag release above.
+            gh release delete "$TAG" --yes --cleanup-tag || true
+            gh release create "$TAG" update.json \
+              --title "Stable channel manifest" \
+              --notes "Update manifest for the Stable channel (points at the latest v-tag release)." \
+              --latest=false --target "$REF"
+          else
+            if [ "$TAG" = nightly ]; then TITLE="Nightly build (develop)"; else TITLE="Preview build (main)"; fi
+            # Recreate the rolling release so tag, date and notes track the latest build. Target the branch
+            # we built: on a scheduled run GITHUB_SHA is main's head, but the artifacts came from develop.
+            gh release delete "$TAG" --yes --cleanup-tag || true
+            gh release create "$TAG" assets/* update.json \
+              --title "$TITLE" --notes "$BODY" --prerelease --target "$REF"
+          fi

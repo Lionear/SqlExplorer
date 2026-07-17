@@ -46,6 +46,7 @@ public partial class MainWindow : Window
             if (DataContext is MainViewModel vm)
             {
                 vm.AboutRequested = ShowAboutAsync;
+                vm.Update.ChangelogRequested = ShowUpdateChangelogAsync;
                 RebuildKeyBindings();
 
                 // A language switch fires Loc.PropertyChanged(null) — the correct "everything on
@@ -129,6 +130,9 @@ public partial class MainWindow : Window
 
     private async Task ShowAboutAsync(ViewModels.AboutViewModel viewModel) =>
         await new AboutWindow(viewModel).ShowDialog(this);
+
+    private async Task ShowUpdateChangelogAsync(ViewModels.UpdateAvailableViewModel viewModel) =>
+        await new UpdateAvailableWindow(viewModel).ShowDialog(this);
 
     private void RestoreLayout()
     {

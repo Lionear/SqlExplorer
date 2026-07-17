@@ -90,6 +90,19 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
+      <!-- App update available banner (blue) — SE-137 startup check found a newer build on the channel. -->
+      <Border IsVisible="{Binding Update.HasUpdate}" Background="#1F3B82F6"
+              BorderBrush="#593B82F6" BorderThickness="0,0,0,1" Padding="12,7">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="{Binding Update.BannerText}" Foreground="{DynamicResource SEAccentBrush}"
+                     FontSize="12" VerticalAlignment="Center" />
+          <Button Classes="Subtle" Content="{Binding Loc[UpdateBannerViewChangelog]}"
+                  Command="{Binding Update.ViewChangelogCommand}" />
+          <Button Classes="Subtle" Content="{Binding Loc[UpdateBannerLater]}"
+                  Command="{Binding Update.LaterCommand}" />
+        </StackPanel>
+      </Border>
+
       <!-- Plugin "restart needed" banner (amber) — shown when the Store staged install/enable/remove changes. -->
       <Border IsVisible="{Binding PluginRestartRequired}" Background="#1FE0A33E"
               BorderBrush="#59E0A33E" BorderThickness="0,0,0,1" Padding="12,7">
