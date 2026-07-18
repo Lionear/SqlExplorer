@@ -537,11 +537,11 @@ public partial class SettingsViewModel : ViewModelBase
             new(KeywordCasing.Preserve, localizer["FormatCasingPreserve"]),
         ];
 
-        // Off / Notify only for now; Auto (silent stage-on-restart) lands with SE-138 phase 3.
         PluginUpdatePolicies =
         [
             new(PluginUpdatePolicy.Off, localizer["PluginUpdatePolicyOff"]),
             new(PluginUpdatePolicy.Notify, localizer["PluginUpdatePolicyNotify"]),
+            new(PluginUpdatePolicy.Auto, localizer["PluginUpdatePolicyAuto"]),
         ];
 
         Categories =

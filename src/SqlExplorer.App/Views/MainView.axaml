@@ -188,7 +188,7 @@
                   ToolTip.Tip="{Binding Loc[PluginUpdatesTooltip]}">
             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
               <Border Width="16" Height="16" CornerRadius="999" Background="{DynamicResource SEStatusWaitingBrush}">
-                <TextBlock Text="{Binding PluginUpdates.AvailableCount}" Foreground="White"
+                <TextBlock Text="{Binding PluginUpdates.BadgeCount}" Foreground="White"
                            FontSize="10" FontWeight="Bold"
                            HorizontalAlignment="Center" VerticalAlignment="Center" />
               </Border>
@@ -662,10 +662,18 @@
             Background="{DynamicResource SEPanelBgBrush}" BorderBrush="{DynamicResource SEHairlineBrush}"
             BorderThickness="1" CornerRadius="8" Padding="14,12,10,12" BoxShadow="0 6 22 0 #40000000">
       <Grid ColumnDefinitions="Auto,*,Auto">
+        <!-- amber ⟳ for available updates, blue ↑ for a held-back "update the app first" -->
         <Border Grid.Column="0" Width="30" Height="30" CornerRadius="7" VerticalAlignment="Top" Margin="0,0,12,0"
+                IsVisible="{Binding !PluginUpdates.IsHeldBack}"
                 Background="#1FE0A33E" BorderBrush="#59E0A33E" BorderThickness="1">
           <TextBlock Text="⟳" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"
                      Foreground="{DynamicResource SEStatusWaitingBrush}" />
+        </Border>
+        <Border Grid.Column="0" Width="30" Height="30" CornerRadius="7" VerticalAlignment="Top" Margin="0,0,12,0"
+                IsVisible="{Binding PluginUpdates.IsHeldBack}"
+                Background="#1F2F6FEB" BorderBrush="#592F6FEB" BorderThickness="1">
+          <TextBlock Text="↑" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"
+                     Foreground="{DynamicResource SEAccentBrush}" />
         </Border>
         <StackPanel Grid.Column="1" Spacing="2">
           <TextBlock Text="{Binding PluginUpdates.NotificationTitle}" FontSize="13" FontWeight="SemiBold"
@@ -687,13 +695,24 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <TextBlock Text="{Binding Loc[PluginUpdatesCompatible]}" FontSize="11.5" VerticalAlignment="Center"
+                       IsVisible="{Binding !PluginUpdates.IsHeldBack}"
+                       Foreground="{DynamicResource SETextFaintBrush}" />
+            <TextBlock Text="{Binding Loc[PluginUpdateHeldBackHint]}" FontSize="11.5" VerticalAlignment="Center"
+                       IsVisible="{Binding PluginUpdates.IsHeldBack}"
                        Foreground="{DynamicResource SETextFaintBrush}" />
           </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,9,0,0">
+          <!-- Available: act on / view the updates. Held-back: send the user to update the app. -->
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,9,0,0"
+                      IsVisible="{Binding !PluginUpdates.IsHeldBack}">
             <Button Classes="Accent" Content="{Binding Loc[PluginUpdatesViewUpdates]}"
                     Command="{Binding PluginUpdates.OpenStoreCommand}" />
             <Button Content="{Binding Loc[PluginUpdatesViewChangelog]}"
                     Command="{Binding PluginUpdates.ViewChangelogCommand}" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,9,0,0"
+                      IsVisible="{Binding PluginUpdates.IsHeldBack}">
+            <Button Classes="Accent" Content="{Binding Loc[PluginUpdatesUpdateApp]}"
+                    Command="{Binding PluginUpdates.UpdateAppCommand}" />
           </StackPanel>
         </StackPanel>
         <Button Grid.Column="2" Background="Transparent" BorderThickness="0" Padding="4,0" VerticalAlignment="Top"

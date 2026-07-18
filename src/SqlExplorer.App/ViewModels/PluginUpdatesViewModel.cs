@@ -13,12 +13,15 @@ using SqlExplorer.Core.Store;
 namespace SqlExplorer.App.ViewModels;
 
 /// <summary>
-/// The proactive layer over the Plugin Store's existing update detection (SE-138 phase 1): a background
-/// check on startup and on the shared update interval that surfaces an ambient top-bar badge and a
-/// persistent, actionable notification when compatible plugin updates exist — without the user opening
-/// the Store. Sibling of <see cref="AppUpdateViewModel"/> (which does the same for the host app). Only
-/// host-API-compatible, non-pinned versions are ever counted — that gate lives in
-/// <see cref="PluginUpdateService.DetectUpdates"/>, reused here verbatim.
+/// The proactive layer over the Plugin Store's update detection (SE-138): a background check on startup
+/// and on the shared update interval that, per the Settings policy,
+/// <list type="bullet">
+/// <item><b>Notify</b> — surfaces an ambient badge + a persistent, actionable notification (phase 1/2);</item>
+/// <item><b>Auto</b> — silently stages compatible, non-pinned updates for the next restart (phase 3);</item>
+/// <item>always — flags <b>held-back</b> updates that need a newer host app, instead of hiding them (phase 4).</item>
+/// </list>
+/// Only host-API-compatible, non-pinned versions are ever installed; that gate lives in
+/// <see cref="PluginUpdateService"/>, reused verbatim.
 /// </summary>
 public sealed partial class PluginUpdatesViewModel : ViewModelBase
 {
@@ -27,12 +30,16 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
     private readonly PluginUpdateService _updates;
     private readonly IAppSettingsStore _settingsStore;
 
-    // Floor on the re-check cadence so a mis-set interval can't hammer the catalog host (matches the app-updater).
     private static readonly TimeSpan MinCheckInterval = TimeSpan.FromMinutes(30);
 
-    // The update-set we last surfaced the notification for, so an unchanged set doesn't re-nag: the badge
-    // stays as the ambient cue, but the notification only re-opens when the set of pending updates changes.
+    // Keys of the update-set the notification was last surfaced for / the set last auto-staged, so an
+    // unchanged set neither re-nags nor re-stages.
     private string? _notifiedKey;
+    private string? _autoStagedKey;
+
+    private IReadOnlyList<PluginUpdate> _pendingUpdates = [];
+    private IReadOnlyList<string> _availableNames = [];
+    private IReadOnlyList<string> _heldBackNames = [];
 
     public PluginUpdatesViewModel(
         IStoreCatalog catalog, PluginCatalogService installed, PluginUpdateService updates,
@@ -53,37 +60,72 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
     /// <summary>Shows the combined per-plugin changelog dialog. Wired by the view (it owns the window).</summary>
     public Func<PluginChangelogViewModel, Task>? ChangelogRequested { get; set; }
 
-    /// <summary>Info-level messages for the Output panel — the plugin-update-check cadence and its result.
-    /// Wired by <see cref="MainViewModel"/>; null before wiring, so a check never fails on an unwired sink.</summary>
-    public Action<string>? Reported { get; set; }
+    /// <summary>Opens the app-update flow — the held-back notification's "Update app…". Wired by MainViewModel.</summary>
+    public Func<Task>? UpdateAppRequested { get; set; }
 
-    // The current pending updates (with their target-version notes), kept for the changelog dialog.
-    private IReadOnlyList<PluginUpdate> _pendingUpdates = [];
+    /// <summary>Raised after the Auto policy stages updates, so the host can light the restart-needed banner.</summary>
+    public Action? PendingChangesStaged { get; set; }
+
+    /// <summary>Info-level messages for the Output panel — the check cadence, its result, and auto-apply.
+    /// Wired by <see cref="MainViewModel"/>.</summary>
+    public Action<string>? Reported { get; set; }
 
     [ObservableProperty]
     private int _availableCount;
 
-    /// <summary>The display names of the plugins with a pending update — shown as chips in the notification.</summary>
+    [ObservableProperty]
+    private int _heldBackCount;
+
+    /// <summary>The plugin names shown as chips in the notification (available or held-back per variant).</summary>
     [ObservableProperty]
     private IReadOnlyList<string> _pluginNames = [];
 
-    /// <summary>The persistent notification's visibility. Shown once per update-set; hidden on dismiss or
-    /// after "View updates". The badge (<see cref="HasUpdates"/>) stays regardless as the ambient cue.</summary>
+    /// <summary>The persistent notification's visibility. Shown once per set; hidden on dismiss or action.</summary>
     [ObservableProperty]
     private bool _isNotificationVisible;
 
-    /// <summary>True when there are compatible updates and the policy isn't Off — drives the badge.</summary>
-    public bool HasUpdates => AvailableCount > 0 && Policy != PluginUpdatePolicy.Off;
+    /// <summary>The badge count = actionable updates + held-back ones; the badge is the ambient cue.</summary>
+    public int BadgeCount => AvailableCount + HeldBackCount;
 
-    public string NotificationTitle => Loc.Get("PluginUpdatesToast", AvailableCount);
+    /// <summary>True when there's anything pending and the policy isn't Off — drives the badge.</summary>
+    public bool HasUpdates => BadgeCount > 0 && Policy != PluginUpdatePolicy.Off;
 
-    partial void OnAvailableCountChanged(int value)
+    /// <summary>The notification shows the held-back variant when there's nothing installable but something
+    /// is held back for a newer app; otherwise the normal "updates available" variant.</summary>
+    public bool IsHeldBack => AvailableCount == 0 && HeldBackCount > 0;
+
+    public string NotificationTitle => IsHeldBack
+        ? Loc.Get("PluginUpdateHeldBackTitle", HeldBackCount)
+        : Loc.Get("PluginUpdatesToast", AvailableCount);
+
+    partial void OnAvailableCountChanged(int value) => RaiseDerived();
+
+    partial void OnHeldBackCountChanged(int value) => RaiseDerived();
+
+    private void RaiseDerived()
     {
+        OnPropertyChanged(nameof(BadgeCount));
         OnPropertyChanged(nameof(HasUpdates));
+        OnPropertyChanged(nameof(IsHeldBack));
         OnPropertyChanged(nameof(NotificationTitle));
     }
 
     private PluginUpdatePolicy Policy => _settingsStore.Load().PluginUpdatePolicy;
+
+    /// <summary>Report an "N plugins updated" summary for anything the Auto policy staged in a previous run
+    /// and the last restart applied (phase 3). Call once at startup; clears the marker.</summary>
+    public void ReportRestartSummaryIfAny()
+    {
+        var settings = _settingsStore.Load();
+        if (settings.PendingAutoUpdateNotice is not { Count: > 0 } applied)
+        {
+            return;
+        }
+
+        Reported?.Invoke(Loc.Get("PluginUpdateLogAutoApplied", applied.Count, string.Join(", ", applied)));
+        settings.PendingAutoUpdateNotice = null;
+        try { _settingsStore.Save(settings); } catch { /* never block startup on a preference write */ }
+    }
 
     public async Task CheckOnStartupAsync(CancellationToken ct)
     {
@@ -93,9 +135,8 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Re-check on the shared update interval (<see cref="AppSettings.UpdateCheckIntervalMinutes"/>)
-    /// while the app stays open. The interval and policy are re-read every pass, so a Settings change takes
-    /// effect without a restart; policy Off idles at the floor and re-reads.</summary>
+    /// <summary>Re-check on the shared update interval while the app stays open. Interval + policy re-read
+    /// each pass, so a Settings change applies without a restart; policy Off idles at the floor.</summary>
     public async Task RunPeriodicChecksAsync(CancellationToken ct)
     {
         try
@@ -120,39 +161,34 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
         }
     }
 
-    // Fault-tolerant: an offline/failed catalog fetch leaves the badge unchanged and never surfaces an error.
+    // Fault-tolerant: an offline/failed catalog fetch leaves state unchanged and never surfaces an error.
     private async Task CheckAsync(CancellationToken ct)
     {
         try
         {
             var catalog = await _catalog.FetchAsync(ct);
             var updates = _updates.DetectUpdates(_installed.Installed, catalog);
+            var heldBack = _updates.DetectHeldBack(_installed.Installed, catalog);
 
-            AvailableCount = updates.Count;
-
-            if (updates.Count == 0)
+            if (Policy == PluginUpdatePolicy.Auto && updates.Count > 0)
             {
+                await AutoStageAsync(updates, ct);
+                AvailableCount = 0; // staged silently — nothing for the user to act on
                 _pendingUpdates = [];
-                _notifiedKey = null;
-                IsNotificationVisible = false;
-                Reported?.Invoke(Loc["PluginUpdateLogNone"]);
-                return;
+                _availableNames = [];
             }
-
-            _pendingUpdates = updates;
-            PluginNames = updates.Select(u => u.Entry.Name).Distinct(StringComparer.Ordinal).ToList();
-            Reported?.Invoke(Loc.Get("PluginUpdateLogAvailable", updates.Count, string.Join(", ", PluginNames)));
-
-            var key = string.Join(",", updates
-                .Select(u => $"{u.Id}@{u.Target.Version}")
-                .OrderBy(x => x, StringComparer.Ordinal));
-
-            // New set → surface the notification once; an unchanged set leaves the badge only (no re-nag).
-            if (key != _notifiedKey)
+            else
             {
-                _notifiedKey = key;
-                IsNotificationVisible = true;
+                AvailableCount = updates.Count;
+                _pendingUpdates = updates;
+                _availableNames = updates.Select(u => u.Entry.Name).Distinct(StringComparer.Ordinal).ToList();
             }
+
+            HeldBackCount = heldBack.Count;
+            _heldBackNames = heldBack.Select(h => h.Name).Distinct(StringComparer.Ordinal).ToList();
+
+            LogResult(updates.Count, heldBack.Count);
+            UpdateNotification();
         }
         catch (OperationCanceledException)
         {
@@ -160,13 +196,75 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
         }
         catch
         {
-            // Offline or a source error — no badge change, but log it so the cadence is visible in Output.
             Reported?.Invoke(Loc["PluginUpdateLogFailed"]);
         }
     }
 
-    // Badge click and the notification's "View updates" both land here: open the Store on Installed, and
-    // dismiss the notification (the badge remains while updates are pending).
+    private async Task AutoStageAsync(IReadOnlyList<PluginUpdate> updates, CancellationToken ct)
+    {
+        var key = KeyOf(updates);
+        if (key == _autoStagedKey)
+        {
+            return; // already staged this exact set — don't re-stage every interval
+        }
+
+        await _updates.UpdateAllAsync(updates, progress: null, ct);
+        _autoStagedKey = key;
+
+        // Remember what was staged so the next startup can confirm it (post-restart summary).
+        var names = updates.Select(u => $"{u.Entry.Name} {u.Target.Version}").ToList();
+        var settings = _settingsStore.Load();
+        settings.PendingAutoUpdateNotice = (settings.PendingAutoUpdateNotice ?? [])
+            .Concat(names).Distinct(StringComparer.Ordinal).ToList();
+        try { _settingsStore.Save(settings); } catch { /* best-effort */ }
+
+        Reported?.Invoke(Loc.Get("PluginUpdateLogAutoStaged", updates.Count));
+        PendingChangesStaged?.Invoke(); // light the restart-needed banner
+    }
+
+    private void LogResult(int updateCount, int heldBackCount)
+    {
+        if (updateCount == 0 && heldBackCount == 0)
+        {
+            Reported?.Invoke(Loc["PluginUpdateLogNone"]);
+        }
+        else if (updateCount > 0)
+        {
+            Reported?.Invoke(Loc.Get("PluginUpdateLogAvailable", updateCount, string.Join(", ", _availableNames)));
+        }
+        else
+        {
+            Reported?.Invoke(Loc.Get("PluginUpdateLogHeldBack", heldBackCount));
+        }
+    }
+
+    private void UpdateNotification()
+    {
+        if (AvailableCount == 0 && HeldBackCount == 0)
+        {
+            _pendingUpdates = [];
+            _notifiedKey = null;
+            IsNotificationVisible = false;
+            PluginNames = [];
+            return;
+        }
+
+        var showHeld = IsHeldBack;
+        PluginNames = showHeld ? _heldBackNames : _availableNames;
+
+        // Surface once per (variant + set); an unchanged set leaves the badge as the only cue.
+        var key = (showHeld ? "H:" : "U:") + string.Join(",", PluginNames);
+        if (key != _notifiedKey)
+        {
+            _notifiedKey = key;
+            IsNotificationVisible = true;
+        }
+    }
+
+    private static string KeyOf(IReadOnlyList<PluginUpdate> updates) =>
+        string.Join(",", updates.Select(u => $"{u.Id}@{u.Target.Version}").OrderBy(x => x, StringComparer.Ordinal));
+
+    // Badge / "View updates" → open the Store on Installed; dismiss the notification (badge stays).
     [RelayCommand]
     private async Task OpenStore()
     {
@@ -179,6 +277,17 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
 
     [RelayCommand]
     private void Dismiss() => IsNotificationVisible = false;
+
+    // Held-back variant → open the app-update flow so the user can update the host, then dismiss.
+    [RelayCommand]
+    private async Task UpdateApp()
+    {
+        IsNotificationVisible = false;
+        if (UpdateAppRequested is not null)
+        {
+            await UpdateAppRequested();
+        }
+    }
 
     // Opens the combined changelog dialog: one section per pending update (name + version + notes).
     [RelayCommand]

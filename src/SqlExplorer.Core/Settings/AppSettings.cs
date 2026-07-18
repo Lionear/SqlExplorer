@@ -170,6 +170,10 @@ public sealed class AppSettings
     /// Reuses <see cref="UpdateCheckIntervalMinutes"/> for the background re-check cadence.</summary>
     public PluginUpdatePolicy PluginUpdatePolicy { get; set; } = PluginUpdatePolicy.Notify;
 
+    /// <summary>Plugins auto-staged by the Auto policy (SE-138 phase 3), each as "Name x.y.z", pending the
+    /// next restart. Read once on the next startup to show an "updated" summary, then cleared.</summary>
+    public List<string>? PendingAutoUpdateNotice { get; set; }
+
     /// <summary>Background re-check interval in minutes. 0 = only on startup (no periodic loop). Default 240
     /// (4 hours), matching the interval that was hardcoded before SE-152.</summary>
     public int UpdateCheckIntervalMinutes { get; set; } = 240;

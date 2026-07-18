@@ -1473,6 +1473,27 @@
   <data name="PluginUpdateLogFailed" xml:space="preserve">
     <value>Plugin-updates gecontroleerd: mislukt (offline?).</value>
   </data>
+  <data name="PluginUpdatePolicyAuto" xml:space="preserve">
+    <value>Automatisch toepassen bij herstart</value>
+  </data>
+  <data name="PluginUpdateHeldBackTitle" xml:space="preserve">
+    <value>{0} update(s) vereisen een nieuwere app</value>
+  </data>
+  <data name="PluginUpdateHeldBackHint" xml:space="preserve">
+    <value>· werk SQL Explorer bij om ze te ontgrendelen</value>
+  </data>
+  <data name="PluginUpdatesUpdateApp" xml:space="preserve">
+    <value>App bijwerken…</value>
+  </data>
+  <data name="PluginUpdateLogHeldBack" xml:space="preserve">
+    <value>Plugin-updates gecontroleerd: {0} vastgehouden (nieuwere app nodig).</value>
+  </data>
+  <data name="PluginUpdateLogAutoStaged" xml:space="preserve">
+    <value>{0} plugin-update(s) automatisch klaargezet — bij herstart toegepast.</value>
+  </data>
+  <data name="PluginUpdateLogAutoApplied" xml:space="preserve">
+    <value>{0} plugin(s) bijgewerkt bij herstart: {1}</value>
+  </data>
   <data name="PluginUpdatesTooltip" xml:space="preserve">
     <value>Er zijn compatibele plugin-updates — open de Plugin Store</value>
   </data>

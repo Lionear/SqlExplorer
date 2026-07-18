@@ -1473,6 +1473,27 @@
   <data name="PluginUpdateLogFailed" xml:space="preserve">
     <value>Checked for plugin updates: check failed (offline?).</value>
   </data>
+  <data name="PluginUpdatePolicyAuto" xml:space="preserve">
+    <value>Auto-apply on restart</value>
+  </data>
+  <data name="PluginUpdateHeldBackTitle" xml:space="preserve">
+    <value>{0} update(s) need a newer app</value>
+  </data>
+  <data name="PluginUpdateHeldBackHint" xml:space="preserve">
+    <value>· update SQL Explorer to unlock them</value>
+  </data>
+  <data name="PluginUpdatesUpdateApp" xml:space="preserve">
+    <value>Update app…</value>
+  </data>
+  <data name="PluginUpdateLogHeldBack" xml:space="preserve">
+    <value>Checked for plugin updates: {0} held back (need a newer app).</value>
+  </data>
+  <data name="PluginUpdateLogAutoStaged" xml:space="preserve">
+    <value>Auto-staged {0} plugin update(s) — applied on restart.</value>
+  </data>
+  <data name="PluginUpdateLogAutoApplied" xml:space="preserve">
+    <value>{0} plugin(s) updated on restart: {1}</value>
+  </data>
   <data name="PluginUpdatesTooltip" xml:space="preserve">
     <value>Compatible plugin updates are available — open the Plugin Store</value>
   </data>

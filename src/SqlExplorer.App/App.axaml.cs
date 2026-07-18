@@ -127,6 +127,8 @@ public partial class App : Application
                     _ = viewModel.Update.CheckOnStartupAsync(_shutdownCts.Token);
                     _ = viewModel.Update.RunPeriodicChecksAsync(_shutdownCts.Token);
                     // Proactive plugin-update check (SE-138), same fire-and-forget lifecycle as the app-updater.
+                    // First confirm anything the Auto policy staged last run and this startup just applied.
+                    viewModel.PluginUpdates.ReportRestartSummaryIfAny();
                     _ = viewModel.PluginUpdates.CheckOnStartupAsync(_shutdownCts.Token);
                     _ = viewModel.PluginUpdates.RunPeriodicChecksAsync(_shutdownCts.Token);
                 };

@@ -134,6 +134,10 @@ public partial class MainViewModel : ViewModelBase
         // Surface each update-check (cadence + result) in the Output panel so it's visible when it runs.
         Update.Reported = message => ReportInfo("Updater", message);
         PluginUpdates.Reported = message => ReportInfo("Plugins", message);
+        // Auto-staged updates light the "restart needed" banner; the held-back notification sends the user
+        // to the app-update settings so updating the host can unlock the withheld plugin update (SE-138 3/4).
+        PluginUpdates.PendingChangesStaged = EvaluatePluginRestart;
+        PluginUpdates.UpdateAppRequested = () => OpenSettingsOnAsync("General");
         Loc = localizer;
 
         // Tool windows: sizes come from settings (null = the default the panel declares), so a resize

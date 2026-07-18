@@ -18,7 +18,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **Proactive plugin-update notifications** — an ambient top-bar badge and a persistent, actionable
   notification when compatible updates are available for your installed plugins, without opening the
   Plugin Store, plus a **per-plugin changelog** (from the notification or any updatable Store row).
-  Turn it off in Settings ▸ Plugins.
+  An opt-in **Auto-apply on restart** policy can stage compatible, non-pinned updates silently, and
+  updates that need a newer app are shown ("Update app…") instead of hidden. Off / Notify / Auto in
+  Settings ▸ Plugins.
 
 ### Changed
 
