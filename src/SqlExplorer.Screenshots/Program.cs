@@ -28,7 +28,9 @@ namespace SqlExplorer.Screenshots;
 // Renders a scene of the real app to a PNG using Avalonia's headless + Skia backend — no display, no
 // real database. Usage:
 //   dotnet run --project src/SqlExplorer.Screenshots -- --scene hero --out docs/images/hero.png [--size 1280x820]
-// Scenes: hero (main window browsing a synthetic demo DB), store (Plugin Store, installed engines).
+// Scenes: hero (main window browsing a synthetic demo DB), query (SQL editor with a query + results),
+// store (Plugin Store, installed engines), export (the CSV/JSON/SQL export dialog), main (empty window).
+// Window-canvas scenes take --size (default 1280x820); the export dialog sizes itself.
 internal static class Program
 {
     [STAThread]
@@ -64,8 +66,13 @@ internal static class Program
                 return 2;
             }
 
-            window.Width = opts.Width;
-            window.Height = opts.Height;
+            // A scene that sizes itself (a dialog with SizeToContent) keeps its own size; only the
+            // full window-canvas scenes take the requested (or default) size.
+            if (window.SizeToContent == SizeToContent.Manual)
+            {
+                window.Width = opts.Width;
+                window.Height = opts.Height;
+            }
             window.Show();
             Settle();
 
@@ -132,12 +139,14 @@ internal static class Program
 // Builds each scene as a Window ready to show, seeding synthetic data as needed.
 internal static class SceneCatalog
 {
-    public static string Names => "hero, store, main";
+    public static string Names => "hero, query, store, export, main";
 
     public static Task<Window?> BuildAsync(string scene, IServiceProvider services, string sandbox) => scene switch
     {
         "hero" => BuildHeroAsync(services, sandbox),
+        "query" => BuildQueryAsync(services, sandbox),
         "store" => Task.FromResult<Window?>(BuildStore(services)),
+        "export" => Task.FromResult<Window?>(BuildExport(services)),
         "main" => Task.FromResult<Window?>(BuildMain(services)),
         _ => Task.FromResult<Window?>(null)
     };
@@ -205,6 +214,73 @@ internal static class SceneCatalog
         var viewModel = services.GetRequiredService<PluginStoreViewModel>();
         viewModel.SelectedTab = PluginStoreViewModel.TabInstalled;
         return new PluginStoreWindow { DataContext = viewModel };
+    }
+
+    // The query editor: a SQL query typed into the editor with its result set loaded below — the same
+    // synthetic "shop" database as the hero, driven through the real query path (InitQuery → Sql → Run).
+    private static async Task<Window?> BuildQueryAsync(IServiceProvider services, string sandbox)
+    {
+        var dbPath = Path.Combine(sandbox, "demo-shop.db");
+        DemoData.CreateShopDatabase(dbPath);
+
+        var connections = services.GetRequiredService<ConnectionService>();
+        var connection = connections.Save(
+            id: "demo-shop",
+            name: "Demo shop",
+            providerId: "sqlite",
+            values: new Dictionary<string, string?> { ["path"] = dbPath });
+
+        var viewModel = services.GetRequiredService<MainViewModel>();
+        viewModel.SyncConnectionsFromStore();
+        if (viewModel.ConnectionNodes.Count > 0)
+        {
+            viewModel.ConnectionNodes[0].IsExpanded = true;
+        }
+
+        var document = new DocumentViewModel(
+            services.GetRequiredService<IDbProviderRegistry>(),
+            connections,
+            services.GetRequiredService<ISqlFormatter>(),
+            services.GetRequiredService<IQueryHistoryStore>(),
+            services.GetRequiredService<IQueryLog>(),
+            services.GetRequiredService<ISchemaCache>(),
+            services.GetRequiredService<IServerVersionCache>(),
+            services.GetRequiredService<IAppSettingsStore>(),
+            services.GetRequiredService<ILocalizer>());
+
+        document.InitQuery(connection, database: null);
+        // Set before the window is shown: DocumentView.OnDataContextChanged pushes VM.Sql into the editor
+        // when it binds, so the typed SQL is on screen at capture time.
+        document.Sql =
+            """
+            -- top customers by spend
+            SELECT c.name, c.city,
+                   count(o.id)            AS orders,
+                   round(sum(o.total), 2) AS spent
+            FROM customers c
+            JOIN orders o ON o.customer_id = c.id
+            WHERE o.status = 'paid'
+            GROUP BY c.id
+            ORDER BY spent DESC
+            LIMIT 8;
+            """;
+        viewModel.Documents.Add(document);
+        viewModel.SelectedDocument = document;
+
+        // Run through the real command so the result grid is populated exactly as a user's Run would.
+        await document.RunCommand.ExecuteAsync(null);
+        Program.Settle(rounds: 20);
+
+        return new MainWindow(
+            services.GetRequiredService<IAppSettingsStore>(),
+            services.GetRequiredService<KeymapService>()) { DataContext = viewModel };
+    }
+
+    // The export dialog: the real CSV/JSON/SQL format picker, sized to its own content (no --size needed).
+    private static Window BuildExport(IServiceProvider services)
+    {
+        var loc = services.GetRequiredService<ILocalizer>();
+        return new ExportDialog(loc, rowCount: 30, isSelection: false);
     }
 }
 
