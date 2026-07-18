@@ -1408,7 +1408,7 @@
     <value>Nightly build. Newest features, may be rough.</value>
   </data>
   <data name="CheckForUpdatesOnStartup" xml:space="preserve">
-    <value>Automatically check for updates on startup</value>
+    <value>Automatically check for updates</value>
   </data>
   <data name="UpdateCheckInterval" xml:space="preserve">
     <value>Check every</value>

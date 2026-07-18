@@ -1408,7 +1408,7 @@
     <value>Nightly build. Nieuwste features, kan ruw zijn.</value>
   </data>
   <data name="CheckForUpdatesOnStartup" xml:space="preserve">
-    <value>Automatisch controleren op updates bij opstarten</value>
+    <value>Automatisch op updates controleren</value>
   </data>
   <data name="UpdateCheckInterval" xml:space="preserve">
     <value>Controleer elke</value>
