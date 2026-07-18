@@ -126,6 +126,9 @@ public partial class App : Application
                 {
                     _ = viewModel.Update.CheckOnStartupAsync(_shutdownCts.Token);
                     _ = viewModel.Update.RunPeriodicChecksAsync(_shutdownCts.Token);
+                    // Proactive plugin-update check (SE-138), same fire-and-forget lifecycle as the app-updater.
+                    _ = viewModel.PluginUpdates.CheckOnStartupAsync(_shutdownCts.Token);
+                    _ = viewModel.PluginUpdates.RunPeriodicChecksAsync(_shutdownCts.Token);
                 };
                 break;
             case ISingleViewApplicationLifetime singleView:

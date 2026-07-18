@@ -15,11 +15,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - A shared **"Copied" confirmation** for copy actions, shown bottom-centre.
 - **SQL formatting options** in Settings — keyword casing (UPPERCASE / lowercase / preserve) and
   indent width.
+- **Proactive plugin-update notifications** — an ambient top-bar badge and a persistent, actionable
+  notification when compatible updates are available for your installed plugins, without opening the
+  Plugin Store, plus a **per-plugin changelog** (from the notification or any updatable Store row).
+  Turn it off in Settings ▸ Plugins.
 
 ### Changed
 
 - Release notes and the in-app updater now read the curated `CHANGELOG.md` instead of the raw git
   log, so each release describes what changed for you rather than listing commit subjects.
+- **App and plugin update checks now log to the Output panel** (channel + result), so you can see when
+  a check runs and what it found.
 - The **SQL formatter** now indents SELECT column lists, parenthesised subqueries and JOIN/AND/OR
   conditions, instead of only breaking clauses onto their own lines. **SQL Server** gets a dedicated
   T-SQL formatter (Microsoft's official ScriptDom parser); the other engines use the improved generic

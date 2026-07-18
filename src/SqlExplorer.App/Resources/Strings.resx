@@ -1408,7 +1408,7 @@
     <value>Nightly build. Newest features, may be rough.</value>
   </data>
   <data name="CheckForUpdatesOnStartup" xml:space="preserve">
-    <value>Automatically check for updates on startup</value>
+    <value>Automatically check for updates</value>
   </data>
   <data name="UpdateCheckInterval" xml:space="preserve">
     <value>Check every</value>
@@ -1430,6 +1430,63 @@
   </data>
   <data name="FormatCasingPreserve" xml:space="preserve">
     <value>Preserve</value>
+  </data>
+  <data name="PluginUpdatesBadge" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="PluginUpdatesViewUpdates" xml:space="preserve">
+    <value>View updates</value>
+  </data>
+  <data name="PluginUpdatesCompatible" xml:space="preserve">
+    <value>· host-API compatible</value>
+  </data>
+  <data name="PluginUpdatesDismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="PluginUpdatesViewChangelog" xml:space="preserve">
+    <value>View changelog</value>
+  </data>
+  <data name="PluginChangelogTitle" xml:space="preserve">
+    <value>Plugin updates</value>
+  </data>
+  <data name="PluginChangelogNone" xml:space="preserve">
+    <value>No changelog for this version.</value>
+  </data>
+  <data name="UpdateLogUpToDate" xml:space="preserve">
+    <value>Checked for app updates ({0}): up to date.</value>
+  </data>
+  <data name="UpdateLogAvailable" xml:space="preserve">
+    <value>Checked for app updates ({0}): {1} available.</value>
+  </data>
+  <data name="UpdateLogDismissed" xml:space="preserve">
+    <value>Checked for app updates ({0}): {1} available (dismissed earlier).</value>
+  </data>
+  <data name="UpdateLogFailed" xml:space="preserve">
+    <value>Checked for app updates ({0}): check failed (offline?).</value>
+  </data>
+  <data name="PluginUpdateLogNone" xml:space="preserve">
+    <value>Checked for plugin updates: none.</value>
+  </data>
+  <data name="PluginUpdateLogAvailable" xml:space="preserve">
+    <value>Checked for plugin updates: {0} available ({1}).</value>
+  </data>
+  <data name="PluginUpdateLogFailed" xml:space="preserve">
+    <value>Checked for plugin updates: check failed (offline?).</value>
+  </data>
+  <data name="PluginUpdatesTooltip" xml:space="preserve">
+    <value>Compatible plugin updates are available — open the Plugin Store</value>
+  </data>
+  <data name="PluginUpdatesToast" xml:space="preserve">
+    <value>{0} plugin updates available</value>
+  </data>
+  <data name="PluginUpdatePolicyLabel" xml:space="preserve">
+    <value>Update notifications</value>
+  </data>
+  <data name="PluginUpdatePolicyOff" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="PluginUpdatePolicyNotify" xml:space="preserve">
+    <value>Notify me</value>
   </data>
   <data name="UpdateIntervalHourly" xml:space="preserve">
     <value>Every hour</value>
