@@ -19,6 +19,7 @@
     <Project Path="src/SqlExplorer.Core/SqlExplorer.Core.csproj" />
     <Project Path="src/SqlExplorer.Desktop/SqlExplorer.Desktop.csproj" />
     <Project Path="src/SqlExplorer.Infrastructure/SqlExplorer.Infrastructure.csproj" />
+    <Project Path="src/SqlExplorer.Screenshots/SqlExplorer.Screenshots.csproj" />
     <Project Path="src/SqlExplorer.Sdk/SqlExplorer.Sdk.csproj" />
   </Folder>
 </Solution>

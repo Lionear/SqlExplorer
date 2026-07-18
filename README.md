@@ -7,6 +7,19 @@ are managed with OS-keychain credential storage.
 Desktop (Windows / Linux / macOS) is the current focus; mobile heads
 (Android / iOS / iPadOS) are intentionally parked.
 
+## Screenshots
+
+Browsing a table with the editable result grid — all data shown is synthetic:
+
+![SQL Explorer browsing a demo database](docs/images/hero.png)
+
+Every database engine ships as a plugin; the Plugin Store manages them:
+
+![The Plugin Store listing the built-in database providers](docs/images/plugin-store.png)
+
+> Screenshots are rendered headlessly from the real app (no display, no real database) by
+> [`SqlExplorer.Screenshots`](src/SqlExplorer.Screenshots) — regenerate with `tools/screenshots.sh`.
+
 ## Project layout
 
 | Project | Role |
