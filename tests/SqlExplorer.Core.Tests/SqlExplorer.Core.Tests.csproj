@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SqlExplorer.Core\SqlExplorer.Core.csproj" />
+    <ProjectReference Include="..\..\src\SqlExplorer.Infrastructure\SqlExplorer.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\SqlExplorer.Sdk\SqlExplorer.Sdk.csproj" />
     <!-- For the ScriptDom-based MsSqlFormatter tests (SE-148 phase 2). -->
     <ProjectReference Include="..\..\src\SqlExplorer.Providers.MsSql\SqlExplorer.Providers.MsSql.csproj" />
