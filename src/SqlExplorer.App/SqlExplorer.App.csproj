@@ -47,6 +47,7 @@
     <ProjectReference Include="..\..\plugins\Providers.Redis\SqlExplorer.Providers.Redis.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Tools.UniversalBackup\SqlExplorer.Tools.UniversalBackup.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Tools.MsSqlBacpac\SqlExplorer.Tools.MsSqlBacpac.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
+    <ProjectReference Include="..\..\plugins\Backends.Docker\SqlExplorer.Backends.Docker.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
 
   <ItemGroup>

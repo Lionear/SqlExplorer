@@ -22,6 +22,11 @@
     <ProjectReference Include="..\..\src\SqlExplorer.Core\SqlExplorer.Core.csproj" />
     <ProjectReference Include="..\..\src\SqlExplorer.Infrastructure\SqlExplorer.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\SqlExplorer.Sdk\SqlExplorer.Sdk.csproj" />
+    <!-- Build-only: ensures the Backends.Docker extension plugin is built so the loader integration test can
+         discover + ALC-load it from its own output dir. ReferenceOutputAssembly=false keeps it off the test
+         assembly's references (it's loaded reflectively, in its own AssemblyLoadContext). -->
+    <ProjectReference Include="..\..\plugins\Backends.Docker\SqlExplorer.Backends.Docker.csproj"
+                      ReferenceOutputAssembly="false" Private="false" />
     <!-- For the ScriptDom-based MsSqlFormatter tests (SE-148 phase 2). -->
     <ProjectReference Include="..\..\src\SqlExplorer.Providers.MsSql\SqlExplorer.Providers.MsSql.csproj" />
   </ItemGroup>

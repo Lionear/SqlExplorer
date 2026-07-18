@@ -88,6 +88,10 @@
                           Condition="'$(Configuration)' == 'Debug'">
         <PluginId>mssql-bacpac</PluginId>
       </ProviderPluginFile>
+      <ProviderPluginFile Include="$(MSBuildThisFileDirectory)..\..\plugins\Backends.Docker\bin\$(Configuration)\$(TargetFramework)\**\*"
+                          Condition="'$(Configuration)' == 'Debug'">
+        <PluginId>local-containers</PluginId>
+      </ProviderPluginFile>
     </ItemGroup>
   </Target>
 

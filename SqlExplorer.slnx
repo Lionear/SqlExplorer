@@ -5,6 +5,7 @@
     <Project Path="plugins/Providers.MongoDb/SqlExplorer.Providers.MongoDb.csproj" />
     <Project Path="plugins/Providers.Redis/SqlExplorer.Providers.Redis.csproj" />
     <Project Path="plugins/Providers.Template/SqlExplorer.Providers.Template.csproj" />
+    <Project Path="plugins/Backends.Docker/SqlExplorer.Backends.Docker.csproj" />
     <Project Path="plugins/Tools.MsSqlBacpac/SqlExplorer.Tools.MsSqlBacpac.csproj" />
     <Project Path="plugins/Tools.UniversalBackup/SqlExplorer.Tools.UniversalBackup.csproj" />
     <Project Path="src/SqlExplorer.Providers.MsSql/SqlExplorer.Providers.MsSql.csproj" />

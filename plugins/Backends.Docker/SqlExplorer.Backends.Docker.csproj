@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlExplorer.Backends.Docker</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Contract only. Private=false keeps SqlExplorer.Sdk.dll out of the plugin folder so the host's copy
+         is used across the ALC boundary (single ISubsystemPlugin/IPluginRuntimeContext type identity). -->
+    <ProjectReference Include="..\..\src\SqlExplorer.Sdk\SqlExplorer.Sdk.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="SqlExplorer.Sdk.Extensibility" />
+  </ItemGroup>
+
+</Project>
