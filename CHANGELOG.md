@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - A shared **"Copied" confirmation** for copy actions, shown bottom-centre.
 - **SQL formatting options** in Settings — keyword casing (UPPERCASE / lowercase / preserve) and
   indent width.
+- **Proactive plugin-update notifications** — a badge and a one-time toast when compatible updates
+  are available for your installed plugins, without opening the Plugin Store. Turn it off in
+  Settings ▸ Plugins.
 
 ### Changed
 

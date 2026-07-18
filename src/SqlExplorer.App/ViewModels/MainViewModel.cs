@@ -102,6 +102,7 @@ public partial class MainViewModel : ViewModelBase
         IAppSettingsStore settingsStore,
         IOpenTabsStore openTabsStore,
         AppUpdateViewModel appUpdate,
+        PluginUpdatesViewModel pluginUpdates,
         ILocalizer localizer)
     {
         _providers = providers;
@@ -127,6 +128,9 @@ public partial class MainViewModel : ViewModelBase
         _settingsStore = settingsStore;
         _openTabsStore = openTabsStore;
         Update = appUpdate;
+        PluginUpdates = pluginUpdates;
+        // The update badge opens the Store straight on its Installed tab, where the updates live.
+        PluginUpdates.OpenStoreRequested = () => OpenStoreAsync(PluginStoreViewModel.TabInstalled);
         Loc = localizer;
 
         // Tool windows: sizes come from settings (null = the default the panel declares), so a resize
@@ -535,6 +539,9 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>The in-app updater's banner state (SE-137); the main view binds its "update available" bar.</summary>
     public AppUpdateViewModel Update { get; }
+
+    /// <summary>Proactive plugin-update state (SE-138): the top-bar badge binds its count/visibility here.</summary>
+    public PluginUpdatesViewModel PluginUpdates { get; }
 
     /// <summary>The sidebar tree: one root node per saved connection, children loaded lazily.</summary>
     public ObservableCollection<TreeNodeViewModel> ConnectionNodes { get; } = [];
@@ -2085,7 +2092,10 @@ public partial class MainViewModel : ViewModelBase
     public Func<PluginStoreViewModel, Task>? PluginStoreRequested { get; set; }
 
     [RelayCommand]
-    private async Task OpenPluginStoreAsync()
+    private Task OpenPluginStoreAsync() => OpenStoreAsync(initialTab: null);
+
+    // Shared open path; the plugin-update badge passes TabInstalled so it lands where the updates are.
+    private async Task OpenStoreAsync(string? initialTab)
     {
         if (PluginStoreRequested is null)
         {
@@ -2093,6 +2103,11 @@ public partial class MainViewModel : ViewModelBase
         }
 
         var store = _pluginStoreFactory();
+        if (initialTab is not null)
+        {
+            store.SelectedTab = initialTab;
+        }
+
         // Deep-link from the Store's "Manage sources…" button: open Settings on PluginSources.
         // Best-effort — a missing settings-dialog callback just leaves the button as a no-op.
         store.ManageSourcesRequested = () => _ = OpenSettingsOnAsync("PluginSources");

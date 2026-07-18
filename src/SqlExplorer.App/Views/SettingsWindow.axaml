@@ -485,19 +485,32 @@
         </ScrollViewer>
 
         <!-- Plugins -->
-        <Grid RowDefinitions="Auto,Auto,*"
+        <Grid RowDefinitions="Auto,Auto,Auto,*"
               IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Plugins}">
           <TextBlock Grid.Row="0" Text="{Binding Loc[SettingsPlugins]}" FontSize="14" FontWeight="SemiBold" />
           <TextBlock Grid.Row="1" Text="{Binding Loc[PluginsDesc]}" FontSize="12" TextWrapping="Wrap"
                      Foreground="{DynamicResource SETextSecondaryBrush}" Margin="0,4,0,12" />
 
+          <!-- Proactive plugin-update policy (SE-138) -->
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10" Margin="0,0,0,12">
+            <TextBlock Text="{Binding Loc[PluginUpdatePolicyLabel]}" VerticalAlignment="Center" />
+            <ComboBox MinWidth="200" ItemsSource="{Binding PluginUpdatePolicies}"
+                      SelectedItem="{Binding SelectedPluginUpdatePolicyOption}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Label}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </StackPanel>
+
           <!-- Empty state -->
-          <TextBlock Grid.Row="2" IsVisible="{Binding !HasPlugins}"
+          <TextBlock Grid.Row="3" IsVisible="{Binding !HasPlugins}"
                      Text="{Binding Loc[PluginsNoneHint]}" TextWrapping="Wrap"
                      Foreground="{DynamicResource SETextFaintBrush}" VerticalAlignment="Top" />
 
           <!-- Master-detail -->
-          <Border Grid.Row="2" IsVisible="{Binding HasPlugins}"
+          <Border Grid.Row="3" IsVisible="{Binding HasPlugins}"
                   BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1" CornerRadius="6">
             <Grid ColumnDefinitions="230,Auto,*">
               <ListBox Grid.Column="0" Background="{DynamicResource SEPanelBgBrush}"

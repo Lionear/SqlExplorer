@@ -11,6 +11,16 @@ public enum AppTheme
     Dark
 }
 
+/// <summary>What the proactive plugin-update check does when compatible updates are found (SE-138).
+/// <see cref="Off"/> = no background check; <see cref="Notify"/> = badge + toast; <see cref="Auto"/> =
+/// stage compatible, non-pinned updates for the next restart (phase 3).</summary>
+public enum PluginUpdatePolicy
+{
+    Off,
+    Notify,
+    Auto
+}
+
 /// <summary>
 /// User-scoped UI preferences that survive across runs (window geometry, layout, theme,
 /// language, editor/query preferences). Null members mean "never set" → the view falls back to
@@ -155,6 +165,10 @@ public sealed class AppSettings
 
     /// <summary>Whether to check the chosen channel for a newer build once on startup. On by default.</summary>
     public bool CheckForUpdatesOnStartup { get; set; } = true;
+
+    /// <summary>Proactive plugin-update behaviour (SE-138). Default <see cref="PluginUpdatePolicy.Notify"/>.
+    /// Reuses <see cref="UpdateCheckIntervalMinutes"/> for the background re-check cadence.</summary>
+    public PluginUpdatePolicy PluginUpdatePolicy { get; set; } = PluginUpdatePolicy.Notify;
 
     /// <summary>Background re-check interval in minutes. 0 = only on startup (no periodic loop). Default 240
     /// (4 hours), matching the interval that was hardcoded before SE-152.</summary>

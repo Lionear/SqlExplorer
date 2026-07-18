@@ -178,7 +178,28 @@
            with a ⌘K hint — it IS a quick-open, not an action. -->
       <Border Background="{DynamicResource SEToolbarBgBrush}"
               BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="0,0,0,1">
-        <StackPanel Orientation="Horizontal" Spacing="8" Margin="8,6">
+        <DockPanel Margin="8,6" LastChildFill="False">
+          <!-- Proactive plugin-update badge (SE-138): visible only when compatible updates are pending;
+               opens the Store on its Installed tab. Amber count pill mirrors the plugin-updates mockup. -->
+          <Button DockPanel.Dock="Right" Classes="Search" Padding="9,5" VerticalAlignment="Center"
+                  IsVisible="{Binding PluginUpdates.HasUpdates}"
+                  Command="{Binding PluginUpdates.OpenStoreCommand}"
+                  ToolTip.Tip="{Binding Loc[PluginUpdatesTooltip]}">
+            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+              <Path Width="14" Height="14" VerticalAlignment="Center"
+                    Data="M7,2 L7,9 M4,6 L7,9.2 L10,6 M3,12 L11,12"
+                    Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.4"
+                    StrokeJoin="Round" StrokeLineCap="Round" />
+              <TextBlock Text="{Binding Loc[PluginUpdatesBadge]}" VerticalAlignment="Center" FontSize="12.5"
+                         Foreground="{DynamicResource SETextSecondaryBrush}" />
+              <Border Background="#E0A33E" CornerRadius="999" Padding="6,1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding PluginUpdates.AvailableCount}" Foreground="#241A06"
+                           FontSize="10.5" FontWeight="Bold"
+                           FontFamily="Cascadia Code,Consolas,Menlo,monospace" />
+              </Border>
+            </StackPanel>
+          </Button>
+          <StackPanel Orientation="Horizontal" Spacing="8">
           <Button Classes="Accent"
                   Command="{Binding NewQueryTabCommand}">
             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
@@ -206,7 +227,8 @@
               </Border>
             </Grid>
           </Button>
-        </StackPanel>
+          </StackPanel>
+        </DockPanel>
       </Border>
     </StackPanel>
 

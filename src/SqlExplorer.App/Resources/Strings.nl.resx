@@ -1431,6 +1431,24 @@
   <data name="FormatCasingPreserve" xml:space="preserve">
     <value>Behouden</value>
   </data>
+  <data name="PluginUpdatesBadge" xml:space="preserve">
+    <value>Plugin-updates</value>
+  </data>
+  <data name="PluginUpdatesTooltip" xml:space="preserve">
+    <value>Er zijn compatibele plugin-updates — open de Plugin Store</value>
+  </data>
+  <data name="PluginUpdatesToast" xml:space="preserve">
+    <value>{0} plugin-updates beschikbaar</value>
+  </data>
+  <data name="PluginUpdatePolicyLabel" xml:space="preserve">
+    <value>Update-meldingen</value>
+  </data>
+  <data name="PluginUpdatePolicyOff" xml:space="preserve">
+    <value>Uit</value>
+  </data>
+  <data name="PluginUpdatePolicyNotify" xml:space="preserve">
+    <value>Melden</value>
+  </data>
   <data name="UpdateIntervalHourly" xml:space="preserve">
     <value>Elk uur</value>
   </data>

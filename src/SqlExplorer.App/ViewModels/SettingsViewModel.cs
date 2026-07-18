@@ -180,6 +180,30 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private int _formatIndentSize;
 
+    // ── Proactive plugin updates (SE-138) ────────────────────────────────────────────────────────────
+    public sealed record PluginUpdatePolicyOption(PluginUpdatePolicy Policy, string Label);
+
+    public IReadOnlyList<PluginUpdatePolicyOption> PluginUpdatePolicies { get; }
+
+    [ObservableProperty]
+    private PluginUpdatePolicy _pluginUpdatePolicy;
+
+    /// <summary>Two-way bridge between the policy dropdown and <see cref="PluginUpdatePolicy"/>.</summary>
+    public PluginUpdatePolicyOption? SelectedPluginUpdatePolicyOption
+    {
+        get => PluginUpdatePolicies.FirstOrDefault(o => o.Policy == PluginUpdatePolicy) ?? PluginUpdatePolicies.FirstOrDefault();
+        set
+        {
+            if (value is not null)
+            {
+                PluginUpdatePolicy = value.Policy;
+            }
+        }
+    }
+
+    partial void OnPluginUpdatePolicyChanged(PluginUpdatePolicy value) =>
+        OnPropertyChanged(nameof(SelectedPluginUpdatePolicyOption));
+
     [ObservableProperty]
     private bool _checkForUpdatesOnStartup;
 
@@ -513,6 +537,13 @@ public partial class SettingsViewModel : ViewModelBase
             new(KeywordCasing.Preserve, localizer["FormatCasingPreserve"]),
         ];
 
+        // Off / Notify only for now; Auto (silent stage-on-restart) lands with SE-138 phase 3.
+        PluginUpdatePolicies =
+        [
+            new(PluginUpdatePolicy.Off, localizer["PluginUpdatePolicyOff"]),
+            new(PluginUpdatePolicy.Notify, localizer["PluginUpdatePolicyNotify"]),
+        ];
+
         Categories =
         [
             new SettingsCategory("General", localizer["SettingsGeneralCat"], NodeIcons.SettingsGeneral),
@@ -692,6 +723,7 @@ public partial class SettingsViewModel : ViewModelBase
         EditorWordWrap = settings.EditorWordWrap;
         FormatKeywordCasing = settings.FormatKeywordCasing;
         FormatIndentSize = settings.FormatIndentSize;
+        PluginUpdatePolicy = settings.PluginUpdatePolicy;
         ConfirmBeforeSave = settings.ConfirmBeforeSave;
         QueryTimeoutSeconds = settings.QueryTimeoutSeconds;
         BrowsePageSize = settings.BrowsePageSize;
@@ -836,6 +868,7 @@ public partial class SettingsViewModel : ViewModelBase
         EditorWordWrap = defaults.EditorWordWrap;
         FormatKeywordCasing = defaults.FormatKeywordCasing;
         FormatIndentSize = defaults.FormatIndentSize;
+        PluginUpdatePolicy = defaults.PluginUpdatePolicy;
         ConfirmBeforeSave = defaults.ConfirmBeforeSave;
         QueryTimeoutSeconds = defaults.QueryTimeoutSeconds;
         BrowsePageSize = defaults.BrowsePageSize;
@@ -890,6 +923,7 @@ public partial class SettingsViewModel : ViewModelBase
         settings.EditorWordWrap = EditorWordWrap;
         settings.FormatKeywordCasing = FormatKeywordCasing;
         settings.FormatIndentSize = FormatIndentSize;
+        settings.PluginUpdatePolicy = PluginUpdatePolicy;
         settings.ConfirmBeforeSave = ConfirmBeforeSave;
         settings.QueryTimeoutSeconds = QueryTimeoutSeconds;
         settings.BrowsePageSize = BrowsePageSize;

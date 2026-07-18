@@ -153,6 +153,8 @@ public static class AppServices
         // Singleton: one shared instance behind the main-window banner and the Settings check, so a manual
         // check lights the same banner and offers the same "What's new" action.
         services.AddSingleton<AppUpdateViewModel>();
+        // Proactive plugin-update checker (SE-138), sibling of the app-updater VM.
+        services.AddSingleton<PluginUpdatesViewModel>();
 
         // Connections: metadata in a JSON file, secrets in the OS-native keychain.
         // Migrate pre-v10 configs (legacy "Kind" enum) to the manifest "ProviderId" once at startup.
