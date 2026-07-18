@@ -50,6 +50,12 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
     /// <summary>Opens the Plugin Store on its Installed tab. Wired by <see cref="MainViewModel"/>.</summary>
     public Func<Task>? OpenStoreRequested { get; set; }
 
+    /// <summary>Shows the combined per-plugin changelog dialog. Wired by the view (it owns the window).</summary>
+    public Func<PluginChangelogViewModel, Task>? ChangelogRequested { get; set; }
+
+    // The current pending updates (with their target-version notes), kept for the changelog dialog.
+    private IReadOnlyList<PluginUpdate> _pendingUpdates = [];
+
     [ObservableProperty]
     private int _availableCount;
 
@@ -122,11 +128,13 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
 
             if (updates.Count == 0)
             {
+                _pendingUpdates = [];
                 _notifiedKey = null;
                 IsNotificationVisible = false;
                 return;
             }
 
+            _pendingUpdates = updates;
             PluginNames = updates.Select(u => u.Entry.Name).Distinct(StringComparer.Ordinal).ToList();
 
             var key = string.Join(",", updates
@@ -164,4 +172,20 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
 
     [RelayCommand]
     private void Dismiss() => IsNotificationVisible = false;
+
+    // Opens the combined changelog dialog: one section per pending update (name + version + notes).
+    [RelayCommand]
+    private async Task ViewChangelog()
+    {
+        if (ChangelogRequested is null || _pendingUpdates.Count == 0)
+        {
+            return;
+        }
+
+        var sections = _pendingUpdates
+            .Select(u => new PluginChangelogViewModel.Section($"{u.Entry.Name} {u.Target.Version}", u.Target.Notes))
+            .ToList();
+
+        await ChangelogRequested(new PluginChangelogViewModel(Loc["PluginChangelogTitle"], sections, Loc));
+    }
 }

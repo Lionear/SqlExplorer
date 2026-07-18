@@ -199,10 +199,15 @@ public sealed partial class InstalledListItem : ObservableObject
     private PluginPendingAction _pending;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasChangelog))]
     private bool _updateAvailable;
 
     [ObservableProperty]
     private string? _updateTargetVersion;
+
+    /// <summary>True when an update is available and its target version carries release notes (SE-138
+    /// phase 2) — gates the row's "changelog" link.</summary>
+    public bool HasChangelog => UpdateAvailable && !string.IsNullOrWhiteSpace(UpdateTarget?.Notes);
 
     /// <summary>Localized "Update → x.y.z" label for the row's update button.</summary>
     [ObservableProperty]

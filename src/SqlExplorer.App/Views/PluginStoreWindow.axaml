@@ -60,6 +60,9 @@
             <Button Classes="Accent" IsVisible="{Binding UpdateAvailable}"
                     Content="{Binding UpdateLabel}"
                     Command="{Binding $parent[Window].DataContext.UpdateCommand}" CommandParameter="{Binding}" />
+            <Button Classes="Subtle" IsVisible="{Binding HasChangelog}"
+                    Content="{Binding $parent[Window].DataContext.Loc[PluginUpdatesViewChangelog]}"
+                    Command="{Binding $parent[Window].DataContext.ViewChangelogCommand}" CommandParameter="{Binding}" />
             <Button Classes="Subtle" IsVisible="{Binding HasRollback}"
                     Content="{Binding RollbackLabel}"
                     Command="{Binding $parent[Window].DataContext.RollbackCommand}" CommandParameter="{Binding}" />

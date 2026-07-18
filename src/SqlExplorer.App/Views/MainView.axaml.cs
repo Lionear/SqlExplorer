@@ -389,6 +389,7 @@ public partial class MainView : UserControl
             _viewModel.NodeInfoRequested = ShowNodeInfoDialogAsync;
             _viewModel.SecurityViewRequested = ShowSecurityDialogAsync;
             _viewModel.PluginStoreRequested = ShowPluginStoreAsync;
+            _viewModel.PluginUpdates.ChangelogRequested = ShowPluginChangelogAsync;
             _viewModel.QueryLogRequested = ShowQueryLogAsync;
             _viewModel.RestartRequested = () => { AppRestart.Restart(); return Task.CompletedTask; };
             _viewModel.ConfirmRequested = ShowConfirmAsync;
@@ -595,6 +596,18 @@ public partial class MainView : UserControl
         }
 
         var dialog = new PluginStoreWindow { DataContext = dialogViewModel };
+        await dialog.ShowDialog(owner);
+    }
+
+    // SE-138 phase 2: the plugin-update notification's "View changelog" opens the per-plugin changelog.
+    private async Task ShowPluginChangelogAsync(PluginChangelogViewModel dialogViewModel)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+
+        var dialog = new PluginChangelogWindow(dialogViewModel);
         await dialog.ShowDialog(owner);
     }
 

@@ -1443,6 +1443,15 @@
   <data name="PluginUpdatesDismiss" xml:space="preserve">
     <value>Sluiten</value>
   </data>
+  <data name="PluginUpdatesViewChangelog" xml:space="preserve">
+    <value>Changelog bekijken</value>
+  </data>
+  <data name="PluginChangelogTitle" xml:space="preserve">
+    <value>Plugin-updates</value>
+  </data>
+  <data name="PluginChangelogNone" xml:space="preserve">
+    <value>Geen changelog voor deze versie.</value>
+  </data>
   <data name="PluginUpdatesTooltip" xml:space="preserve">
     <value>Er zijn compatibele plugin-updates — open de Plugin Store</value>
   </data>

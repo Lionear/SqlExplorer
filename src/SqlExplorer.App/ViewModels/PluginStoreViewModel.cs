@@ -164,6 +164,9 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     /// <summary>Set by the view to relaunch the app (applies the staged install/enable/remove changes).</summary>
     public Action? RestartRequested { get; set; }
 
+    /// <summary>Shows the per-plugin changelog dialog for an updatable row (SE-138 phase 2). Wired by the view.</summary>
+    public Func<PluginChangelogViewModel, Task>? ChangelogRequested { get; set; }
+
     [RelayCommand]
     private void SelectTab(string tab) => SelectedTab = tab;
 
@@ -598,6 +601,19 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         }
 
         BuildInstalled(_lastCatalog);
+    }
+
+    // Opens the changelog dialog for a single updatable row (SE-138 phase 2): its target version's notes.
+    [RelayCommand]
+    private async Task ViewChangelog(InstalledListItem? item)
+    {
+        if (item?.UpdateTarget is not { } target || ChangelogRequested is null)
+        {
+            return;
+        }
+
+        var section = new PluginChangelogViewModel.Section($"{item.Name} {target.Version}", target.Notes);
+        await ChangelogRequested(new PluginChangelogViewModel(Loc["PluginChangelogTitle"], [section], Loc));
     }
 
     [RelayCommand]

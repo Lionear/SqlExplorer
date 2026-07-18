@@ -99,6 +99,11 @@ public sealed record StoreVersion
     [JsonPropertyName("size")]
     public long Size { get; init; }
 
+    /// <summary>Optional release notes for this version, markdown (SE-138 phase 2, index schemaVersion 2).
+    /// Additive: an older index without it deserialises to null = "no changelog". Never affects loading.</summary>
+    [JsonPropertyName("notes")]
+    public string? Notes { get; init; }
+
     /// <summary>True when this host's acceptance window includes this build's <see cref="MinHostApiVersion"/>.</summary>
     public bool IsCompatible(HostApiCompat host) => host.Accepts(MinHostApiVersion);
 }

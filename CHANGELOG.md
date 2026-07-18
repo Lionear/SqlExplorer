@@ -17,7 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   indent width.
 - **Proactive plugin-update notifications** — an ambient top-bar badge and a persistent, actionable
   notification when compatible updates are available for your installed plugins, without opening the
-  Plugin Store. Turn it off in Settings ▸ Plugins.
+  Plugin Store, plus a **per-plugin changelog** (from the notification or any updatable Store row).
+  Turn it off in Settings ▸ Plugins.
 
 ### Changed
 

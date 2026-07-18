@@ -1443,6 +1443,15 @@
   <data name="PluginUpdatesDismiss" xml:space="preserve">
     <value>Dismiss</value>
   </data>
+  <data name="PluginUpdatesViewChangelog" xml:space="preserve">
+    <value>View changelog</value>
+  </data>
+  <data name="PluginChangelogTitle" xml:space="preserve">
+    <value>Plugin updates</value>
+  </data>
+  <data name="PluginChangelogNone" xml:space="preserve">
+    <value>No changelog for this version.</value>
+  </data>
   <data name="PluginUpdatesTooltip" xml:space="preserve">
     <value>Compatible plugin updates are available — open the Plugin Store</value>
   </data>
