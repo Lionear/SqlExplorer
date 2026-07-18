@@ -131,6 +131,9 @@ public partial class MainViewModel : ViewModelBase
         PluginUpdates = pluginUpdates;
         // The update badge opens the Store straight on its Installed tab, where the updates live.
         PluginUpdates.OpenStoreRequested = () => OpenStoreAsync(PluginStoreViewModel.TabInstalled);
+        // Surface each update-check (cadence + result) in the Output panel so it's visible when it runs.
+        Update.Reported = message => ReportInfo("Updater", message);
+        PluginUpdates.Reported = message => ReportInfo("Plugins", message);
         Loc = localizer;
 
         // Tool windows: sizes come from settings (null = the default the panel declares), so a resize

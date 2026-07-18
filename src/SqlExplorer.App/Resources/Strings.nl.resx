@@ -1452,6 +1452,27 @@
   <data name="PluginChangelogNone" xml:space="preserve">
     <value>Geen changelog voor deze versie.</value>
   </data>
+  <data name="UpdateLogUpToDate" xml:space="preserve">
+    <value>App-update gecontroleerd ({0}): up-to-date.</value>
+  </data>
+  <data name="UpdateLogAvailable" xml:space="preserve">
+    <value>App-update gecontroleerd ({0}): {1} beschikbaar.</value>
+  </data>
+  <data name="UpdateLogDismissed" xml:space="preserve">
+    <value>App-update gecontroleerd ({0}): {1} beschikbaar (eerder weggeklikt).</value>
+  </data>
+  <data name="UpdateLogFailed" xml:space="preserve">
+    <value>App-update gecontroleerd ({0}): mislukt (offline?).</value>
+  </data>
+  <data name="PluginUpdateLogNone" xml:space="preserve">
+    <value>Plugin-updates gecontroleerd: geen.</value>
+  </data>
+  <data name="PluginUpdateLogAvailable" xml:space="preserve">
+    <value>Plugin-updates gecontroleerd: {0} beschikbaar ({1}).</value>
+  </data>
+  <data name="PluginUpdateLogFailed" xml:space="preserve">
+    <value>Plugin-updates gecontroleerd: mislukt (offline?).</value>
+  </data>
   <data name="PluginUpdatesTooltip" xml:space="preserve">
     <value>Er zijn compatibele plugin-updates — open de Plugin Store</value>
   </data>

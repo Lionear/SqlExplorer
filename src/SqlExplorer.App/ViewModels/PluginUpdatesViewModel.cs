@@ -53,6 +53,10 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
     /// <summary>Shows the combined per-plugin changelog dialog. Wired by the view (it owns the window).</summary>
     public Func<PluginChangelogViewModel, Task>? ChangelogRequested { get; set; }
 
+    /// <summary>Info-level messages for the Output panel — the plugin-update-check cadence and its result.
+    /// Wired by <see cref="MainViewModel"/>; null before wiring, so a check never fails on an unwired sink.</summary>
+    public Action<string>? Reported { get; set; }
+
     // The current pending updates (with their target-version notes), kept for the changelog dialog.
     private IReadOnlyList<PluginUpdate> _pendingUpdates = [];
 
@@ -131,11 +135,13 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
                 _pendingUpdates = [];
                 _notifiedKey = null;
                 IsNotificationVisible = false;
+                Reported?.Invoke(Loc["PluginUpdateLogNone"]);
                 return;
             }
 
             _pendingUpdates = updates;
             PluginNames = updates.Select(u => u.Entry.Name).Distinct(StringComparer.Ordinal).ToList();
+            Reported?.Invoke(Loc.Get("PluginUpdateLogAvailable", updates.Count, string.Join(", ", PluginNames)));
 
             var key = string.Join(",", updates
                 .Select(u => $"{u.Id}@{u.Target.Version}")
@@ -154,7 +160,8 @@ public sealed partial class PluginUpdatesViewModel : ViewModelBase
         }
         catch
         {
-            // Offline or a source error — stay silent, exactly like the app-updater.
+            // Offline or a source error — no badge change, but log it so the cadence is visible in Output.
+            Reported?.Invoke(Loc["PluginUpdateLogFailed"]);
         }
     }
 

@@ -44,6 +44,10 @@ public sealed partial class AppUpdateViewModel : ViewModelBase
 
     public ILocalizer Loc { get; }
 
+    /// <summary>Info-level messages for the Output panel — the update-check cadence and its result. Wired by
+    /// <see cref="MainViewModel"/>; null before wiring, so a check never fails on an unwired sink.</summary>
+    public Action<string>? Reported { get; set; }
+
     /// <summary>Set by the view: shows the changelog dialog for the offered build.</summary>
     public Func<UpdateAvailableViewModel, Task>? ChangelogRequested { get; set; }
 
@@ -146,16 +150,26 @@ public sealed partial class AppUpdateViewModel : ViewModelBase
     {
         var channel = settings.UpdateChannel ?? _service.RunningChannel;
         var result = await _service.CheckAsync(channel, ct);
+
+        if (result.Status == UpdateStatus.Failed)
+        {
+            Reported?.Invoke(Loc.Get("UpdateLogFailed", channel));
+            return;
+        }
+
         if (result is not { IsAvailable: true, Manifest: { } manifest })
         {
+            Reported?.Invoke(Loc.Get("UpdateLogUpToDate", channel));
             return;
         }
 
         if (string.Equals(manifest.Version, settings.DismissedUpdateVersion, StringComparison.OrdinalIgnoreCase))
         {
+            Reported?.Invoke(Loc.Get("UpdateLogDismissed", channel, manifest.Version));
             return;
         }
 
+        Reported?.Invoke(Loc.Get("UpdateLogAvailable", channel, manifest.Version));
         Surface(result);
     }
 

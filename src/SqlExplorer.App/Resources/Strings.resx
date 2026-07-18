@@ -1452,6 +1452,27 @@
   <data name="PluginChangelogNone" xml:space="preserve">
     <value>No changelog for this version.</value>
   </data>
+  <data name="UpdateLogUpToDate" xml:space="preserve">
+    <value>Checked for app updates ({0}): up to date.</value>
+  </data>
+  <data name="UpdateLogAvailable" xml:space="preserve">
+    <value>Checked for app updates ({0}): {1} available.</value>
+  </data>
+  <data name="UpdateLogDismissed" xml:space="preserve">
+    <value>Checked for app updates ({0}): {1} available (dismissed earlier).</value>
+  </data>
+  <data name="UpdateLogFailed" xml:space="preserve">
+    <value>Checked for app updates ({0}): check failed (offline?).</value>
+  </data>
+  <data name="PluginUpdateLogNone" xml:space="preserve">
+    <value>Checked for plugin updates: none.</value>
+  </data>
+  <data name="PluginUpdateLogAvailable" xml:space="preserve">
+    <value>Checked for plugin updates: {0} available ({1}).</value>
+  </data>
+  <data name="PluginUpdateLogFailed" xml:space="preserve">
+    <value>Checked for plugin updates: check failed (offline?).</value>
+  </data>
   <data name="PluginUpdatesTooltip" xml:space="preserve">
     <value>Compatible plugin updates are available — open the Plugin Store</value>
   </data>
