@@ -10,7 +10,7 @@ using SqlExplorer.Core.Completion;
 using SqlExplorer.Core.Connections;
 using SqlExplorer.Core.Editing;
 using SqlExplorer.Core.Export;
-using SqlExplorer.Core.Formatting;
+using SqlExplorer.Sdk.Formatting;
 using SqlExplorer.Core.History;
 using SqlExplorer.Core.Localization;
 using SqlExplorer.Core.Logging;
@@ -1275,8 +1275,17 @@ public partial class DocumentViewModel : ViewModelBase
     [RelayCommand]
     private void Format()
     {
-        var dialect = _providers.Get(Connection.ProviderId).Dialect;
-        Sql = _formatter.Format(Sql, dialect, SqlFormatOptions.Default);
+        // The provider may ship its own dialect-specialised formatter (SE-148); fall back to the host's
+        // generic one (_formatter) when it doesn't. Options come from Settings (casing + indent width).
+        var provider = _providers.Get(Connection.ProviderId);
+        var formatter = provider.Formatter ?? _formatter;
+        var settings = _settingsStore.Load();
+        var options = new SqlFormatOptions
+        {
+            KeywordCasing = settings.FormatKeywordCasing,
+            IndentSize = settings.FormatIndentSize > 0 ? settings.FormatIndentSize : SqlFormatOptions.Default.IndentSize
+        };
+        Sql = formatter.Format(Sql, provider.Dialect, options);
     }
 
     // Shared execution path for both a typed query and a browse page. Only typed queries are logged to

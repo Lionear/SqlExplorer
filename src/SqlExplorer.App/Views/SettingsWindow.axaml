@@ -224,6 +224,24 @@
           </Grid>
           <ToggleSwitch IsChecked="{Binding EditorWordWrap}"
                         OnContent="{Binding Loc[EditorWordWrap]}" OffContent="{Binding Loc[EditorWordWrap]}" />
+
+          <TextBlock Text="{Binding Loc[FormatSectionTitle]}" FontWeight="SemiBold" Margin="0,10,0,0" />
+          <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+            <TextBlock Grid.Column="0" Text="{Binding Loc[FormatKeywordCasingLabel]}" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" Width="200" ItemsSource="{Binding KeywordCasings}"
+                      SelectedItem="{Binding SelectedKeywordCasingOption}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Label}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+            <TextBlock Grid.Column="0" Text="{Binding Loc[FormatIndentLabel]}" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" Width="200" ItemsSource="{Binding IndentSizes}"
+                      SelectedItem="{Binding FormatIndentSize}" />
+          </Grid>
         </StackPanel>
 
         <!-- Query -->

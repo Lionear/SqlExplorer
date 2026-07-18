@@ -1,4 +1,5 @@
 using SqlExplorer.Core.Update;
+using SqlExplorer.Sdk.Formatting;
 
 namespace SqlExplorer.Core.Settings;
 
@@ -51,6 +52,12 @@ public sealed class AppSettings
     public double? EditorFontSize { get; set; }
 
     public bool EditorWordWrap { get; set; }
+
+    /// <summary>Keyword casing the SQL formatter applies (SE-148). Default UPPERCASE.</summary>
+    public KeywordCasing FormatKeywordCasing { get; set; } = KeywordCasing.Upper;
+
+    /// <summary>Indent width (spaces) the SQL formatter uses (SE-148). Default 4.</summary>
+    public int FormatIndentSize { get; set; } = 4;
 
     /// <summary>Whether the save-flow shows the generated SQL for review before running it.</summary>
     public bool ConfirmBeforeSave { get; set; } = true;

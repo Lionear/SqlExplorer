@@ -22,4 +22,7 @@
     <Project Path="src/SqlExplorer.Screenshots/SqlExplorer.Screenshots.csproj" />
     <Project Path="src/SqlExplorer.Sdk/SqlExplorer.Sdk.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SqlExplorer.Core.Tests/SqlExplorer.Core.Tests.csproj" />
+  </Folder>
 </Solution>

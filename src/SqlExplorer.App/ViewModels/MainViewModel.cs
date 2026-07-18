@@ -10,7 +10,7 @@ using SqlExplorer.App.Theming;
 using SqlExplorer.Core.Connections;
 using SqlExplorer.Core.Editing;
 using SqlExplorer.Core.Export;
-using SqlExplorer.Core.Formatting;
+using SqlExplorer.Sdk.Formatting;
 using SqlExplorer.Core.History;
 using SqlExplorer.Core.Import;
 using SqlExplorer.Core.Localization;

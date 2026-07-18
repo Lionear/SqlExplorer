@@ -14,7 +14,7 @@ using SqlExplorer.App.DependencyInjection;
 using SqlExplorer.App.ViewModels;
 using SqlExplorer.App.Views;
 using SqlExplorer.Core.Connections;
-using SqlExplorer.Core.Formatting;
+using SqlExplorer.Sdk.Formatting;
 using SqlExplorer.Core.History;
 using SqlExplorer.Core.Localization;
 using SqlExplorer.Core.Logging;

@@ -1413,6 +1413,24 @@
   <data name="UpdateCheckInterval" xml:space="preserve">
     <value>Controleer elke</value>
   </data>
+  <data name="FormatSectionTitle" xml:space="preserve">
+    <value>SQL-opmaak</value>
+  </data>
+  <data name="FormatKeywordCasingLabel" xml:space="preserve">
+    <value>Trefwoord-schrijfwijze</value>
+  </data>
+  <data name="FormatIndentLabel" xml:space="preserve">
+    <value>Inspringbreedte</value>
+  </data>
+  <data name="FormatCasingUpper" xml:space="preserve">
+    <value>HOOFDLETTERS</value>
+  </data>
+  <data name="FormatCasingLower" xml:space="preserve">
+    <value>kleine letters</value>
+  </data>
+  <data name="FormatCasingPreserve" xml:space="preserve">
+    <value>Behouden</value>
+  </data>
   <data name="UpdateIntervalHourly" xml:space="preserve">
     <value>Elk uur</value>
   </data>

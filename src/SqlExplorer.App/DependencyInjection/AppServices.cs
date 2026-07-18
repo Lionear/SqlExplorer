@@ -4,6 +4,7 @@ using SqlExplorer.App.ViewModels;
 using SqlExplorer.Core.Connections;
 using SqlExplorer.Core.Security;
 using SqlExplorer.Core.Formatting;
+using SqlExplorer.Sdk.Formatting;
 using SqlExplorer.Core.History;
 using SqlExplorer.Core.Logging;
 using SqlExplorer.Core.Localization;

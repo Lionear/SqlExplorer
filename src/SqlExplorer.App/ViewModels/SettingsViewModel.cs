@@ -12,6 +12,7 @@ using SqlExplorer.Core.Shortcuts;
 using SqlExplorer.Core.Store;
 using SqlExplorer.Core.Tools;
 using SqlExplorer.Sdk;
+using SqlExplorer.Sdk.Formatting;
 using SqlExplorer.Sdk.Settings;
 using SqlExplorer.Sdk.Tools;
 using SqlExplorer.Sdk.Ui;
@@ -148,6 +149,36 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnSelectedUpdateIntervalMinutesChanged(int value) =>
         OnPropertyChanged(nameof(SelectedUpdateIntervalOption));
+
+    // ── SQL formatter (SE-148) ───────────────────────────────────────────────────────────────────────
+    public sealed record KeywordCasingOption(KeywordCasing Casing, string Label);
+
+    public IReadOnlyList<KeywordCasingOption> KeywordCasings { get; }
+
+    [ObservableProperty]
+    private KeywordCasing _formatKeywordCasing;
+
+    /// <summary>Two-way bridge between the casing dropdown and <see cref="FormatKeywordCasing"/>.</summary>
+    public KeywordCasingOption? SelectedKeywordCasingOption
+    {
+        get => KeywordCasings.FirstOrDefault(o => o.Casing == FormatKeywordCasing) ?? KeywordCasings.FirstOrDefault();
+        set
+        {
+            if (value is not null)
+            {
+                FormatKeywordCasing = value.Casing;
+            }
+        }
+    }
+
+    partial void OnFormatKeywordCasingChanged(KeywordCasing value) =>
+        OnPropertyChanged(nameof(SelectedKeywordCasingOption));
+
+    /// <summary>Indent-width presets (spaces) for the formatter dropdown.</summary>
+    public IReadOnlyList<int> IndentSizes { get; } = [2, 4, 8];
+
+    [ObservableProperty]
+    private int _formatIndentSize;
 
     [ObservableProperty]
     private bool _checkForUpdatesOnStartup;
@@ -475,6 +506,13 @@ public partial class SettingsViewModel : ViewModelBase
             new(0, localizer["UpdateIntervalManual"]),
         ];
 
+        KeywordCasings =
+        [
+            new(KeywordCasing.Upper, localizer["FormatCasingUpper"]),
+            new(KeywordCasing.Lower, localizer["FormatCasingLower"]),
+            new(KeywordCasing.Preserve, localizer["FormatCasingPreserve"]),
+        ];
+
         Categories =
         [
             new SettingsCategory("General", localizer["SettingsGeneralCat"], NodeIcons.SettingsGeneral),
@@ -652,6 +690,8 @@ public partial class SettingsViewModel : ViewModelBase
         Theme = settings.Theme;
         EditorFontSize = settings.EditorFontSize;
         EditorWordWrap = settings.EditorWordWrap;
+        FormatKeywordCasing = settings.FormatKeywordCasing;
+        FormatIndentSize = settings.FormatIndentSize;
         ConfirmBeforeSave = settings.ConfirmBeforeSave;
         QueryTimeoutSeconds = settings.QueryTimeoutSeconds;
         BrowsePageSize = settings.BrowsePageSize;
@@ -794,6 +834,8 @@ public partial class SettingsViewModel : ViewModelBase
         Theme = defaults.Theme;
         EditorFontSize = defaults.EditorFontSize;
         EditorWordWrap = defaults.EditorWordWrap;
+        FormatKeywordCasing = defaults.FormatKeywordCasing;
+        FormatIndentSize = defaults.FormatIndentSize;
         ConfirmBeforeSave = defaults.ConfirmBeforeSave;
         QueryTimeoutSeconds = defaults.QueryTimeoutSeconds;
         BrowsePageSize = defaults.BrowsePageSize;
@@ -846,6 +888,8 @@ public partial class SettingsViewModel : ViewModelBase
         settings.Theme = Theme;
         settings.EditorFontSize = EditorFontSize;
         settings.EditorWordWrap = EditorWordWrap;
+        settings.FormatKeywordCasing = FormatKeywordCasing;
+        settings.FormatIndentSize = FormatIndentSize;
         settings.ConfirmBeforeSave = ConfirmBeforeSave;
         settings.QueryTimeoutSeconds = QueryTimeoutSeconds;
         settings.BrowsePageSize = BrowsePageSize;
