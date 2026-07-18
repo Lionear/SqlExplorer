@@ -389,8 +389,6 @@ public partial class MainView : UserControl
             _viewModel.NodeInfoRequested = ShowNodeInfoDialogAsync;
             _viewModel.SecurityViewRequested = ShowSecurityDialogAsync;
             _viewModel.PluginStoreRequested = ShowPluginStoreAsync;
-            // SE-138: the background plugin-update check raises a one-time toast; this view owns the anchor.
-            _viewModel.PluginUpdates.ToastRequested = message => CopyFeedback.Show(this, message);
             _viewModel.QueryLogRequested = ShowQueryLogAsync;
             _viewModel.RestartRequested = () => { AppRestart.Restart(); return Task.CompletedTask; };
             _viewModel.ConfirmRequested = ShowConfirmAsync;

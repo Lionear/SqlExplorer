@@ -1432,7 +1432,16 @@
     <value>Preserve</value>
   </data>
   <data name="PluginUpdatesBadge" xml:space="preserve">
-    <value>Plugin updates</value>
+    <value>Updates</value>
+  </data>
+  <data name="PluginUpdatesViewUpdates" xml:space="preserve">
+    <value>View updates</value>
+  </data>
+  <data name="PluginUpdatesCompatible" xml:space="preserve">
+    <value>· host-API compatible</value>
+  </data>
+  <data name="PluginUpdatesDismiss" xml:space="preserve">
+    <value>Dismiss</value>
   </data>
   <data name="PluginUpdatesTooltip" xml:space="preserve">
     <value>Compatible plugin updates are available — open the Plugin Store</value>

@@ -181,22 +181,19 @@
         <DockPanel Margin="8,6" LastChildFill="False">
           <!-- Proactive plugin-update badge (SE-138): visible only when compatible updates are pending;
                opens the Store on its Installed tab. Amber count pill mirrors the plugin-updates mockup. -->
-          <Button DockPanel.Dock="Right" Classes="Search" Padding="9,5" VerticalAlignment="Center"
+          <Button DockPanel.Dock="Right" Background="#1FE0A33E" BorderBrush="#59E0A33E" BorderThickness="1"
+                  CornerRadius="999" Padding="8,3" VerticalAlignment="Center"
                   IsVisible="{Binding PluginUpdates.HasUpdates}"
                   Command="{Binding PluginUpdates.OpenStoreCommand}"
                   ToolTip.Tip="{Binding Loc[PluginUpdatesTooltip]}">
-            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-              <Path Width="14" Height="14" VerticalAlignment="Center"
-                    Data="M7,2 L7,9 M4,6 L7,9.2 L10,6 M3,12 L11,12"
-                    Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.4"
-                    StrokeJoin="Round" StrokeLineCap="Round" />
-              <TextBlock Text="{Binding Loc[PluginUpdatesBadge]}" VerticalAlignment="Center" FontSize="12.5"
-                         Foreground="{DynamicResource SETextSecondaryBrush}" />
-              <Border Background="#E0A33E" CornerRadius="999" Padding="6,1" VerticalAlignment="Center">
-                <TextBlock Text="{Binding PluginUpdates.AvailableCount}" Foreground="#241A06"
-                           FontSize="10.5" FontWeight="Bold"
-                           FontFamily="Cascadia Code,Consolas,Menlo,monospace" />
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <Border Width="16" Height="16" CornerRadius="999" Background="{DynamicResource SEStatusWaitingBrush}">
+                <TextBlock Text="{Binding PluginUpdates.AvailableCount}" Foreground="White"
+                           FontSize="10" FontWeight="Bold"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
               </Border>
+              <TextBlock Text="{Binding Loc[PluginUpdatesBadge]}" VerticalAlignment="Center" FontSize="11.5"
+                         FontWeight="SemiBold" Foreground="{DynamicResource SEStatusWaitingBrush}" />
             </StackPanel>
           </Button>
           <StackPanel Orientation="Horizontal" Spacing="8">
@@ -654,6 +651,52 @@
           <TextBlock FontSize="12" Foreground="{DynamicResource SETextSecondaryBrush}"
                      Text="{Binding SelectedDocument.StatusLine}" />
         </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Plugin-update notification (SE-138): persistent + actionable, bottom-right of the content area.
+         Shown once per update-set; "View updates" or ✕ dismisses it, while the top-bar badge stays as the
+         ambient cue. Last child of RootGrid so it paints over the content. -->
+    <Border Grid.Row="1" IsVisible="{Binding PluginUpdates.IsNotificationVisible}"
+            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,22,22" Width="420"
+            Background="{DynamicResource SEPanelBgBrush}" BorderBrush="{DynamicResource SEHairlineBrush}"
+            BorderThickness="1" CornerRadius="8" Padding="14,12,10,12" BoxShadow="0 6 22 0 #40000000">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Border Grid.Column="0" Width="30" Height="30" CornerRadius="7" VerticalAlignment="Top" Margin="0,0,12,0"
+                Background="#1FE0A33E" BorderBrush="#59E0A33E" BorderThickness="1">
+          <TextBlock Text="⟳" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                     Foreground="{DynamicResource SEStatusWaitingBrush}" />
+        </Border>
+        <StackPanel Grid.Column="1" Spacing="2">
+          <TextBlock Text="{Binding PluginUpdates.NotificationTitle}" FontSize="13" FontWeight="SemiBold"
+                     TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2,0,0">
+            <ItemsControl ItemsSource="{Binding PluginUpdates.PluginNames}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Background="{DynamicResource SEWindowBgBrush}" BorderBrush="{DynamicResource SEHairlineBrush}"
+                          BorderThickness="1" CornerRadius="3" Padding="5,0" Margin="0,0,4,2">
+                    <TextBlock Text="{Binding}" FontSize="10.5"
+                               FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                               Foreground="{DynamicResource SETextSecondaryBrush}" />
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding Loc[PluginUpdatesCompatible]}" FontSize="11.5" VerticalAlignment="Center"
+                       Foreground="{DynamicResource SETextFaintBrush}" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,9,0,0">
+            <Button Classes="Accent" Content="{Binding Loc[PluginUpdatesViewUpdates]}"
+                    Command="{Binding PluginUpdates.OpenStoreCommand}" />
+          </StackPanel>
+        </StackPanel>
+        <Button Grid.Column="2" Background="Transparent" BorderThickness="0" Padding="4,0" VerticalAlignment="Top"
+                Command="{Binding PluginUpdates.DismissCommand}" ToolTip.Tip="{Binding Loc[PluginUpdatesDismiss]}"
+                Foreground="{DynamicResource SETextFaintBrush}" Content="✕" FontSize="13" />
       </Grid>
     </Border>
   </Grid>

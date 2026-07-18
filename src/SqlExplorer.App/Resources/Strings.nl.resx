@@ -1432,7 +1432,16 @@
     <value>Behouden</value>
   </data>
   <data name="PluginUpdatesBadge" xml:space="preserve">
-    <value>Plugin-updates</value>
+    <value>Updates</value>
+  </data>
+  <data name="PluginUpdatesViewUpdates" xml:space="preserve">
+    <value>Updates bekijken</value>
+  </data>
+  <data name="PluginUpdatesCompatible" xml:space="preserve">
+    <value>· host-API-compatibel</value>
+  </data>
+  <data name="PluginUpdatesDismiss" xml:space="preserve">
+    <value>Sluiten</value>
   </data>
   <data name="PluginUpdatesTooltip" xml:space="preserve">
     <value>Er zijn compatibele plugin-updates — open de Plugin Store</value>
