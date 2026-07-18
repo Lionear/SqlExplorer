@@ -21,10 +21,22 @@ public partial class App : Application
     private TrayIcon? _trayIcon;
     private readonly CancellationTokenSource _shutdownCts = new();
 
+    // Screenshot capture (SqlExplorer.Screenshots) reuses this App for its XAML styles/theme, but drives
+    // the window itself under a headless lifetime. It must NOT wire the desktop shell (tray, MCP server,
+    // updater, master-password gate) — set before framework init so OnFrameworkInitializationCompleted
+    // short-circuits after the base call.
+    public static bool ScreenshotMode { get; set; }
+
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
     {
+        if (ScreenshotMode)
+        {
+            base.OnFrameworkInitializationCompleted();
+            return;
+        }
+
         var services = AppServices.Build();
 
         // Apply the saved theme/language before anything renders, so there's no flash of the
@@ -113,7 +125,12 @@ public partial class App : Application
                 mainWindow.Opened += (_, _) =>
                 {
                     _ = viewModel.Update.CheckOnStartupAsync(_shutdownCts.Token);
-                    _ = viewModel.Update.RunPeriodicChecksAsync(TimeSpan.FromHours(4), _shutdownCts.Token);
+                    _ = viewModel.Update.RunPeriodicChecksAsync(_shutdownCts.Token);
+                    // Proactive plugin-update check (SE-138), same fire-and-forget lifecycle as the app-updater.
+                    // First confirm anything the Auto policy staged last run and this startup just applied.
+                    viewModel.PluginUpdates.ReportRestartSummaryIfAny();
+                    _ = viewModel.PluginUpdates.CheckOnStartupAsync(_shutdownCts.Token);
+                    _ = viewModel.PluginUpdates.RunPeriodicChecksAsync(_shutdownCts.Token);
                 };
                 break;
             case ISingleViewApplicationLifetime singleView:

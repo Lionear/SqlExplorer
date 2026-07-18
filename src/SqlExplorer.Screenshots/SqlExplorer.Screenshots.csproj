@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Dev-only screenshot renderer for the README (not shipped). Reuses the real App (its XAML styles,
+       views and view models) but drives the window under Avalonia's headless + Skia backend, so it
+       captures pixel-accurate PNGs with no display and no real database. Keeping Avalonia.Headless in
+       this separate project — not in SqlExplorer.App/Desktop — keeps that dependency out of the shipped
+       binaries (SE-135 supply-chain surface). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>SqlExplorer.Screenshots</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlExplorer.App\SqlExplorer.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Headless" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Skia" Version="12.0.5" />
+    <!-- Seeds the throwaway demo SQLite database the hero-shot browses. Same versions the SQLite
+         provider uses, so the file it writes is exactly what the provider reads back. -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+  </ItemGroup>
+
+  <!-- Stage the provider plugins into plugins/<id>/ beside this project's output, exactly as the Desktop
+       build does, so the plugin loader discovers them: the hero shot needs 'sqlite', the Plugin Store
+       scene shows them all. App already forces these projects to build (its own ProjectReferences), so
+       this only copies their built output. -->
+  <Target Name="CollectShotPluginFiles">
+    <ItemGroup>
+      <ShotPluginFile Include="$(MSBuildThisFileDirectory)..\SqlExplorer.Providers.Postgres\bin\$(Configuration)\$(TargetFramework)\**\*"><PluginId>postgres</PluginId></ShotPluginFile>
+      <ShotPluginFile Include="$(MSBuildThisFileDirectory)..\SqlExplorer.Providers.Sqlite\bin\$(Configuration)\$(TargetFramework)\**\*"><PluginId>sqlite</PluginId></ShotPluginFile>
+      <ShotPluginFile Include="$(MSBuildThisFileDirectory)..\SqlExplorer.Providers.MySql\bin\$(Configuration)\$(TargetFramework)\**\*"><PluginId>mysql</PluginId></ShotPluginFile>
+      <ShotPluginFile Include="$(MSBuildThisFileDirectory)..\SqlExplorer.Providers.MsSql\bin\$(Configuration)\$(TargetFramework)\**\*"><PluginId>sqlserver</PluginId></ShotPluginFile>
+      <ShotPluginFile Include="$(MSBuildThisFileDirectory)..\..\plugins\Providers.MongoDb\bin\$(Configuration)\$(TargetFramework)\**\*"><PluginId>mongodb</PluginId></ShotPluginFile>
+      <ShotPluginFile Include="$(MSBuildThisFileDirectory)..\..\plugins\Providers.Redis\bin\$(Configuration)\$(TargetFramework)\**\*"><PluginId>redis</PluginId></ShotPluginFile>
+      <ShotPluginFile Include="$(MSBuildThisFileDirectory)..\..\plugins\Providers.DragonflyDb\bin\$(Configuration)\$(TargetFramework)\**\*"><PluginId>dragonflydb</PluginId></ShotPluginFile>
+      <ShotPluginFile Include="$(MSBuildThisFileDirectory)..\..\plugins\Providers.Elasticsearch\bin\$(Configuration)\$(TargetFramework)\**\*"><PluginId>elasticsearch</PluginId></ShotPluginFile>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="StageShotPlugins" AfterTargets="Build" DependsOnTargets="CollectShotPluginFiles">
+    <Copy SourceFiles="@(ShotPluginFile)"
+          DestinationFiles="@(ShotPluginFile->'$(TargetDir)plugins\%(PluginId)\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

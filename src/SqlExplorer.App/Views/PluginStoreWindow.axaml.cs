@@ -19,6 +19,7 @@ public partial class PluginStoreWindow : Window
                 vm.CloseRequested = Close;
                 vm.RestartRequested = AppRestart.Restart;
                 vm.InstallFromFileRequested = PickPluginZipAsync;
+                vm.ChangelogRequested = ShowChangelogAsync;
             }
         };
 
@@ -39,6 +40,13 @@ public partial class PluginStoreWindow : Window
         {
             vm.SelectedBrowseItem = item;
         }
+    }
+
+    // SE-138 phase 2: a row's "changelog" link opens the per-plugin changelog dialog, owned by this window.
+    private async Task ShowChangelogAsync(PluginChangelogViewModel viewModel)
+    {
+        var dialog = new PluginChangelogWindow(viewModel);
+        await dialog.ShowDialog(this);
     }
 
     private async Task<string?> PickPluginZipAsync()

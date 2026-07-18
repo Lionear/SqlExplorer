@@ -14,6 +14,8 @@
 
   <ItemGroup>
     <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Brand logo, embedded so the store/plugin list can render it. Drop a square PNG here as icon.png. -->
+    <EmbeddedResource Include="icon.png" LogicalName="icon.png" Condition="Exists('icon.png')" />
   </ItemGroup>
 
   <ItemGroup>

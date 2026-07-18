@@ -7,6 +7,19 @@ are managed with OS-keychain credential storage.
 Desktop (Windows / Linux / macOS) is the current focus; mobile heads
 (Android / iOS / iPadOS) are intentionally parked.
 
+## Screenshots
+
+Browsing a table with the editable result grid — all data shown is synthetic:
+
+![SQL Explorer browsing a demo database](docs/images/hero.png)
+
+Every database engine ships as a plugin; the Plugin Store manages them:
+
+![The Plugin Store listing the built-in database providers](docs/images/plugin-store.png)
+
+> Screenshots are rendered headlessly from the real app (no display, no real database) by
+> [`SqlExplorer.Screenshots`](src/SqlExplorer.Screenshots) — regenerate with `tools/screenshots.sh`.
+
 ## Project layout
 
 | Project | Role |
@@ -59,6 +72,18 @@ dotnet run --project src/Desktop
 
 C#: file-scoped namespaces, nullable enabled, Allman braces, primary
 constructors, `Async` suffix, `ct` as the last parameter.
+
+## Contributing
+
+Contributions are welcome, but the bar is high for a one-person project. **Read
+[`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request** — it covers the PR policy,
+coding conventions, the plugin boundary for adding a database, commit style and the changelog flow.
+
+- **Bugs or feature requests:** [open an issue](https://github.com/Lionear/SqlExplorer/issues).
+- **Adding a database or tool:** it's a plugin, not a host change — see [`docs/PLUGINS.md`](docs/PLUGINS.md).
+- **What changed between releases:** [`CHANGELOG.md`](CHANGELOG.md).
+
+By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 

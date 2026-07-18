@@ -5,6 +5,16 @@
         Title="SQL Explorer"
         Icon="/Assets/icon.png"
         Width="1150" Height="740">
+  <Window.Resources>
+    <!-- File ▸ Recent items (SE-154): each RecentFileItem carries its own Open command + path, so the
+         menu popup (a separate visual tree) needs no ancestor binding back to the window. -->
+    <ControlTheme x:Key="RecentFileItemTheme" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+      <Setter Property="Header" Value="{Binding Display}" />
+      <Setter Property="Command" Value="{Binding Open}" />
+      <Setter Property="CommandParameter" Value="{Binding Path}" />
+      <Setter Property="ToolTip.Tip" Value="{Binding Path}" />
+    </ControlTheme>
+  </Window.Resources>
   <!-- Window-level shortcuts (Ctrl+K, F5, Ctrl+T, …) are built in code from the live keymap
        (KeymapService) so they can be rebound in Settings › Keyboard without a restart. They live on
        the window, not MainView: with nothing focused yet a keypress lands on the TopLevel itself, so a
@@ -21,6 +31,12 @@
         <NativeMenuItem.Menu>
           <NativeMenu>
             <NativeMenuItem Header="{Binding Loc[NewQueryTab]}" Command="{Binding NewQueryTabCommand}" />
+            <!-- Query files (SE-154). The Recent submenu is dynamic and lives in the in-window menu only;
+                 native menus don't take an items binding as cleanly. Ctrl+O and drag-drop cover macOS. -->
+            <NativeMenuItem Header="{Binding Loc[OpenFileMenu]}" Command="{Binding OpenQueryCommand}" />
+            <NativeMenuItem Header="{Binding Loc[SaveQueryMenu]}" Command="{Binding SaveActiveQueryCommand}" />
+            <NativeMenuItem Header="{Binding Loc[SaveQueryAsMenu]}" Command="{Binding SaveActiveQueryAsCommand}" />
+            <NativeMenuItemSeparator />
             <NativeMenuItem Header="{Binding Loc[NewConnectionMenu]}" Command="{Binding NewConnectionCommand}" />
             <NativeMenuItem Header="{Binding Loc[ManageConnections]}" Command="{Binding ManageConnectionsCommand}" />
             <NativeMenuItemSeparator />
@@ -57,6 +73,18 @@
     <Menu x:Name="AppMenu" DockPanel.Dock="Top">
       <MenuItem Header="{Binding Loc[MenuFile]}">
         <MenuItem Header="{Binding Loc[NewQueryTab]}" Command="{Binding NewQueryTabCommand}" />
+        <MenuItem Header="{Binding Loc[OpenFileMenu]}" Command="{Binding OpenQueryCommand}" />
+        <Separator />
+        <MenuItem Header="{Binding Loc[SaveQueryMenu]}" Command="{Binding SaveActiveQueryCommand}" />
+        <MenuItem Header="{Binding Loc[SaveQueryAsMenu]}" Command="{Binding SaveActiveQueryAsCommand}" />
+        <Separator />
+        <!-- Recent files (SE-154): dynamic submenu; each item carries its own Open command + path. -->
+        <MenuItem Header="{Binding Loc[RecentFilesMenu]}" ItemsSource="{Binding RecentFiles}"
+                  IsEnabled="{Binding HasRecentFiles}"
+                  ItemContainerTheme="{StaticResource RecentFileItemTheme}" />
+        <MenuItem Header="{Binding Loc[ClearRecentFilesMenu]}" Command="{Binding ClearRecentFilesCommand}"
+                  IsEnabled="{Binding HasRecentFiles}" />
+        <Separator />
         <MenuItem Header="{Binding Loc[NewConnectionMenu]}" Command="{Binding NewConnectionCommand}" />
         <MenuItem Header="{Binding Loc[ManageConnections]}" Command="{Binding ManageConnectionsCommand}" />
         <Separator />

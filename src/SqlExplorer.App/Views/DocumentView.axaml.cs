@@ -15,6 +15,7 @@ using AvaloniaEdit;
 using AvaloniaEdit.CodeCompletion;
 using AvaloniaEdit.Highlighting;
 using SqlExplorer.App.Completion;
+using SqlExplorer.App.Controls;
 using SqlExplorer.App.Converters;
 using SqlExplorer.App.ViewModels;
 using SqlExplorer.Core.Editing;
@@ -340,8 +341,7 @@ public partial class DocumentView : UserControl
     // on the right-click that opens this menu).
     private async Task CopyCellAsync()
     {
-        if (TopLevel.GetTopLevel(this) is not { Clipboard: { } clipboard }
-            || _currentRow is null
+        if (_currentRow is null
             || _currentColumnIndex < 0
             || _currentColumnIndex >= _currentRow.Cells.Count)
         {
@@ -349,7 +349,7 @@ public partial class DocumentView : UserControl
         }
 
         var value = _currentRow.Cells[_currentColumnIndex].Value;
-        await clipboard.SetTextAsync(value?.ToString() ?? string.Empty);
+        await CopyFeedback.CopyAsync(this, value?.ToString() ?? string.Empty, _viewModel?.Loc["CopiedToClipboard"] ?? "Copied");
     }
 
     private void OnCopyClick(object? sender, RoutedEventArgs e) => _ = CopyTsvAsync(includeHeaders: false);
@@ -359,7 +359,7 @@ public partial class DocumentView : UserControl
     // Plain tab-separated copy of the selected rows (or the whole result), the everyday clipboard action.
     private async Task CopyTsvAsync(bool includeHeaders)
     {
-        if (TopLevel.GetTopLevel(this) is not { Clipboard: { } clipboard } || _viewModel is null || _resultsGrid is null)
+        if (_viewModel is null || _resultsGrid is null)
         {
             return;
         }
@@ -368,7 +368,7 @@ public partial class DocumentView : UserControl
         var text = _viewModel.BuildClipboardTsv(includeHeaders, selected.Count > 0 ? selected : null);
         if (text.Length > 0)
         {
-            await clipboard.SetTextAsync(text);
+            await CopyFeedback.CopyAsync(this, text, _viewModel.Loc["CopiedToClipboard"]);
         }
     }
 
@@ -447,7 +447,7 @@ public partial class DocumentView : UserControl
     // Same selection-or-whole-result source as "Export…", straight to the clipboard instead of a file.
     private async Task CopyResultAsync(ExportFormat format)
     {
-        if (TopLevel.GetTopLevel(this) is not { Clipboard: { } clipboard } || _viewModel is null || _resultsGrid is null)
+        if (_viewModel is null || _resultsGrid is null)
         {
             return;
         }
@@ -456,7 +456,7 @@ public partial class DocumentView : UserControl
         var text = _viewModel.BuildExportText(format, selected.Count > 0 ? selected : null);
         if (text.Length > 0)
         {
-            await clipboard.SetTextAsync(text);
+            await CopyFeedback.CopyAsync(this, text, _viewModel.Loc["CopiedToClipboard"]);
         }
     }
 

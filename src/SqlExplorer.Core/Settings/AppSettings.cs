@@ -1,4 +1,5 @@
 using SqlExplorer.Core.Update;
+using SqlExplorer.Sdk.Formatting;
 
 namespace SqlExplorer.Core.Settings;
 
@@ -8,6 +9,16 @@ public enum AppTheme
     System,
     Light,
     Dark
+}
+
+/// <summary>What the proactive plugin-update check does when compatible updates are found (SE-138).
+/// <see cref="Off"/> = no background check; <see cref="Notify"/> = badge + toast; <see cref="Auto"/> =
+/// stage compatible, non-pinned updates for the next restart (phase 3).</summary>
+public enum PluginUpdatePolicy
+{
+    Off,
+    Notify,
+    Auto
 }
 
 /// <summary>
@@ -52,11 +63,21 @@ public sealed class AppSettings
 
     public bool EditorWordWrap { get; set; }
 
+    /// <summary>Keyword casing the SQL formatter applies (SE-148). Default UPPERCASE.</summary>
+    public KeywordCasing FormatKeywordCasing { get; set; } = KeywordCasing.Upper;
+
+    /// <summary>Indent width (spaces) the SQL formatter uses (SE-148). Default 4.</summary>
+    public int FormatIndentSize { get; set; } = 4;
+
     /// <summary>Whether the save-flow shows the generated SQL for review before running it.</summary>
     public bool ConfirmBeforeSave { get; set; } = true;
 
     /// <summary>Whether the query tabs from the previous session are reopened on startup.</summary>
     public bool RestoreTabsOnStartup { get; set; } = true;
+
+    /// <summary>Whether closing a tab or the app prompts to save a query file with unsaved edits (SE-154).
+    /// Off = close silently (the tab's text is still kept in the restored session). On by default.</summary>
+    public bool PromptSaveQueryOnClose { get; set; } = true;
 
     /// <summary>Whether engine-managed system databases (SQL Server's master/msdb, MySQL's mysql/sys, …)
     /// are shown in the schema tree.</summary>
@@ -148,6 +169,18 @@ public sealed class AppSettings
 
     /// <summary>Whether to check the chosen channel for a newer build once on startup. On by default.</summary>
     public bool CheckForUpdatesOnStartup { get; set; } = true;
+
+    /// <summary>Proactive plugin-update behaviour (SE-138). Default <see cref="PluginUpdatePolicy.Notify"/>.
+    /// Reuses <see cref="UpdateCheckIntervalMinutes"/> for the background re-check cadence.</summary>
+    public PluginUpdatePolicy PluginUpdatePolicy { get; set; } = PluginUpdatePolicy.Notify;
+
+    /// <summary>Plugins auto-staged by the Auto policy (SE-138 phase 3), each as "Name x.y.z", pending the
+    /// next restart. Read once on the next startup to show an "updated" summary, then cleared.</summary>
+    public List<string>? PendingAutoUpdateNotice { get; set; }
+
+    /// <summary>Background re-check interval in minutes. 0 = only on startup (no periodic loop). Default 240
+    /// (4 hours), matching the interval that was hardcoded before SE-152.</summary>
+    public int UpdateCheckIntervalMinutes { get; set; } = 240;
 
     /// <summary>The version the user dismissed with "Later"; the startup banner stays hidden for it until a
     /// newer build appears. Null = nothing dismissed.</summary>

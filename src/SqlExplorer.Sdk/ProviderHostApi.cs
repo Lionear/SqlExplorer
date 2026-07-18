@@ -114,7 +114,12 @@ public static class ProviderHostApi
     //                   loading unchanged. The four ADO.NET providers read DbConnection.ServerVersion off the
     //                   already-open connection (no extra round-trip); the non-SQL providers use their own
     //                   version command (Mongo buildInfo, Redis INFO server, Elasticsearch GET /).
-    public const int Version = 25;
+    // v26 (2026-07-18): added IDbProvider.Formatter (ISqlFormatter?, default null) — a provider may ship
+    //                   its own dialect-specialised SQL formatter; the host falls back to its generic
+    //                   BasicSqlFormatter when null (SE-148). ISqlFormatter/SqlFormatOptions/KeywordCasing
+    //                   moved into the SDK (SqlExplorer.Sdk.Formatting) so plugins can implement them.
+    //                   Purely additive: v23–v25 plugins return null and keep loading unchanged.
+    public const int Version = 26;
 
     /// <summary>Oldest plugin ABI this host still loads. Additive bumps (v11→v22 style) keep this fixed;
     /// only a breaking change raises it. Raised to 23 by the v23 BuildNodeQuery signature change above —

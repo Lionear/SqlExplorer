@@ -10,6 +10,6 @@
     <!-- Product version, shared by every project. Without this .NET defaults to 1.0.0.0, which is what
          About reported before SE-126 — a version nobody ever chose. Pre-release, in step with the
          bundled plugins (0.1.0). Bump here on release; the plugins carry their own versions. -->
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
   </PropertyGroup>
 </Project>

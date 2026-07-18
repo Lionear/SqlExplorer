@@ -1,0 +1,15 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SqlExplorer.App.Views.SaveCloseDialog"
+        Width="440" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="18" Spacing="16">
+    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
+    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+      <Button Grid.Column="0" Classes="Subtle" Content="{Binding DontSaveText}" Click="OnDontSave" />
+      <Button Grid.Column="2" Classes="Subtle" Content="{Binding CancelText}" Click="OnCancel" Margin="0,0,8,0" />
+      <Button Grid.Column="3" Classes="Accent" Content="{Binding SaveText}" Click="OnSave" IsDefault="True" />
+    </Grid>
+  </StackPanel>
+</Window>

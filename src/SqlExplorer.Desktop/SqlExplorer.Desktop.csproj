@@ -84,6 +84,10 @@
                           Condition="'$(Configuration)' == 'Debug'">
         <PluginId>universal-backup</PluginId>
       </ProviderPluginFile>
+      <ProviderPluginFile Include="$(MSBuildThisFileDirectory)..\..\plugins\Tools.MsSqlBacpac\bin\$(Configuration)\$(TargetFramework)\**\*"
+                          Condition="'$(Configuration)' == 'Debug'">
+        <PluginId>mssql-bacpac</PluginId>
+      </ProviderPluginFile>
     </ItemGroup>
   </Target>
 

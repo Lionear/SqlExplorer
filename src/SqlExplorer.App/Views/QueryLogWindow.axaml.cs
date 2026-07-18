@@ -1,8 +1,8 @@
 using System.Text;
 using Avalonia.Controls;
-using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using SqlExplorer.App.Controls;
 using SqlExplorer.App.ViewModels;
 
 namespace SqlExplorer.App.Views;
@@ -19,10 +19,9 @@ public partial class QueryLogWindow : Window
     // Copy the selected entry's full SQL to the clipboard.
     private async void OnCopySqlClick(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is QueryLogViewModel { SelectedEntry.Entry.Sql: { Length: > 0 } sql }
-            && TopLevel.GetTopLevel(this) is { Clipboard: { } clipboard })
+        if (DataContext is QueryLogViewModel { SelectedEntry.Entry.Sql: { Length: > 0 } sql } vm)
         {
-            await clipboard.SetTextAsync(sql);
+            await CopyFeedback.CopyAsync(this, sql, vm.Loc["CopiedToClipboard"]);
         }
     }
 

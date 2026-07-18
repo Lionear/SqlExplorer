@@ -236,9 +236,33 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Offer to save unsaved query files before the real close (SE-154). The prompt is async, so cancel
+        // this close pass and re-close once it resolves (or stay open if the user cancels).
+        if (!_dirtyHandled && DataContext is MainViewModel dirtyVm && dirtyVm.ShouldPromptSaveOnExit)
+        {
+            e.Cancel = true;
+            _ = SaveDirtyThenCloseAsync(dirtyVm);
+            return;
+        }
+
         PersistLayout();
         (DataContext as MainViewModel)?.PersistOpenTabs();
         base.OnClosing(e);
+    }
+
+    private bool _dirtyHandled;
+
+    private async Task SaveDirtyThenCloseAsync(MainViewModel vm)
+    {
+        if (!await vm.ConfirmCloseAllDirtyAsync())
+        {
+            _forceClose = false; // user cancelled — return to the normal (close-to-tray/confirm) behaviour
+            return;
+        }
+
+        _dirtyHandled = true;
+        _forceClose = true;
+        Close();
     }
 
     private async Task ConfirmExitAsync(IAppSettingsStore store)

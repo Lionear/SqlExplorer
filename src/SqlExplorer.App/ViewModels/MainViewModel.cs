@@ -10,7 +10,7 @@ using SqlExplorer.App.Theming;
 using SqlExplorer.Core.Connections;
 using SqlExplorer.Core.Editing;
 using SqlExplorer.Core.Export;
-using SqlExplorer.Core.Formatting;
+using SqlExplorer.Sdk.Formatting;
 using SqlExplorer.Core.History;
 using SqlExplorer.Core.Import;
 using SqlExplorer.Core.Localization;
@@ -58,6 +58,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly Func<RoutineParametersDialogViewModel> _routineParamsDialogFactory;
     private readonly IAppSettingsStore _settingsStore;
     private readonly IOpenTabsStore _openTabsStore;
+    private readonly IRecentFilesStore _recentFiles;
 
     // Selected tree node drives the active connection: any node knows its owning connection.
     [ObservableProperty]
@@ -101,7 +102,9 @@ public partial class MainViewModel : ViewModelBase
         Core.Plugins.PluginCatalogService pluginCatalog,
         IAppSettingsStore settingsStore,
         IOpenTabsStore openTabsStore,
+        IRecentFilesStore recentFiles,
         AppUpdateViewModel appUpdate,
+        PluginUpdatesViewModel pluginUpdates,
         ILocalizer localizer)
     {
         _providers = providers;
@@ -126,7 +129,19 @@ public partial class MainViewModel : ViewModelBase
         _pluginCatalog = pluginCatalog;
         _settingsStore = settingsStore;
         _openTabsStore = openTabsStore;
+        _recentFiles = recentFiles;
+        _recentFiles.Changed += OnRecentFilesChanged;
         Update = appUpdate;
+        PluginUpdates = pluginUpdates;
+        // The update badge opens the Store straight on its Installed tab, where the updates live.
+        PluginUpdates.OpenStoreRequested = () => OpenStoreAsync(PluginStoreViewModel.TabInstalled);
+        // Surface each update-check (cadence + result) in the Output panel so it's visible when it runs.
+        Update.Reported = message => ReportInfo("Updater", message);
+        PluginUpdates.Reported = message => ReportInfo("Plugins", message);
+        // Auto-staged updates light the "restart needed" banner; the held-back notification sends the user
+        // to the app-update settings so updating the host can unlock the withheld plugin update (SE-138 3/4).
+        PluginUpdates.PendingChangesStaged = EvaluatePluginRestart;
+        PluginUpdates.UpdateAppRequested = () => OpenSettingsOnAsync("General");
         Loc = localizer;
 
         // Tool windows: sizes come from settings (null = the default the panel declares), so a resize
@@ -143,6 +158,7 @@ public partial class MainViewModel : ViewModelBase
         _history.Changed += OnHistoryChanged;
         RefreshConnections();
         RestoreOpenTabs();
+        RefreshRecentFiles();
         EvaluatePluginRestart();
     }
 
@@ -164,7 +180,10 @@ public partial class MainViewModel : ViewModelBase
 
             var document = NewDocument();
             document.InitQuery(connection, tab.Database);
-            document.Sql = tab.Sql;
+            // Restoring is not editing: load the buffer clean (no dirty ●), reattaching the .sql file when
+            // the tab was file-backed. Otherwise a restart would mark every scratch tab dirty and nag to
+            // save it on exit. Genuine edits after restore re-dirty the tab as usual.
+            document.LoadContent(tab.Sql, tab.FilePath);
             AddDocument(document);
         }
     }
@@ -173,7 +192,7 @@ public partial class MainViewModel : ViewModelBase
     public void PersistOpenTabs() =>
         _openTabsStore.Save(Documents
             .Where(d => d is { IsQueryMode: true, Connection: not null })
-            .Select(d => new OpenTabState(d.Connection!.Id, d.SelectedDatabase, d.Sql))
+            .Select(d => new OpenTabState(d.Connection!.Id, d.SelectedDatabase, d.Sql, d.FilePath))
             .ToList());
 
     /// <summary>True when the Plugin Store has staged changes that need a restart — shows a main-window banner.</summary>
@@ -415,10 +434,11 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void RunActiveDocumentAtCursor() => SelectedDocument?.RunAtCursorCommand.Execute(null);
 
-    // Window-level shortcut targets that forward to the active tab (Ctrl+S save, Ctrl+Shift+F format,
-    // Ctrl+W close). Same reasoning as F5/Ctrl+Enter: the keypress lands on the window, not a tab.
+    // Window-level shortcut targets that forward to the active tab (Ctrl+Shift+S commit grid edits,
+    // Ctrl+Shift+F format, Ctrl+W close). Same reasoning as F5/Ctrl+Enter: the keypress lands on the
+    // window, not a tab. (Ctrl+S / Ctrl+O — the query-file save/open — live in the File-commands region.)
     [RelayCommand]
-    private void SaveActiveDocument() => SelectedDocument?.SaveCommand.Execute(null);
+    private void CommitActiveEdits() => SelectedDocument?.SaveCommand.Execute(null);
 
     [RelayCommand]
     private void FormatActiveDocument() => SelectedDocument?.FormatCommand.Execute(null);
@@ -444,12 +464,200 @@ public partial class MainViewModel : ViewModelBase
         ShortcutCatalog.Ids.ReopenTab => ReopenClosedTabCommand,
         ShortcutCatalog.Ids.Run => RunActiveDocumentCommand,
         ShortcutCatalog.Ids.RunAtCursor => RunActiveDocumentAtCursorCommand,
-        ShortcutCatalog.Ids.Save => SaveActiveDocumentCommand,
+        ShortcutCatalog.Ids.OpenQuery => OpenQueryCommand,
+        ShortcutCatalog.Ids.Save => SaveActiveQueryCommand,
+        ShortcutCatalog.Ids.CommitEdits => CommitActiveEditsCommand,
         ShortcutCatalog.Ids.Format => FormatActiveDocumentCommand,
         ShortcutCatalog.Ids.ToggleSearch => ToggleSearchCommand,
         ShortcutCatalog.Ids.RefreshTree => RefreshNodeCommand,
         _ => null
     };
+
+    // ── Query files (SE-154): open/save .sql, recent files, save-before-close ────────────────────────
+
+    /// <summary>Most-recently-opened/saved <c>.sql</c> files for the File ▸ Recent menu (newest first).</summary>
+    public ObservableCollection<RecentFileItem> RecentFiles { get; } = [];
+
+    public bool HasRecentFiles => RecentFiles.Count > 0;
+
+    private void OnRecentFilesChanged() => Dispatcher.UIThread.Post(RefreshRecentFiles);
+
+    private void RefreshRecentFiles()
+    {
+        RecentFiles.Clear();
+        foreach (var path in _recentFiles.GetRecent())
+        {
+            RecentFiles.Add(new RecentFileItem(path, Path.GetFileName(path), OpenRecentFileCommand));
+        }
+
+        OnPropertyChanged(nameof(HasRecentFiles));
+    }
+
+    [RelayCommand]
+    private void ClearRecentFiles() => _recentFiles.Clear();
+
+    // Ctrl+O: prompt for one or more .sql files and open each in its own tab.
+    [RelayCommand]
+    private async Task OpenQueryAsync()
+    {
+        if (PickOpenQueryFilesRequested is null)
+        {
+            return;
+        }
+
+        foreach (var path in await PickOpenQueryFilesRequested())
+        {
+            await OpenQueryFileAsync(path);
+        }
+    }
+
+    // Open one .sql path into a tab — shared by Ctrl+O, the Recent menu and drag-drop. An already-open tab
+    // for the same file is focused rather than duplicated.
+    [RelayCommand]
+    private async Task OpenQueryFileAsync(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return;
+        }
+
+        var existing = Documents.FirstOrDefault(d =>
+            d.IsQueryMode && d.FilePath is { } fp && string.Equals(fp, path, StringComparison.Ordinal));
+        if (existing is not null)
+        {
+            SelectedDocument = existing;
+            return;
+        }
+
+        var connection = SelectedConnection ?? _connections.List().FirstOrDefault();
+        if (connection is null)
+        {
+            ReportOutput(OutputLevel.Error, "Files", Loc["OpenQueryNoConnection"]);
+            return;
+        }
+
+        string text;
+        try
+        {
+            text = await File.ReadAllTextAsync(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ReportOutput(OutputLevel.Error, "Files", Loc.Get("OpenQueryFailed", ex.Message));
+            return;
+        }
+
+        var document = NewDocument();
+        document.InitQuery(connection);
+        document.LoadContent(text, path);
+        AddDocument(document);
+        _recentFiles.Add(path);
+    }
+
+    // Ctrl+S: save the active query tab to its file (prompting for a location the first time).
+    [RelayCommand]
+    private async Task SaveActiveQueryAsync()
+    {
+        if (SelectedDocument is { IsQueryMode: true } document)
+        {
+            await SaveQueryToFileAsync(document);
+        }
+    }
+
+    // Save As: always prompt for a new path, even when the tab already has one.
+    [RelayCommand]
+    private async Task SaveActiveQueryAsAsync()
+    {
+        if (SelectedDocument is { IsQueryMode: true } document)
+        {
+            await SaveQueryToFileAsync(document, forcePrompt: true);
+        }
+    }
+
+    // Open a file chosen from the File ▸ Recent menu.
+    [RelayCommand]
+    private Task OpenRecentFile(string? path) => OpenQueryFileAsync(path);
+
+    // Write a document's text to disk, prompting for a location when it has no file yet (or on Save As).
+    // Returns true when the file was written, false when the user cancelled the picker or the write failed
+    // — the caller uses that to decide whether an in-flight tab close should proceed.
+    private async Task<bool> SaveQueryToFileAsync(DocumentViewModel document, bool forcePrompt = false)
+    {
+        var path = document.FilePath;
+        if (path is null || forcePrompt)
+        {
+            if (PickSaveQueryFileRequested is null)
+            {
+                return false;
+            }
+
+            var suggested = document.FilePath is { } existing
+                ? Path.GetFileName(existing)
+                : Loc["UntitledQueryFile"];
+            path = await PickSaveQueryFileRequested(suggested);
+            if (path is null)
+            {
+                return false;
+            }
+        }
+
+        try
+        {
+            await File.WriteAllTextAsync(path, document.Sql);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ReportOutput(OutputLevel.Error, "Files", Loc.Get("SaveQueryFailed", ex.Message));
+            return false;
+        }
+
+        document.MarkSaved(path);
+        _recentFiles.Add(path);
+        ReportOutput(OutputLevel.Info, "Files", Loc.Get("SaveQueryOk", Path.GetFileName(path)));
+        return true;
+    }
+
+    // Returns true = OK to close, false = cancel the close. On "Save" it writes the file first (and a
+    // cancelled save-picker aborts the close). A null hook (headless/tests) never blocks.
+    private async Task<bool> ConfirmSaveOnCloseAsync(DocumentViewModel document)
+    {
+        // Read the setting fresh so a Settings change takes effect immediately (same as ConfirmBeforeSave).
+        // Off → close silently; the tab's text is still kept in the restored session.
+        if (!document.IsDirty || SaveOnCloseRequested is null || !_settingsStore.Load().PromptSaveQueryOnClose)
+        {
+            return true;
+        }
+
+        var choice = await SaveOnCloseRequested(document.Title);
+        return choice switch
+        {
+            SaveCloseChoice.Save => await SaveQueryToFileAsync(document),
+            SaveCloseChoice.DontSave => true,
+            _ => false // Cancel
+        };
+    }
+
+    /// <summary>True when any open query tab has unsaved file changes (SE-154).</summary>
+    public bool HasUnsavedQueryFiles => Documents.Any(d => d is { IsQueryMode: true, IsDirty: true });
+
+    /// <summary>Whether the window should run the save-on-exit prompt: the preference is on and at least one
+    /// query tab has unsaved changes. With the preference off, exit closes silently.</summary>
+    public bool ShouldPromptSaveOnExit => _settingsStore.Load().PromptSaveQueryOnClose && HasUnsavedQueryFiles;
+
+    /// <summary>On app exit: offer to save each dirty query file. Returns false if the user cancelled (the
+    /// exit should abort), true if it may proceed. Called by the window before it persists and closes.</summary>
+    public async Task<bool> ConfirmCloseAllDirtyAsync()
+    {
+        foreach (var document in Documents.Where(d => d is { IsQueryMode: true, IsDirty: true }).ToList())
+        {
+            if (!await ConfirmSaveOnCloseAsync(document))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     // Fuzzy quick-open across every connection's cached snapshot (1.1): a table/view whose qualified
     // name or one of its columns matches. Connections without a snapshot yet (never connected, or
@@ -536,6 +744,9 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>The in-app updater's banner state (SE-137); the main view binds its "update available" bar.</summary>
     public AppUpdateViewModel Update { get; }
 
+    /// <summary>Proactive plugin-update state (SE-138): the top-bar badge binds its count/visibility here.</summary>
+    public PluginUpdatesViewModel PluginUpdates { get; }
+
     /// <summary>The sidebar tree: one root node per saved connection, children loaded lazily.</summary>
     public ObservableCollection<TreeNodeViewModel> ConnectionNodes { get; } = [];
 
@@ -572,6 +783,20 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>Set by the view so the VM can ask a yes/no question (title, message); false if unavailable.</summary>
     public Func<string, string, Task<bool>>? ConfirmRequested { get; set; }
+
+    // ── Query files (SE-154) — view-owned file dialogs, VM-owned read/write ──────────────────────────
+
+    /// <summary>Set by the view: prompt for one or more <c>.sql</c> files to open; returns their local
+    /// paths (empty if cancelled). The VM reads the files itself, so drag-drop and Recent share one path.</summary>
+    public Func<Task<IReadOnlyList<string>>>? PickOpenQueryFilesRequested { get; set; }
+
+    /// <summary>Set by the view: prompt for a <c>.sql</c> save location given a suggested file name;
+    /// returns the chosen local path, or null on cancel.</summary>
+    public Func<string, Task<string?>>? PickSaveQueryFileRequested { get; set; }
+
+    /// <summary>Set by the view: ask whether to save a dirty tab before closing it. Returns the user's
+    /// three-way choice. Null hook (headless/tests) is treated as "don't save" so nothing blocks.</summary>
+    public Func<string, Task<SaveCloseChoice>>? SaveOnCloseRequested { get; set; }
 
     partial void OnSelectedNodeChanged(TreeNodeViewModel? value)
     {
@@ -1835,9 +2060,15 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    // Close one tab, confirming first if it has unsaved grid edits. Returns false if the user cancelled.
+    // Close one tab. First offer to save an unsaved query file (Save/Don't save/Cancel, SE-154), then the
+    // existing discard confirm for pending grid edits. Returns false if the user cancelled either step.
     private async Task<bool> TryCloseAsync(DocumentViewModel document)
     {
+        if (!await ConfirmSaveOnCloseAsync(document))
+        {
+            return false;
+        }
+
         if (document.HasChanges && !await ConfirmDiscardAsync(1))
         {
             return false;
@@ -1847,10 +2078,18 @@ public partial class MainViewModel : ViewModelBase
         return true;
     }
 
-    // Close a batch (Close others / Close all): one combined confirm if any of them have unsaved edits,
-    // rather than a dialog per tab.
+    // Close a batch (Close others / Close all): a per-tab save prompt for each dirty query file (a cancel
+    // aborts the whole batch), then one combined discard confirm for any pending grid edits.
     private async Task CloseManyAsync(IReadOnlyList<DocumentViewModel> documents)
     {
+        foreach (var document in documents.Where(d => d.IsDirty))
+        {
+            if (!await ConfirmSaveOnCloseAsync(document))
+            {
+                return;
+            }
+        }
+
         var dirty = documents.Count(d => d.HasChanges);
         if (dirty > 0 && !await ConfirmDiscardAsync(dirty))
         {
@@ -2085,7 +2324,10 @@ public partial class MainViewModel : ViewModelBase
     public Func<PluginStoreViewModel, Task>? PluginStoreRequested { get; set; }
 
     [RelayCommand]
-    private async Task OpenPluginStoreAsync()
+    private Task OpenPluginStoreAsync() => OpenStoreAsync(initialTab: null);
+
+    // Shared open path; the plugin-update badge passes TabInstalled so it lands where the updates are.
+    private async Task OpenStoreAsync(string? initialTab)
     {
         if (PluginStoreRequested is null)
         {
@@ -2093,6 +2335,11 @@ public partial class MainViewModel : ViewModelBase
         }
 
         var store = _pluginStoreFactory();
+        if (initialTab is not null)
+        {
+            store.SelectedTab = initialTab;
+        }
+
         // Deep-link from the Store's "Manage sources…" button: open Settings on PluginSources.
         // Best-effort — a missing settings-dialog callback just leaves the button as a no-op.
         store.ManageSourcesRequested = () => _ = OpenSettingsOnAsync("PluginSources");

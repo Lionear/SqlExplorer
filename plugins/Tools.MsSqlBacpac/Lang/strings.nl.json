@@ -1,0 +1,22 @@
+{
+  "bacpac.export.title": "Exporteren naar BACPAC",
+  "bacpac.import.title": "BACPAC importeren als nieuwe database",
+  "bacpac.extract.title": "Extraheren naar DACPAC",
+  "bacpac.publish.title": "DACPAC publiceren",
+
+  "bacpac.error.noDatabase": "Geen database geselecteerd om tegen te draaien.",
+  "bacpac.export.error.noFile": "Kies een .bacpac-bestand om naartoe te schrijven.",
+  "bacpac.import.error.noFile": "Kies een .bacpac-bestand om te importeren.",
+  "bacpac.import.error.noName": "Voer een naam in voor de nieuwe database.",
+  "bacpac.extract.error.noFile": "Kies een .dacpac-bestand om naartoe te schrijven.",
+  "bacpac.publish.error.noFile": "Kies een .dacpac-bestand om te publiceren.",
+
+  "bacpac.export.progress.start": "{0} wordt geëxporteerd naar BACPAC…",
+  "bacpac.export.progress.done": "Geëxporteerd naar {0}",
+  "bacpac.import.progress.start": "BACPAC wordt geïmporteerd als nieuwe database \"{0}\"…",
+  "bacpac.import.progress.done": "Geïmporteerd als nieuwe database \"{0}\"",
+  "bacpac.extract.progress.start": "Schema van {0} wordt geëxtraheerd naar DACPAC…",
+  "bacpac.extract.progress.done": "Geëxtraheerd naar {0}",
+  "bacpac.publish.progress.start": "DACPAC wordt gepubliceerd naar \"{0}\"…",
+  "bacpac.publish.progress.done": "Gepubliceerd naar \"{0}\""
+}

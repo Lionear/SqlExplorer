@@ -60,6 +60,9 @@
             <Button Classes="Accent" IsVisible="{Binding UpdateAvailable}"
                     Content="{Binding UpdateLabel}"
                     Command="{Binding $parent[Window].DataContext.UpdateCommand}" CommandParameter="{Binding}" />
+            <Button Classes="Subtle" IsVisible="{Binding HasChangelog}"
+                    Content="{Binding $parent[Window].DataContext.Loc[PluginUpdatesViewChangelog]}"
+                    Command="{Binding $parent[Window].DataContext.ViewChangelogCommand}" CommandParameter="{Binding}" />
             <Button Classes="Subtle" IsVisible="{Binding HasRollback}"
                     Content="{Binding RollbackLabel}"
                     Command="{Binding $parent[Window].DataContext.RollbackCommand}" CommandParameter="{Binding}" />
@@ -206,48 +209,16 @@
             IsVisible="{Binding IsBrowseTabActive}">
         <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*">
           <TextBox Grid.Row="0" Margin="12,10,12,6" PlaceholderText="{Binding Loc[StoreSearch]}" Text="{Binding SearchText}" />
-          <!-- Category chip-row (VS Code / JetBrains / DBeaver pattern): flat filter, "All" default,
-               counts per category, "Other" only appears when there's an unknown-type plugin. -->
-          <ScrollViewer Grid.Row="1" Margin="8,0,8,8" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-              <Button Classes="Chip" Classes.selected="{Binding SelectedCategory, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=All}"
-                      Command="{Binding SelectCategoryCommand}" CommandParameter="All">
-                <StackPanel Orientation="Horizontal" Spacing="5">
-                  <TextBlock Text="{Binding Loc[StoreCategoryAll]}" />
-                  <TextBlock Text="{Binding AllCount}" FontSize="10.5" Foreground="{DynamicResource SETextFaintBrush}" VerticalAlignment="Center" />
-                </StackPanel>
-              </Button>
-              <Button Classes="Chip" Classes.selected="{Binding SelectedCategory, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Providers}"
-                      Command="{Binding SelectCategoryCommand}" CommandParameter="Providers">
-                <StackPanel Orientation="Horizontal" Spacing="5">
-                  <TextBlock Text="{Binding Loc[StoreCategoryProviders]}" />
-                  <TextBlock Text="{Binding ProvidersCount}" FontSize="10.5" Foreground="{DynamicResource SETextFaintBrush}" VerticalAlignment="Center" />
-                </StackPanel>
-              </Button>
-              <Button Classes="Chip" Classes.selected="{Binding SelectedCategory, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Tools}"
-                      Command="{Binding SelectCategoryCommand}" CommandParameter="Tools">
-                <StackPanel Orientation="Horizontal" Spacing="5">
-                  <TextBlock Text="{Binding Loc[StoreCategoryTools]}" />
-                  <TextBlock Text="{Binding ToolsCount}" FontSize="10.5" Foreground="{DynamicResource SETextFaintBrush}" VerticalAlignment="Center" />
-                </StackPanel>
-              </Button>
-              <Button Classes="Chip" Classes.selected="{Binding SelectedCategory, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=McpTools}"
-                      Command="{Binding SelectCategoryCommand}" CommandParameter="McpTools">
-                <StackPanel Orientation="Horizontal" Spacing="5">
-                  <TextBlock Text="{Binding Loc[StoreCategoryMcpTools]}" />
-                  <TextBlock Text="{Binding McpToolsCount}" FontSize="10.5" Foreground="{DynamicResource SETextFaintBrush}" VerticalAlignment="Center" />
-                </StackPanel>
-              </Button>
-              <Button Classes="Chip" IsVisible="{Binding HasOtherItems}"
-                      Classes.selected="{Binding SelectedCategory, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Other}"
-                      Command="{Binding SelectCategoryCommand}" CommandParameter="Other">
-                <StackPanel Orientation="Horizontal" Spacing="5">
-                  <TextBlock Text="{Binding Loc[StoreCategoryOther]}" />
-                  <TextBlock Text="{Binding OtherCount}" FontSize="10.5" Foreground="{DynamicResource SETextFaintBrush}" VerticalAlignment="Center" />
-                </StackPanel>
-              </Button>
-            </StackPanel>
-          </ScrollViewer>
+          <!-- Type-filter dropdown (SE-157, replacing the old chip row): compact and scalable as new
+               types appear. Options + counts come from CategoryOptions; selection bridges SelectedCategory. -->
+          <ComboBox Grid.Row="1" Margin="12,0,12,8" HorizontalAlignment="Stretch"
+                    ItemsSource="{Binding CategoryOptions}" SelectedItem="{Binding SelectedCategoryOption}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Label}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
           <TextBlock Grid.Row="2" IsVisible="{Binding IsLoading}" Margin="16" Text="{Binding Loc[StoreLoading]}"
                      Foreground="{DynamicResource SETextFaintBrush}" />
           <ScrollViewer Grid.Row="2" IsVisible="{Binding !IsLoading}">
@@ -392,8 +363,15 @@
 
         <ScrollViewer Grid.Row="1">
           <StackPanel Margin="16,0,16,16" Spacing="14">
+            <!-- Updates: plugins with an available update, grouped at the top (SE-156) and excluded from the
+                 sections below so they never show twice. -->
+            <StackPanel Spacing="6" IsVisible="{Binding HasUpdates}">
+              <TextBlock Text="{Binding Loc[StoreUpdatesSection]}" FontSize="11" FontWeight="SemiBold"
+                         Foreground="{DynamicResource SETextSecondaryBrush}" />
+              <ItemsControl ItemsSource="{Binding UpdatablePlugins}" ItemTemplate="{StaticResource InstalledRow}" />
+            </StackPanel>
             <!-- Bundled -->
-            <StackPanel Spacing="6">
+            <StackPanel Spacing="6" IsVisible="{Binding HasBundledPlugins}">
               <TextBlock Text="{Binding Loc[StoreBuiltIn]}" FontSize="11" FontWeight="SemiBold"
                          Foreground="{DynamicResource SETextSecondaryBrush}" />
               <ItemsControl ItemsSource="{Binding BundledPlugins}" ItemTemplate="{StaticResource InstalledRow}" />

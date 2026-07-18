@@ -1,5 +1,6 @@
-namespace SqlExplorer.Core.Formatting;
+namespace SqlExplorer.Sdk.Formatting;
 
+/// <summary>How SQL keywords are cased when formatting.</summary>
 public enum KeywordCasing
 {
     Upper,
@@ -7,6 +8,7 @@ public enum KeywordCasing
     Preserve
 }
 
+/// <summary>User-tunable formatting options, surfaced in Settings.</summary>
 public sealed record SqlFormatOptions
 {
     public KeywordCasing KeywordCasing { get; init; } = KeywordCasing.Upper;

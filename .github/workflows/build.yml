@@ -401,13 +401,17 @@ jobs:
           mkdir -p assets
           find dist -type f -exec cp {} assets/ \;
 
-          # Changelog since the previous v-tag. Head of the range is the tag for Stable, the branch tip
-          # otherwise. A first release with no prior tag lists everything.
-          if [ "$CHANNEL" = stable ]; then HEAD_REF="$RELEASE_TAG"; else HEAD_REF=HEAD; fi
-          PREV=$(git describe --tags --abbrev=0 --match 'v*' "${HEAD_REF}^" 2>/dev/null || true)
-          if [ -n "$PREV" ]; then RANGE="$PREV..$HEAD_REF"; else RANGE="$HEAD_REF"; fi
-          RANGE="$RANGE" tools/make-changelog.sh > notes.md || echo "No changes recorded." > notes.md
+          # Release notes are the maintainer-curated CHANGELOG.md [Unreleased] section (Keep a Changelog),
+          # not the git log — the changelog is the source of truth for "what changed". An empty section
+          # falls back to a neutral line so a release never ships blank notes. On a Stable build the
+          # checked-out tree is the v-tag, whose [Unreleased] still holds the pending entries (they are
+          # rolled into [VERSION] further down, after the release is published).
+          CHANGELOG=CHANGELOG.md tools/changelog-unreleased.sh > notes.md || true
+          [ -s notes.md ] || echo "No changes recorded." > notes.md
 
+          # HEAD_REF identifies the built commit for COMMIT/TARGET below: the tag for Stable, the branch
+          # tip otherwise.
+          if [ "$CHANNEL" = stable ]; then HEAD_REF="$RELEASE_TAG"; else HEAD_REF=HEAD; fi
           COMMIT=$(git rev-parse --short "$HEAD_REF")
           # gh's --target is a target_commitish: only a branch name or a commit SHA is valid, never a tag
           # name. On a Stable build REF is the v-tag (v0.2.0), so pass the resolved commit instead — a SHA
@@ -438,6 +442,25 @@ jobs:
               --title "Stable channel manifest" \
               --notes "Update manifest for the Stable channel (points at the latest v-tag release)." \
               --latest=false --target "$TARGET"
+
+            # Archive the notes we just shipped: roll CHANGELOG.md's [Unreleased] into [VERSION] on the
+            # default branch and push it back. Only CHANGELOG.md changes, and *.md is in paths-ignore, so
+            # this commit does not re-trigger a build. Best-effort — a protected branch or a push race
+            # must never fail an already-published release; on failure the maintainer rolls it by hand.
+            if git fetch origin main \
+               && git checkout -B main origin/main \
+               && VERSION="$VERSION" DATE="$(date -u +%Y-%m-%d)" REPO="$GH_REPO" \
+                    CHANGELOG=CHANGELOG.md tools/changelog-roll.sh \
+               && ! git diff --quiet -- CHANGELOG.md; then
+              git config user.name  "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add CHANGELOG.md
+              git commit -m "chore(release): roll changelog for $VERSION"
+              git push origin main \
+                || echo "::warning::changelog roll-back push failed; roll [Unreleased] into [$VERSION] in CHANGELOG.md manually"
+            else
+              echo "::warning::changelog roll-back skipped (nothing to roll or checkout failed); verify CHANGELOG.md"
+            fi
           else
             if [ "$TAG" = nightly ]; then TITLE="Nightly build (develop)"; else TITLE="Preview build (main)"; fi
             # Recreate the rolling release so tag, date and notes track the latest build. Target the branch

@@ -4,6 +4,7 @@ using SqlExplorer.App.ViewModels;
 using SqlExplorer.Core.Connections;
 using SqlExplorer.Core.Security;
 using SqlExplorer.Core.Formatting;
+using SqlExplorer.Sdk.Formatting;
 using SqlExplorer.Core.History;
 using SqlExplorer.Core.Logging;
 using SqlExplorer.Core.Localization;
@@ -152,6 +153,8 @@ public static class AppServices
         // Singleton: one shared instance behind the main-window banner and the Settings check, so a manual
         // check lights the same banner and offers the same "What's new" action.
         services.AddSingleton<AppUpdateViewModel>();
+        // Proactive plugin-update checker (SE-138), sibling of the app-updater VM.
+        services.AddSingleton<PluginUpdatesViewModel>();
 
         // Connections: metadata in a JSON file, secrets in the OS-native keychain.
         // Migrate pre-v10 configs (legacy "Kind" enum) to the manifest "ProviderId" once at startup.
@@ -189,6 +192,8 @@ public static class AppServices
         services.AddTransient<AboutViewModel>();
         services.AddSingleton<Func<AboutViewModel>>(sp => sp.GetRequiredService<AboutViewModel>);
         services.AddSingleton<IOpenTabsStore>(new JsonOpenTabsStore());
+        // Recently opened/saved .sql files for the File ▸ Recent menu (SE-154).
+        services.AddSingleton<IRecentFilesStore>(new JsonRecentFilesStore());
         services.AddSingleton<ConnectionService>();
         services.AddSingleton<MasterPasswordService>();
 

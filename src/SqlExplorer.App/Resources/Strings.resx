@@ -780,6 +780,9 @@
   <data name="RestoreTabsOnStartup" xml:space="preserve">
     <value>Reopen the previous session's query tabs</value>
   </data>
+  <data name="PromptSaveQueryOnClose" xml:space="preserve">
+    <value>Ask to save query files with unsaved changes on close</value>
+  </data>
   <data name="SettingsSchemaTree" xml:space="preserve">
     <value>Schema tree</value>
   </data>
@@ -990,6 +993,9 @@
   <data name="Copy" xml:space="preserve">
     <value>Copy</value>
   </data>
+  <data name="CopiedToClipboard" xml:space="preserve">
+    <value>Copied</value>
+  </data>
   <data name="Cut" xml:space="preserve">
     <value>Cut</value>
   </data>
@@ -1172,6 +1178,9 @@
   </data>
   <data name="StoreInstalledSection" xml:space="preserve">
     <value>Installed</value>
+  </data>
+  <data name="StoreUpdatesSection" xml:space="preserve">
+    <value>Updates</value>
   </data>
   <data name="StoreDiscoverySources" xml:space="preserve">
     <value>Discovery sources</value>
@@ -1405,7 +1414,124 @@
     <value>Nightly build. Newest features, may be rough.</value>
   </data>
   <data name="CheckForUpdatesOnStartup" xml:space="preserve">
-    <value>Automatically check for updates on startup</value>
+    <value>Automatically check for updates</value>
+  </data>
+  <data name="UpdateCheckInterval" xml:space="preserve">
+    <value>Check every</value>
+  </data>
+  <data name="FormatSectionTitle" xml:space="preserve">
+    <value>SQL formatting</value>
+  </data>
+  <data name="FormatKeywordCasingLabel" xml:space="preserve">
+    <value>Keyword casing</value>
+  </data>
+  <data name="FormatIndentLabel" xml:space="preserve">
+    <value>Indent size</value>
+  </data>
+  <data name="FormatCasingUpper" xml:space="preserve">
+    <value>UPPERCASE</value>
+  </data>
+  <data name="FormatCasingLower" xml:space="preserve">
+    <value>lowercase</value>
+  </data>
+  <data name="FormatCasingPreserve" xml:space="preserve">
+    <value>Preserve</value>
+  </data>
+  <data name="PluginUpdatesBadge" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="PluginUpdatesViewUpdates" xml:space="preserve">
+    <value>View updates</value>
+  </data>
+  <data name="PluginUpdatesCompatible" xml:space="preserve">
+    <value>· host-API compatible</value>
+  </data>
+  <data name="PluginUpdatesDismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="PluginUpdatesViewChangelog" xml:space="preserve">
+    <value>View changelog</value>
+  </data>
+  <data name="PluginChangelogTitle" xml:space="preserve">
+    <value>Plugin updates</value>
+  </data>
+  <data name="PluginChangelogNone" xml:space="preserve">
+    <value>No changelog for this version.</value>
+  </data>
+  <data name="UpdateLogUpToDate" xml:space="preserve">
+    <value>Checked for app updates ({0}): up to date.</value>
+  </data>
+  <data name="UpdateLogAvailable" xml:space="preserve">
+    <value>Checked for app updates ({0}): {1} available.</value>
+  </data>
+  <data name="UpdateLogDismissed" xml:space="preserve">
+    <value>Checked for app updates ({0}): {1} available (dismissed earlier).</value>
+  </data>
+  <data name="UpdateLogFailed" xml:space="preserve">
+    <value>Checked for app updates ({0}): check failed (offline?).</value>
+  </data>
+  <data name="PluginUpdateLogNone" xml:space="preserve">
+    <value>Checked for plugin updates: none.</value>
+  </data>
+  <data name="PluginUpdateLogAvailable" xml:space="preserve">
+    <value>Checked for plugin updates: {0} available ({1}).</value>
+  </data>
+  <data name="PluginUpdateLogFailed" xml:space="preserve">
+    <value>Checked for plugin updates: check failed (offline?).</value>
+  </data>
+  <data name="PluginUpdatePolicyAuto" xml:space="preserve">
+    <value>Auto-apply on restart</value>
+  </data>
+  <data name="PluginUpdateHeldBackTitle" xml:space="preserve">
+    <value>{0} update(s) need a newer app</value>
+  </data>
+  <data name="PluginUpdateHeldBackHint" xml:space="preserve">
+    <value>· update SQL Explorer to unlock them</value>
+  </data>
+  <data name="PluginUpdatesUpdateApp" xml:space="preserve">
+    <value>Update app…</value>
+  </data>
+  <data name="PluginUpdateLogHeldBack" xml:space="preserve">
+    <value>Checked for plugin updates: {0} held back (need a newer app).</value>
+  </data>
+  <data name="PluginUpdateLogAutoStaged" xml:space="preserve">
+    <value>Auto-staged {0} plugin update(s) — applied on restart.</value>
+  </data>
+  <data name="PluginUpdateLogAutoApplied" xml:space="preserve">
+    <value>{0} plugin(s) updated on restart: {1}</value>
+  </data>
+  <data name="PluginUpdatesTooltip" xml:space="preserve">
+    <value>Compatible plugin updates are available — open the Plugin Store</value>
+  </data>
+  <data name="PluginUpdatesToast" xml:space="preserve">
+    <value>{0} plugin updates available</value>
+  </data>
+  <data name="PluginUpdatePolicyLabel" xml:space="preserve">
+    <value>Update notifications</value>
+  </data>
+  <data name="PluginUpdatePolicyOff" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="PluginUpdatePolicyNotify" xml:space="preserve">
+    <value>Notify me</value>
+  </data>
+  <data name="UpdateIntervalHourly" xml:space="preserve">
+    <value>Every hour</value>
+  </data>
+  <data name="UpdateInterval4Hours" xml:space="preserve">
+    <value>Every 4 hours</value>
+  </data>
+  <data name="UpdateInterval12Hours" xml:space="preserve">
+    <value>Every 12 hours</value>
+  </data>
+  <data name="UpdateIntervalDaily" xml:space="preserve">
+    <value>Daily</value>
+  </data>
+  <data name="UpdateIntervalWeekly" xml:space="preserve">
+    <value>Weekly</value>
+  </data>
+  <data name="UpdateIntervalManual" xml:space="preserve">
+    <value>Only on startup</value>
   </data>
   <data name="UpdateCheckNow" xml:space="preserve">
     <value>Check for updates</value>
@@ -1421,5 +1547,54 @@
   </data>
   <data name="UpdateCheckFailed" xml:space="preserve">
     <value>Couldn't check for updates.</value>
+  </data>
+  <!-- Query files (SE-154) -->
+  <data name="OpenQuery" xml:space="preserve">
+    <value>Open query file</value>
+  </data>
+  <data name="SaveQuery" xml:space="preserve">
+    <value>Save query file</value>
+  </data>
+  <data name="CommitEdits" xml:space="preserve">
+    <value>Save grid edits</value>
+  </data>
+  <data name="OpenFileMenu" xml:space="preserve">
+    <value>Open…</value>
+  </data>
+  <data name="SaveQueryMenu" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SaveQueryAsMenu" xml:space="preserve">
+    <value>Save as…</value>
+  </data>
+  <data name="RecentFilesMenu" xml:space="preserve">
+    <value>Recent</value>
+  </data>
+  <data name="ClearRecentFilesMenu" xml:space="preserve">
+    <value>Clear recent</value>
+  </data>
+  <data name="UntitledQueryFile" xml:space="preserve">
+    <value>query.sql</value>
+  </data>
+  <data name="OpenQueryNoConnection" xml:space="preserve">
+    <value>Connect to a database before opening a query file.</value>
+  </data>
+  <data name="OpenQueryFailed" xml:space="preserve">
+    <value>Couldn't open the file: {0}</value>
+  </data>
+  <data name="SaveQueryOk" xml:space="preserve">
+    <value>Saved {0}</value>
+  </data>
+  <data name="SaveQueryFailed" xml:space="preserve">
+    <value>Couldn't save the file: {0}</value>
+  </data>
+  <data name="SaveCloseTitle" xml:space="preserve">
+    <value>Unsaved changes</value>
+  </data>
+  <data name="SaveCloseMessage" xml:space="preserve">
+    <value>Save changes to {0} before closing?</value>
+  </data>
+  <data name="SaveCloseDontSave" xml:space="preserve">
+    <value>Don't save</value>
   </data>
 </root>

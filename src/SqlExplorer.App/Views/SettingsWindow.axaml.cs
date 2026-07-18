@@ -1,7 +1,7 @@
 using Avalonia.Controls;
-using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using SqlExplorer.App.Controls;
 using SqlExplorer.App.ViewModels;
 
 namespace SqlExplorer.App.Views;
@@ -64,20 +64,18 @@ public partial class SettingsWindow : Window
     // Copy the MCP bearer token to the clipboard.
     private async void OnCopyMcpTokenClick(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is SettingsViewModel { McpToken: { Length: > 0 } token }
-            && TopLevel.GetTopLevel(this) is { Clipboard: { } clipboard })
+        if (DataContext is SettingsViewModel { McpToken: { Length: > 0 } token } vm)
         {
-            await clipboard.SetTextAsync(token);
+            await CopyFeedback.CopyAsync(this, token, vm.Loc["CopiedToClipboard"]);
         }
     }
 
     // Copy the MCP server URL to the clipboard.
     private async void OnCopyMcpUrlClick(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is SettingsViewModel { McpUrl: { Length: > 0 } url }
-            && TopLevel.GetTopLevel(this) is { Clipboard: { } clipboard })
+        if (DataContext is SettingsViewModel { McpUrl: { Length: > 0 } url } vm)
         {
-            await clipboard.SetTextAsync(url);
+            await CopyFeedback.CopyAsync(this, url, vm.Loc["CopiedToClipboard"]);
         }
     }
 }

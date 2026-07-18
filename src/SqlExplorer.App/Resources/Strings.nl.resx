@@ -780,6 +780,9 @@
   <data name="RestoreTabsOnStartup" xml:space="preserve">
     <value>Query-tabs van de vorige sessie heropenen</value>
   </data>
+  <data name="PromptSaveQueryOnClose" xml:space="preserve">
+    <value>Vragen om querybestanden met niet-opgeslagen wijzigingen op te slaan bij sluiten</value>
+  </data>
   <data name="SettingsSchemaTree" xml:space="preserve">
     <value>Schemastructuur</value>
   </data>
@@ -990,6 +993,9 @@
   <data name="Copy" xml:space="preserve">
     <value>Kopiëren</value>
   </data>
+  <data name="CopiedToClipboard" xml:space="preserve">
+    <value>Gekopieerd</value>
+  </data>
   <data name="Cut" xml:space="preserve">
     <value>Knippen</value>
   </data>
@@ -1172,6 +1178,9 @@
   </data>
   <data name="StoreInstalledSection" xml:space="preserve">
     <value>Geïnstalleerd</value>
+  </data>
+  <data name="StoreUpdatesSection" xml:space="preserve">
+    <value>Updates</value>
   </data>
   <data name="StoreDiscoverySources" xml:space="preserve">
     <value>Discovery-bronnen</value>
@@ -1405,7 +1414,124 @@
     <value>Nightly build. Nieuwste features, kan ruw zijn.</value>
   </data>
   <data name="CheckForUpdatesOnStartup" xml:space="preserve">
-    <value>Automatisch controleren op updates bij opstarten</value>
+    <value>Automatisch op updates controleren</value>
+  </data>
+  <data name="UpdateCheckInterval" xml:space="preserve">
+    <value>Controleer elke</value>
+  </data>
+  <data name="FormatSectionTitle" xml:space="preserve">
+    <value>SQL-opmaak</value>
+  </data>
+  <data name="FormatKeywordCasingLabel" xml:space="preserve">
+    <value>Trefwoord-schrijfwijze</value>
+  </data>
+  <data name="FormatIndentLabel" xml:space="preserve">
+    <value>Inspringbreedte</value>
+  </data>
+  <data name="FormatCasingUpper" xml:space="preserve">
+    <value>HOOFDLETTERS</value>
+  </data>
+  <data name="FormatCasingLower" xml:space="preserve">
+    <value>kleine letters</value>
+  </data>
+  <data name="FormatCasingPreserve" xml:space="preserve">
+    <value>Behouden</value>
+  </data>
+  <data name="PluginUpdatesBadge" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="PluginUpdatesViewUpdates" xml:space="preserve">
+    <value>Updates bekijken</value>
+  </data>
+  <data name="PluginUpdatesCompatible" xml:space="preserve">
+    <value>· host-API-compatibel</value>
+  </data>
+  <data name="PluginUpdatesDismiss" xml:space="preserve">
+    <value>Sluiten</value>
+  </data>
+  <data name="PluginUpdatesViewChangelog" xml:space="preserve">
+    <value>Changelog bekijken</value>
+  </data>
+  <data name="PluginChangelogTitle" xml:space="preserve">
+    <value>Plugin-updates</value>
+  </data>
+  <data name="PluginChangelogNone" xml:space="preserve">
+    <value>Geen changelog voor deze versie.</value>
+  </data>
+  <data name="UpdateLogUpToDate" xml:space="preserve">
+    <value>App-update gecontroleerd ({0}): up-to-date.</value>
+  </data>
+  <data name="UpdateLogAvailable" xml:space="preserve">
+    <value>App-update gecontroleerd ({0}): {1} beschikbaar.</value>
+  </data>
+  <data name="UpdateLogDismissed" xml:space="preserve">
+    <value>App-update gecontroleerd ({0}): {1} beschikbaar (eerder weggeklikt).</value>
+  </data>
+  <data name="UpdateLogFailed" xml:space="preserve">
+    <value>App-update gecontroleerd ({0}): mislukt (offline?).</value>
+  </data>
+  <data name="PluginUpdateLogNone" xml:space="preserve">
+    <value>Plugin-updates gecontroleerd: geen.</value>
+  </data>
+  <data name="PluginUpdateLogAvailable" xml:space="preserve">
+    <value>Plugin-updates gecontroleerd: {0} beschikbaar ({1}).</value>
+  </data>
+  <data name="PluginUpdateLogFailed" xml:space="preserve">
+    <value>Plugin-updates gecontroleerd: mislukt (offline?).</value>
+  </data>
+  <data name="PluginUpdatePolicyAuto" xml:space="preserve">
+    <value>Automatisch toepassen bij herstart</value>
+  </data>
+  <data name="PluginUpdateHeldBackTitle" xml:space="preserve">
+    <value>{0} update(s) vereisen een nieuwere app</value>
+  </data>
+  <data name="PluginUpdateHeldBackHint" xml:space="preserve">
+    <value>· werk SQL Explorer bij om ze te ontgrendelen</value>
+  </data>
+  <data name="PluginUpdatesUpdateApp" xml:space="preserve">
+    <value>App bijwerken…</value>
+  </data>
+  <data name="PluginUpdateLogHeldBack" xml:space="preserve">
+    <value>Plugin-updates gecontroleerd: {0} vastgehouden (nieuwere app nodig).</value>
+  </data>
+  <data name="PluginUpdateLogAutoStaged" xml:space="preserve">
+    <value>{0} plugin-update(s) automatisch klaargezet — bij herstart toegepast.</value>
+  </data>
+  <data name="PluginUpdateLogAutoApplied" xml:space="preserve">
+    <value>{0} plugin(s) bijgewerkt bij herstart: {1}</value>
+  </data>
+  <data name="PluginUpdatesTooltip" xml:space="preserve">
+    <value>Er zijn compatibele plugin-updates — open de Plugin Store</value>
+  </data>
+  <data name="PluginUpdatesToast" xml:space="preserve">
+    <value>{0} plugin-updates beschikbaar</value>
+  </data>
+  <data name="PluginUpdatePolicyLabel" xml:space="preserve">
+    <value>Update-meldingen</value>
+  </data>
+  <data name="PluginUpdatePolicyOff" xml:space="preserve">
+    <value>Uit</value>
+  </data>
+  <data name="PluginUpdatePolicyNotify" xml:space="preserve">
+    <value>Melden</value>
+  </data>
+  <data name="UpdateIntervalHourly" xml:space="preserve">
+    <value>Elk uur</value>
+  </data>
+  <data name="UpdateInterval4Hours" xml:space="preserve">
+    <value>Elke 4 uur</value>
+  </data>
+  <data name="UpdateInterval12Hours" xml:space="preserve">
+    <value>Elke 12 uur</value>
+  </data>
+  <data name="UpdateIntervalDaily" xml:space="preserve">
+    <value>Dagelijks</value>
+  </data>
+  <data name="UpdateIntervalWeekly" xml:space="preserve">
+    <value>Wekelijks</value>
+  </data>
+  <data name="UpdateIntervalManual" xml:space="preserve">
+    <value>Alleen bij opstarten</value>
   </data>
   <data name="UpdateCheckNow" xml:space="preserve">
     <value>Controleren op updates</value>
@@ -1421,5 +1547,54 @@
   </data>
   <data name="UpdateCheckFailed" xml:space="preserve">
     <value>Controleren op updates is mislukt.</value>
+  </data>
+  <!-- Query files (SE-154) -->
+  <data name="OpenQuery" xml:space="preserve">
+    <value>Querybestand openen</value>
+  </data>
+  <data name="SaveQuery" xml:space="preserve">
+    <value>Querybestand opslaan</value>
+  </data>
+  <data name="CommitEdits" xml:space="preserve">
+    <value>Grid-bewerkingen opslaan</value>
+  </data>
+  <data name="OpenFileMenu" xml:space="preserve">
+    <value>Openen…</value>
+  </data>
+  <data name="SaveQueryMenu" xml:space="preserve">
+    <value>Opslaan</value>
+  </data>
+  <data name="SaveQueryAsMenu" xml:space="preserve">
+    <value>Opslaan als…</value>
+  </data>
+  <data name="RecentFilesMenu" xml:space="preserve">
+    <value>Recent</value>
+  </data>
+  <data name="ClearRecentFilesMenu" xml:space="preserve">
+    <value>Recent wissen</value>
+  </data>
+  <data name="UntitledQueryFile" xml:space="preserve">
+    <value>query.sql</value>
+  </data>
+  <data name="OpenQueryNoConnection" xml:space="preserve">
+    <value>Maak eerst verbinding met een database voordat je een querybestand opent.</value>
+  </data>
+  <data name="OpenQueryFailed" xml:space="preserve">
+    <value>Kon het bestand niet openen: {0}</value>
+  </data>
+  <data name="SaveQueryOk" xml:space="preserve">
+    <value>{0} opgeslagen</value>
+  </data>
+  <data name="SaveQueryFailed" xml:space="preserve">
+    <value>Kon het bestand niet opslaan: {0}</value>
+  </data>
+  <data name="SaveCloseTitle" xml:space="preserve">
+    <value>Niet-opgeslagen wijzigingen</value>
+  </data>
+  <data name="SaveCloseMessage" xml:space="preserve">
+    <value>Wijzigingen in {0} opslaan voor het sluiten?</value>
+  </data>
+  <data name="SaveCloseDontSave" xml:space="preserve">
+    <value>Niet opslaan</value>
   </data>
 </root>

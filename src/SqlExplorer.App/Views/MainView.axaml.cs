@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
@@ -10,6 +11,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SqlExplorer.App.Controls;
 using SqlExplorer.App.ViewModels;
 using SqlExplorer.Core.Connections;
 using SqlExplorer.Core.History;
@@ -68,6 +70,45 @@ public partial class MainView : UserControl
         }
 
         DataContextChanged += OnDataContextChanged;
+
+        // SE-154: drag a .sql file onto the window to open it in a new query tab. handledEventsToo is
+        // essential — the DragDrop events bubble, and child controls that do their own drag-drop (notably
+        // the AvaloniaEdit SQL editor and the result grid) mark them Handled first; without this flag our
+        // window-level handler would never see a drop that lands over the editor. We gate on the payload
+        // carrying a file (not on a resolvable path, which isn't always available mid-drag) and only mark
+        // the event Handled for file drops, so the editor's own internal text drag-drop still works.
+        AddHandler(DragDrop.DragOverEvent, OnDragOver, RoutingStrategies.Bubble, handledEventsToo: true);
+        AddHandler(DragDrop.DropEvent, OnDrop, RoutingStrategies.Bubble, handledEventsToo: true);
+        DragDrop.SetAllowDrop(this, true);
+    }
+
+    private void OnDragOver(object? sender, DragEventArgs e)
+    {
+        if (e.DataTransfer?.Contains(DataFormat.File) == true)
+        {
+            e.DragEffects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+    }
+
+    private void OnDrop(object? sender, DragEventArgs e)
+    {
+        if (_viewModel is null || e.DataTransfer?.Contains(DataFormat.File) != true)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        foreach (var file in e.DataTransfer.TryGetFiles() ?? [])
+        {
+            var path = file.TryGetLocalPath();
+            if (path is not null
+                && path.EndsWith(".sql", StringComparison.OrdinalIgnoreCase)
+                && _viewModel.OpenQueryFileCommand.CanExecute(path))
+            {
+                _viewModel.OpenQueryFileCommand.Execute(path);
+            }
+        }
     }
 
     /// <summary>Current width of the connection sidebar column, in pixels (for persistence).</summary>
@@ -379,6 +420,9 @@ public partial class MainView : UserControl
             _viewModel.AlterObjectDialogRequested = ShowAlterObjectDialogAsync;
             _viewModel.ClipboardRequested = CopyToClipboardAsync;
             _viewModel.ImportCsvFileRequested = PickCsvFileAsync;
+            _viewModel.PickOpenQueryFilesRequested = PickOpenQueryFilesAsync;
+            _viewModel.PickSaveQueryFileRequested = PickSaveQueryFileAsync;
+            _viewModel.SaveOnCloseRequested = PromptSaveOnCloseAsync;
             _viewModel.ImportCsvDialogRequested = ShowImportCsvDialogAsync;
             _viewModel.ExportFormatRequested = ShowExportFormatDialogAsync;
             _viewModel.ExportFileRequested = WriteExportFileAsync;
@@ -388,6 +432,7 @@ public partial class MainView : UserControl
             _viewModel.NodeInfoRequested = ShowNodeInfoDialogAsync;
             _viewModel.SecurityViewRequested = ShowSecurityDialogAsync;
             _viewModel.PluginStoreRequested = ShowPluginStoreAsync;
+            _viewModel.PluginUpdates.ChangelogRequested = ShowPluginChangelogAsync;
             _viewModel.QueryLogRequested = ShowQueryLogAsync;
             _viewModel.RestartRequested = () => { AppRestart.Restart(); return Task.CompletedTask; };
             _viewModel.ConfirmRequested = ShowConfirmAsync;
@@ -531,6 +576,66 @@ public partial class MainView : UserControl
         await writer.WriteAsync(text);
     }
 
+    // SE-154: pick one or more .sql files to open. Returns local paths (empty if cancelled); the VM reads
+    // and opens them, so drag-drop and the Recent menu share the same open path.
+    private async Task<IReadOnlyList<string>> PickOpenQueryFilesAsync()
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return [];
+        }
+
+        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            AllowMultiple = true,
+            FileTypeFilter = [SqlFileType, FilePickerFileTypes.All]
+        });
+
+        return files
+            .Select(f => f.TryGetLocalPath())
+            .Where(p => !string.IsNullOrEmpty(p))
+            .Cast<string>()
+            .ToList();
+    }
+
+    // SE-154: pick a .sql save location, pre-filled with the suggested file name. Returns the local path,
+    // or null on cancel.
+    private async Task<string?> PickSaveQueryFileAsync(string suggestedFileName)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return null;
+        }
+
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            SuggestedFileName = suggestedFileName,
+            DefaultExtension = "sql",
+            FileTypeChoices = [SqlFileType]
+        });
+
+        return file?.TryGetLocalPath() ?? file?.Path.LocalPath;
+    }
+
+    // SE-154: three-way "save before closing?" prompt for a dirty query file.
+    private async Task<SaveCloseChoice> PromptSaveOnCloseAsync(string tabName)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner || _viewModel is null)
+        {
+            return SaveCloseChoice.DontSave; // no owner for a modal → don't block the close
+        }
+
+        var dialog = new SaveCloseDialog(
+            _viewModel.Loc["SaveCloseTitle"],
+            _viewModel.Loc.Get("SaveCloseMessage", tabName),
+            _viewModel.Loc["Save"],
+            _viewModel.Loc["SaveCloseDontSave"],
+            _viewModel.Loc["Cancel"]);
+        return await dialog.ShowDialog<SaveCloseChoice>(owner);
+    }
+
+    private static readonly FilePickerFileType SqlFileType = new("SQL") { Patterns = ["*.sql"] };
+
     private async Task ShowSettingsDialogAsync(SettingsViewModel dialogViewModel)
     {
         if (TopLevel.GetTopLevel(this) is not Window owner)
@@ -597,6 +702,18 @@ public partial class MainView : UserControl
         await dialog.ShowDialog(owner);
     }
 
+    // SE-138 phase 2: the plugin-update notification's "View changelog" opens the per-plugin changelog.
+    private async Task ShowPluginChangelogAsync(PluginChangelogViewModel dialogViewModel)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+
+        var dialog = new PluginChangelogWindow(dialogViewModel);
+        await dialog.ShowDialog(owner);
+    }
+
     // The Query Log is non-modal so it can stay open while the app is used, and single-instance so the menu
     // (or the tray) just brings the existing window to the front instead of stacking copies.
     private QueryLogWindow? _queryLogWindow;
@@ -631,11 +748,6 @@ public partial class MainView : UserControl
         return Task.CompletedTask;
     }
 
-    private async Task CopyToClipboardAsync(string text)
-    {
-        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
-        {
-            await clipboard.SetTextAsync(text);
-        }
-    }
+    private Task CopyToClipboardAsync(string text) =>
+        CopyFeedback.CopyAsync(this, text, _viewModel?.Loc["CopiedToClipboard"] ?? "Copied");
 }

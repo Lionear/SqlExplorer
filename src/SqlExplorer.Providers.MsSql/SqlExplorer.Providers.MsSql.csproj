@@ -21,6 +21,9 @@
   <ItemGroup>
     <!-- Official ADO.NET driver. Managed SNI on Linux (no native SNI dep there). -->
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2" />
+    <!-- Official T-SQL parser/pretty-printer, backing MsSqlFormatter (SE-148 phase 2). Lands in the
+         isolated plugin folder like the SqlClient closure above; the host never references it. -->
+    <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="180.37.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,6 +35,7 @@
     <!-- SDK namespaces mirror its folders; import the sub-namespaces project-wide so consumer
          files keep a single `using SqlExplorer.Sdk` at the top. -->
     <Using Include="SqlExplorer.Sdk.Connections" />
+    <Using Include="SqlExplorer.Sdk.Formatting" />
     <Using Include="SqlExplorer.Sdk.Schema" />
     <Using Include="SqlExplorer.Sdk.Query" />
     <Using Include="SqlExplorer.Sdk.Ddl" />

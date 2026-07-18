@@ -2,6 +2,7 @@ using SqlExplorer.Sdk.Branding;
 using SqlExplorer.Sdk.Connections;
 using SqlExplorer.Sdk.Ddl;
 using SqlExplorer.Sdk.Editing;
+using SqlExplorer.Sdk.Formatting;
 using SqlExplorer.Sdk.Query;
 using SqlExplorer.Sdk.Routines;
 using SqlExplorer.Sdk.Schema;
@@ -29,6 +30,13 @@ public interface IDbProvider
     ProviderIcon? Icon { get; }
 
     ISqlDialect Dialect { get; }
+
+    /// <summary>
+    /// This engine's own dialect-specialised SQL formatter, or null to use the host's generic formatter.
+    /// A default-null member so existing providers keep compiling unchanged (host API v26); a provider
+    /// overrides it to ship a superior pretty-printer (e.g. SQL Server's ScriptDom-based formatter).
+    /// </summary>
+    ISqlFormatter? Formatter => null;
 
     /// <summary>
     /// The engine's user-facing version string (e.g. "16.2"), shown next to <see cref="DisplayName"/> in the

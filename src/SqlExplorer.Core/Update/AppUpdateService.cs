@@ -58,10 +58,12 @@ public sealed class AppUpdateService
         ChannelStamp.TryParse(_runningVersion, out var running);
         ChannelStamp.TryParse(offeredVersion, out var offered);
 
-        // The user deliberately switched channels: offer whatever that channel currently ships.
+        // The user deliberately switched channels: offer that channel's build — but never a lower core, so a
+        // switch can't present a downgrade as an "update" (SE-162). Equal core across channels is still a
+        // legitimate switch and stays offered; a higher core obviously does too.
         if (channel != running.Channel)
         {
-            return true;
+            return SemVer.Compare(offered.Core, running.Core) >= 0;
         }
 
         var byCore = SemVer.Compare(offered.Core, running.Core);

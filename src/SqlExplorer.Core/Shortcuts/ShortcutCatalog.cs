@@ -16,7 +16,18 @@ public static class ShortcutCatalog
         public const string ReopenTab = "ReopenTab";
         public const string Run = "Run";
         public const string RunAtCursor = "RunAtCursor";
+
+        /// <summary>Open a <c>.sql</c> file into a new query tab (SE-154).</summary>
+        public const string OpenQuery = "OpenQuery";
+
+        /// <summary>Save the active query tab's text to its <c>.sql</c> file (SE-154). This is the
+        /// SSMS/DataGrip meaning of Ctrl+S; the grid-edit save moved to <see cref="CommitEdits"/>.</summary>
         public const string Save = "Save";
+
+        /// <summary>Write pending grid-row edits back to the database (the former Ctrl+S action, SE-154),
+        /// rebound to Ctrl+Shift+S now that Ctrl+S saves the query file.</summary>
+        public const string CommitEdits = "CommitEdits";
+
         public const string Format = "Format";
         public const string ToggleSearch = "ToggleSearch";
         public const string ToggleComment = "ToggleComment";
@@ -54,7 +65,9 @@ public static class ShortcutCatalog
 
         new(Ids.Run, "Run", Groups.Query, ShortcutScope.Window, "F5"),
         new(Ids.RunAtCursor, "RunAtCursor", Groups.Query, ShortcutScope.Window, "Mod+Enter"),
-        new(Ids.Save, "Save", Groups.Query, ShortcutScope.Window, "Mod+S"),
+        new(Ids.OpenQuery, "OpenQuery", Groups.Query, ShortcutScope.Window, "Mod+O"),
+        new(Ids.Save, "SaveQuery", Groups.Query, ShortcutScope.Window, "Mod+S"),
+        new(Ids.CommitEdits, "CommitEdits", Groups.Query, ShortcutScope.Window, "Mod+Shift+S"),
         new(Ids.Format, "Format", Groups.Query, ShortcutScope.Window, "Mod+Shift+F"),
 
         new(Ids.ToggleComment, "ToggleComment", Groups.Editor, ShortcutScope.Editor, "Mod+OemQuestion"),

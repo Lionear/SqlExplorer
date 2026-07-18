@@ -99,6 +99,9 @@ public sealed class MsSqlProvider : IDbProvider, ICustomConnectionUi, ICustomNod
 
     public ISqlDialect Dialect { get; } = new MsSqlDialect();
 
+    // Ship a real T-SQL formatter (ScriptDom) rather than the host's generic one (SE-148 phase 2).
+    public ISqlFormatter? Formatter { get; } = new MsSqlFormatter();
+
     public IReadOnlyList<ConnectionField> ConnectionFields { get; } =
     [
         new("host", "Host", ConnectionFieldType.Text, Required: true, Default: "localhost"),

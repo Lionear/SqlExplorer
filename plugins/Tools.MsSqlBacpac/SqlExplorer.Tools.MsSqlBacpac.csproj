@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlExplorer.Tools.MsSqlBacpac</RootNamespace>
+    <!-- Plugin build: emit the full private dependency closure (Microsoft.SqlServer.DacFx +
+         Microsoft.Data.SqlClient + their deps) into the output folder so the plugin loads from an
+         isolated AssemblyLoadContext, exactly like Providers.MsSql does for its SqlClient closure. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shared contract. Private=false keeps SqlExplorer.Sdk.dll OUT of the plugin folder so the host's
+         copy is used across the ALC boundary (single IToolPlugin/IDbProvider type identity). -->
+    <ProjectReference Include="..\..\src\SqlExplorer.Sdk\SqlExplorer.Sdk.csproj" Private="false" />
+    <!-- Route B: the four dialogs return Avalonia Controls, so Avalonia is a compile-time reference.
+         ExcludeAssets=runtime — the host owns Avalonia and shares it across the plugin ALC boundary. -->
+    <PackageReference Include="Avalonia" Version="12.0.5" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- In-process BACPAC/DACPAC engine. Managed Microsoft.Data.SqlClient comes transitively and lands in
+         the isolated plugin folder; the host never references it. Verified cross-platform in-process on
+         .NET 10 / Linux (SE-59 STAP 0). Pinned to the version the spike resolved. -->
+    <PackageReference Include="Microsoft.SqlServer.DacFx" Version="162.5.57" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="icon.png" LogicalName="icon.png" Condition="Exists('icon.png')" />
+    <!-- Localization: embedded so the plugin ships as one DLL; LogicalName fixes the resource name the
+         host's PluginLocalizer looks up (prefix "Lang/strings" from plugin.json). WithCulture=false is
+         essential: the ".nl." in the filename would otherwise route it to a satellite assembly. -->
+    <EmbeddedResource Include="Lang\strings.json" LogicalName="Lang/strings.json" WithCulture="false" />
+    <EmbeddedResource Include="Lang\strings.nl.json" LogicalName="Lang/strings.nl.json" WithCulture="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="SqlExplorer.Sdk.Connections" />
+    <Using Include="SqlExplorer.Sdk.Schema" />
+    <Using Include="SqlExplorer.Sdk.Branding" />
+    <Using Include="SqlExplorer.Sdk.Localization" />
+    <Using Include="SqlExplorer.Sdk.Tools" />
+    <Using Include="SqlExplorer.Sdk.Ui" />
+  </ItemGroup>
+
+</Project>

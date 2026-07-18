@@ -131,6 +131,11 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     public ILocalizer Loc { get; }
 
     public ObservableCollection<StoreListItem> BrowseItems { get; } = [];
+
+    /// <summary>Installed rows for which the catalog offers a newer version — shown grouped at the top of
+    /// the Installed tab under "Updates" (SE-156), and excluded from <see cref="BundledPlugins"/>/
+    /// <see cref="UserPlugins"/> so they never appear twice.</summary>
+    public ObservableCollection<InstalledListItem> UpdatablePlugins { get; } = [];
     public ObservableCollection<InstalledListItem> BundledPlugins { get; } = [];
     public ObservableCollection<InstalledListItem> UserPlugins { get; } = [];
     public ObservableCollection<string> ConsentCapabilities { get; } = [];
@@ -149,10 +154,11 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     public int McpToolsCount => _allBrowse.Count(i => TabForItem(i) == CategoryMcpTools);
     public int OtherCount => _allBrowse.Count(i => !i.IsBundle && TabForItem(i) == CategoryOther);
     public bool HasUserPlugins => UserPlugins.Count > 0;
-    public int UpdateCount => UserPlugins.Count(p => p.UpdateAvailable);
+    public bool HasBundledPlugins => BundledPlugins.Count > 0;
+    public int UpdateCount => UpdatablePlugins.Count(p => p.UpdateAvailable);
     public bool HasUpdates => UpdateCount > 0;
     public string UpdateAllLabel => Loc.Get("StoreUpdateAll", UpdateCount);
-    public int InstalledCount => BundledPlugins.Count + UserPlugins.Count;
+    public int InstalledCount => BundledPlugins.Count + UserPlugins.Count + UpdatablePlugins.Count;
     public string InstalledCountLabel => Loc.Get("StoreInstalledCount", InstalledCount);
 
     /// <summary>Set by the view: pick a local .zip to install; returns null if cancelled.</summary>
@@ -163,6 +169,9 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
 
     /// <summary>Set by the view to relaunch the app (applies the staged install/enable/remove changes).</summary>
     public Action? RestartRequested { get; set; }
+
+    /// <summary>Shows the per-plugin changelog dialog for an updatable row (SE-138 phase 2). Wired by the view.</summary>
+    public Func<PluginChangelogViewModel, Task>? ChangelogRequested { get; set; }
 
     [RelayCommand]
     private void SelectTab(string tab) => SelectedTab = tab;
@@ -197,6 +206,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
 
     private void BuildInstalled(StoreCatalog catalog)
     {
+        UpdatablePlugins.Clear();
         BundledPlugins.Clear();
         UserPlugins.Clear();
 
@@ -237,10 +247,20 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
             row.RollbackLabel = hasRollback ? Loc.Get("StoreRollbackTo", prevVersion!) : Loc["StoreRollback"];
             row.IsPinned = pinnedIds.ContainsKey(plugin.Id);
 
-            (plugin.Origin == PluginOrigin.Bundled ? BundledPlugins : UserPlugins).Add(row);
+            // A row with an available update is grouped under "Updates" at the top and kept out of the
+            // regular Built-in/Installed sections below (SE-156) — never shown in both places.
+            if (row.UpdateAvailable)
+            {
+                UpdatablePlugins.Add(row);
+            }
+            else
+            {
+                (plugin.Origin == PluginOrigin.Bundled ? BundledPlugins : UserPlugins).Add(row);
+            }
         }
 
         OnPropertyChanged(nameof(HasUserPlugins));
+        OnPropertyChanged(nameof(HasBundledPlugins));
         OnPropertyChanged(nameof(HasUpdates));
         OnPropertyChanged(nameof(UpdateCount));
         OnPropertyChanged(nameof(UpdateAllLabel));
@@ -248,7 +268,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         OnPropertyChanged(nameof(InstalledCountLabel));
 
         // Only fetch the remote icon for rows that didn't already resolve a local one.
-        foreach (var row in BundledPlugins.Concat(UserPlugins))
+        foreach (var row in UpdatablePlugins.Concat(BundledPlugins).Concat(UserPlugins))
         {
             if (row.Icon is null)
             {
@@ -325,6 +345,8 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         OnPropertyChanged(nameof(OtherCount));
         OnPropertyChanged(nameof(HasOtherItems));
 
+        RebuildCategoryOptions();
+
         foreach (var item in _allBrowse)
         {
             _ = LoadIconAsync(item.IconUrl, image => item.Icon = image);
@@ -333,14 +355,55 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
 
     partial void OnSearchTextChanged(string? value) => ApplyBrowseFilter();
 
-    partial void OnSelectedCategoryChanged(string value) => ApplyBrowseFilter();
+    partial void OnSelectedCategoryChanged(string value)
+    {
+        // Keep the dropdown selection (bound to the computed option) in sync when the string state changes.
+        OnPropertyChanged(nameof(SelectedCategoryOption));
+        ApplyBrowseFilter();
+    }
 
-    /// <summary>True when any browsable item has an unknown <c>type</c> — the "Other" chip surfaces so a
+    /// <summary>True when any browsable item has an unknown <c>type</c> — the "Other" option surfaces so a
     /// mistyped or forward-compat plugin doesn't silently disappear from the Store.</summary>
     public bool HasOtherItems => OtherCount > 0;
 
-    [RelayCommand]
-    private void SelectCategory(string category) => SelectedCategory = category;
+    /// <summary>One entry in the Browse type-filter dropdown (SE-157, replacing the old chip row).</summary>
+    public sealed record CategoryOption(string Key, string Label);
+
+    /// <summary>Type-filter dropdown entries, rebuilt on each catalog load — the counts change and "Other"
+    /// only appears when an unknown-type plugin exists.</summary>
+    public ObservableCollection<CategoryOption> CategoryOptions { get; } = [];
+
+    /// <summary>Two-way bridge between the type dropdown and <see cref="SelectedCategory"/> (the string the
+    /// filter runs on), mirroring Settings' enum-dropdown pattern (record option + selected-option bridge).</summary>
+    public CategoryOption? SelectedCategoryOption
+    {
+        get => CategoryOptions.FirstOrDefault(o => o.Key == SelectedCategory) ?? CategoryOptions.FirstOrDefault();
+        set
+        {
+            if (value is not null)
+            {
+                SelectedCategory = value.Key;
+            }
+        }
+    }
+
+    // Rebuild the dropdown entries with current counts; "Other" only when an unknown-type plugin exists.
+    private void RebuildCategoryOptions()
+    {
+        CategoryOptions.Clear();
+        CategoryOptions.Add(new CategoryOption(CategoryAll, $"{Loc["StoreCategoryAll"]} ({AllCount})"));
+        CategoryOptions.Add(new CategoryOption(CategoryProviders, $"{Loc["StoreCategoryProviders"]} ({ProvidersCount})"));
+        CategoryOptions.Add(new CategoryOption(CategoryTools, $"{Loc["StoreCategoryTools"]} ({ToolsCount})"));
+        CategoryOptions.Add(new CategoryOption(CategoryMcpTools, $"{Loc["StoreCategoryMcpTools"]} ({McpToolsCount})"));
+        if (HasOtherItems)
+        {
+            CategoryOptions.Add(new CategoryOption(CategoryOther, $"{Loc["StoreCategoryOther"]} ({OtherCount})"));
+        }
+
+        // Clearing the collection reset the bound ComboBox selection to null; re-resolve it against the
+        // fresh option instances (the getter matches on Key, so the current filter is preserved).
+        OnPropertyChanged(nameof(SelectedCategoryOption));
+    }
 
     // Keep the selected-card highlight in sync (ItemsControl has no built-in selection).
     partial void OnSelectedBrowseItemChanged(StoreListItem? oldValue, StoreListItem? newValue)
@@ -598,6 +661,19 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         }
 
         BuildInstalled(_lastCatalog);
+    }
+
+    // Opens the changelog dialog for a single updatable row (SE-138 phase 2): its target version's notes.
+    [RelayCommand]
+    private async Task ViewChangelog(InstalledListItem? item)
+    {
+        if (item?.UpdateTarget is not { } target || ChangelogRequested is null)
+        {
+            return;
+        }
+
+        var section = new PluginChangelogViewModel.Section($"{item.Name} {target.Version}", target.Notes);
+        await ChangelogRequested(new PluginChangelogViewModel(Loc["PluginChangelogTitle"], [section], Loc));
     }
 
     [RelayCommand]

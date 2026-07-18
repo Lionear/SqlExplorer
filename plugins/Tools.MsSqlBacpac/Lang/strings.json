@@ -1,0 +1,22 @@
+{
+  "bacpac.export.title": "Export to BACPAC",
+  "bacpac.import.title": "Import BACPAC as new database",
+  "bacpac.extract.title": "Extract to DACPAC",
+  "bacpac.publish.title": "Publish DACPAC",
+
+  "bacpac.error.noDatabase": "No database selected to run against.",
+  "bacpac.export.error.noFile": "Choose a .bacpac file to write to.",
+  "bacpac.import.error.noFile": "Choose a .bacpac file to import.",
+  "bacpac.import.error.noName": "Enter a name for the new database.",
+  "bacpac.extract.error.noFile": "Choose a .dacpac file to write to.",
+  "bacpac.publish.error.noFile": "Choose a .dacpac file to publish.",
+
+  "bacpac.export.progress.start": "Exporting {0} to BACPAC…",
+  "bacpac.export.progress.done": "Exported to {0}",
+  "bacpac.import.progress.start": "Importing BACPAC as new database \"{0}\"…",
+  "bacpac.import.progress.done": "Imported as new database \"{0}\"",
+  "bacpac.extract.progress.start": "Extracting schema of {0} to DACPAC…",
+  "bacpac.extract.progress.done": "Extracted to {0}",
+  "bacpac.publish.progress.start": "Publishing DACPAC to \"{0}\"…",
+  "bacpac.publish.progress.done": "Published to \"{0}\""
+}

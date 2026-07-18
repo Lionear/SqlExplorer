@@ -12,6 +12,7 @@ using SqlExplorer.Core.Shortcuts;
 using SqlExplorer.Core.Store;
 using SqlExplorer.Core.Tools;
 using SqlExplorer.Sdk;
+using SqlExplorer.Sdk.Formatting;
 using SqlExplorer.Sdk.Settings;
 using SqlExplorer.Sdk.Tools;
 using SqlExplorer.Sdk.Ui;
@@ -123,6 +124,86 @@ public partial class SettingsViewModel : ViewModelBase
         UpdateCheckStatus = null;
     }
 
+    /// <summary>A background re-check interval preset in the Updates pane. <see cref="Minutes"/> 0 means
+    /// "only on startup" (no periodic loop).</summary>
+    public sealed record UpdateIntervalOption(int Minutes, string Label);
+
+    public IReadOnlyList<UpdateIntervalOption> UpdateIntervals { get; }
+
+    [ObservableProperty]
+    private int _selectedUpdateIntervalMinutes;
+
+    /// <summary>Two-way bridge between the interval dropdown and <see cref="SelectedUpdateIntervalMinutes"/>.</summary>
+    public UpdateIntervalOption? SelectedUpdateIntervalOption
+    {
+        get => UpdateIntervals.FirstOrDefault(o => o.Minutes == SelectedUpdateIntervalMinutes)
+               ?? UpdateIntervals.FirstOrDefault();
+        set
+        {
+            if (value is not null)
+            {
+                SelectedUpdateIntervalMinutes = value.Minutes;
+            }
+        }
+    }
+
+    partial void OnSelectedUpdateIntervalMinutesChanged(int value) =>
+        OnPropertyChanged(nameof(SelectedUpdateIntervalOption));
+
+    // ── SQL formatter (SE-148) ───────────────────────────────────────────────────────────────────────
+    public sealed record KeywordCasingOption(KeywordCasing Casing, string Label);
+
+    public IReadOnlyList<KeywordCasingOption> KeywordCasings { get; }
+
+    [ObservableProperty]
+    private KeywordCasing _formatKeywordCasing;
+
+    /// <summary>Two-way bridge between the casing dropdown and <see cref="FormatKeywordCasing"/>.</summary>
+    public KeywordCasingOption? SelectedKeywordCasingOption
+    {
+        get => KeywordCasings.FirstOrDefault(o => o.Casing == FormatKeywordCasing) ?? KeywordCasings.FirstOrDefault();
+        set
+        {
+            if (value is not null)
+            {
+                FormatKeywordCasing = value.Casing;
+            }
+        }
+    }
+
+    partial void OnFormatKeywordCasingChanged(KeywordCasing value) =>
+        OnPropertyChanged(nameof(SelectedKeywordCasingOption));
+
+    /// <summary>Indent-width presets (spaces) for the formatter dropdown.</summary>
+    public IReadOnlyList<int> IndentSizes { get; } = [2, 4, 8];
+
+    [ObservableProperty]
+    private int _formatIndentSize;
+
+    // ── Proactive plugin updates (SE-138) ────────────────────────────────────────────────────────────
+    public sealed record PluginUpdatePolicyOption(PluginUpdatePolicy Policy, string Label);
+
+    public IReadOnlyList<PluginUpdatePolicyOption> PluginUpdatePolicies { get; }
+
+    [ObservableProperty]
+    private PluginUpdatePolicy _pluginUpdatePolicy;
+
+    /// <summary>Two-way bridge between the policy dropdown and <see cref="PluginUpdatePolicy"/>.</summary>
+    public PluginUpdatePolicyOption? SelectedPluginUpdatePolicyOption
+    {
+        get => PluginUpdatePolicies.FirstOrDefault(o => o.Policy == PluginUpdatePolicy) ?? PluginUpdatePolicies.FirstOrDefault();
+        set
+        {
+            if (value is not null)
+            {
+                PluginUpdatePolicy = value.Policy;
+            }
+        }
+    }
+
+    partial void OnPluginUpdatePolicyChanged(PluginUpdatePolicy value) =>
+        OnPropertyChanged(nameof(SelectedPluginUpdatePolicyOption));
+
     [ObservableProperty]
     private bool _checkForUpdatesOnStartup;
 
@@ -215,6 +296,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _restoreTabsOnStartup;
+
+    [ObservableProperty]
+    private bool _promptSaveQueryOnClose;
 
     [ObservableProperty]
     private bool _showSystemDatabases;
@@ -439,6 +523,30 @@ public partial class SettingsViewModel : ViewModelBase
                 ChannelDot("#E0A33E"), ChannelTint("#E0A33E")),
         ];
 
+        UpdateIntervals =
+        [
+            new(60, localizer["UpdateIntervalHourly"]),
+            new(240, localizer["UpdateInterval4Hours"]),
+            new(720, localizer["UpdateInterval12Hours"]),
+            new(1440, localizer["UpdateIntervalDaily"]),
+            new(10080, localizer["UpdateIntervalWeekly"]),
+            new(0, localizer["UpdateIntervalManual"]),
+        ];
+
+        KeywordCasings =
+        [
+            new(KeywordCasing.Upper, localizer["FormatCasingUpper"]),
+            new(KeywordCasing.Lower, localizer["FormatCasingLower"]),
+            new(KeywordCasing.Preserve, localizer["FormatCasingPreserve"]),
+        ];
+
+        PluginUpdatePolicies =
+        [
+            new(PluginUpdatePolicy.Off, localizer["PluginUpdatePolicyOff"]),
+            new(PluginUpdatePolicy.Notify, localizer["PluginUpdatePolicyNotify"]),
+            new(PluginUpdatePolicy.Auto, localizer["PluginUpdatePolicyAuto"]),
+        ];
+
         Categories =
         [
             new SettingsCategory("General", localizer["SettingsGeneralCat"], NodeIcons.SettingsGeneral),
@@ -616,12 +724,17 @@ public partial class SettingsViewModel : ViewModelBase
         Theme = settings.Theme;
         EditorFontSize = settings.EditorFontSize;
         EditorWordWrap = settings.EditorWordWrap;
+        FormatKeywordCasing = settings.FormatKeywordCasing;
+        FormatIndentSize = settings.FormatIndentSize;
+        PluginUpdatePolicy = settings.PluginUpdatePolicy;
         ConfirmBeforeSave = settings.ConfirmBeforeSave;
         QueryTimeoutSeconds = settings.QueryTimeoutSeconds;
         BrowsePageSize = settings.BrowsePageSize;
         RestoreTabsOnStartup = settings.RestoreTabsOnStartup;
+        PromptSaveQueryOnClose = settings.PromptSaveQueryOnClose;
         SelectedUpdateChannel = settings.UpdateChannel ?? _update.RunningChannel;
         CheckForUpdatesOnStartup = settings.CheckForUpdatesOnStartup;
+        SelectedUpdateIntervalMinutes = settings.UpdateCheckIntervalMinutes;
         UpdateCheckStatus = null;
         ShowSystemDatabases = settings.ShowSystemDatabases;
         ConfirmOnExit = settings.ConfirmOnExit;
@@ -757,13 +870,18 @@ public partial class SettingsViewModel : ViewModelBase
         Theme = defaults.Theme;
         EditorFontSize = defaults.EditorFontSize;
         EditorWordWrap = defaults.EditorWordWrap;
+        FormatKeywordCasing = defaults.FormatKeywordCasing;
+        FormatIndentSize = defaults.FormatIndentSize;
+        PluginUpdatePolicy = defaults.PluginUpdatePolicy;
         ConfirmBeforeSave = defaults.ConfirmBeforeSave;
         QueryTimeoutSeconds = defaults.QueryTimeoutSeconds;
         BrowsePageSize = defaults.BrowsePageSize;
         RestoreTabsOnStartup = defaults.RestoreTabsOnStartup;
+        PromptSaveQueryOnClose = defaults.PromptSaveQueryOnClose;
         // No explicit default channel: fall back to the running build's channel, same as a fresh install.
         SelectedUpdateChannel = defaults.UpdateChannel ?? _update.RunningChannel;
         CheckForUpdatesOnStartup = defaults.CheckForUpdatesOnStartup;
+        SelectedUpdateIntervalMinutes = defaults.UpdateCheckIntervalMinutes;
         ShowSystemDatabases = defaults.ShowSystemDatabases;
         ConfirmOnExit = defaults.ConfirmOnExit;
         CloseToTray = defaults.CloseToTray;
@@ -808,10 +926,14 @@ public partial class SettingsViewModel : ViewModelBase
         settings.Theme = Theme;
         settings.EditorFontSize = EditorFontSize;
         settings.EditorWordWrap = EditorWordWrap;
+        settings.FormatKeywordCasing = FormatKeywordCasing;
+        settings.FormatIndentSize = FormatIndentSize;
+        settings.PluginUpdatePolicy = PluginUpdatePolicy;
         settings.ConfirmBeforeSave = ConfirmBeforeSave;
         settings.QueryTimeoutSeconds = QueryTimeoutSeconds;
         settings.BrowsePageSize = BrowsePageSize;
         settings.RestoreTabsOnStartup = RestoreTabsOnStartup;
+        settings.PromptSaveQueryOnClose = PromptSaveQueryOnClose;
         // Switching channels clears the "Later" dismissal so the new channel's build can notify afresh.
         if (settings.UpdateChannel != SelectedUpdateChannel)
         {
@@ -819,6 +941,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         settings.UpdateChannel = SelectedUpdateChannel;
         settings.CheckForUpdatesOnStartup = CheckForUpdatesOnStartup;
+        settings.UpdateCheckIntervalMinutes = SelectedUpdateIntervalMinutes;
         settings.ShowSystemDatabases = ShowSystemDatabases;
         settings.ConfirmOnExit = ConfirmOnExit;
         settings.CloseToTray = CloseToTray;

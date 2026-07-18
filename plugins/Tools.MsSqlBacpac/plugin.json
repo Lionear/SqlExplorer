@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "mssql-bacpac",
+  "type": "tool",
+  "name": "SQL Server BACPAC/DACPAC",
+  "version": "0.1.0",
+  "hostApiVersion": 2,
+  "entryAssembly": "SqlExplorer.Tools.MsSqlBacpac.dll",
+  "localization": "Lang/strings"
+}
