@@ -71,42 +71,44 @@ public partial class MainView : UserControl
 
         DataContextChanged += OnDataContextChanged;
 
-        // SE-154: drag a .sql file onto the window to open it in a new query tab.
-        AddHandler(DragDrop.DragOverEvent, OnDragOver);
-        AddHandler(DragDrop.DropEvent, OnDrop);
+        // SE-154: drag a .sql file onto the window to open it in a new query tab. handledEventsToo is
+        // essential — the DragDrop events bubble, and child controls that do their own drag-drop (notably
+        // the AvaloniaEdit SQL editor and the result grid) mark them Handled first; without this flag our
+        // window-level handler would never see a drop that lands over the editor. We gate on the payload
+        // carrying a file (not on a resolvable path, which isn't always available mid-drag) and only mark
+        // the event Handled for file drops, so the editor's own internal text drag-drop still works.
+        AddHandler(DragDrop.DragOverEvent, OnDragOver, RoutingStrategies.Bubble, handledEventsToo: true);
+        AddHandler(DragDrop.DropEvent, OnDrop, RoutingStrategies.Bubble, handledEventsToo: true);
         DragDrop.SetAllowDrop(this, true);
     }
 
-    // The dropped/dragged .sql files' local paths (non-.sql items are ignored). Avalonia 12's drag payload
-    // is an IDataTransfer; TryGetFiles yields the storage items, TryGetLocalPath their on-disk path.
-    private static IEnumerable<string> DraggedSqlPaths(DragEventArgs e) =>
-        (e.DataTransfer?.TryGetFiles() ?? [])
-        .Select(f => f.TryGetLocalPath())
-        .Where(p => p is not null && p.EndsWith(".sql", StringComparison.OrdinalIgnoreCase))
-        .Cast<string>();
-
     private void OnDragOver(object? sender, DragEventArgs e)
     {
-        e.DragEffects = DraggedSqlPaths(e).Any() ? DragDropEffects.Copy : DragDropEffects.None;
-        e.Handled = true;
+        if (e.DataTransfer?.Contains(DataFormat.File) == true)
+        {
+            e.DragEffects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
     }
 
     private void OnDrop(object? sender, DragEventArgs e)
     {
-        if (_viewModel is null)
+        if (_viewModel is null || e.DataTransfer?.Contains(DataFormat.File) != true)
         {
             return;
         }
 
-        foreach (var path in DraggedSqlPaths(e).ToList())
+        e.Handled = true;
+        foreach (var file in e.DataTransfer.TryGetFiles() ?? [])
         {
-            if (_viewModel.OpenQueryFileCommand.CanExecute(path))
+            var path = file.TryGetLocalPath();
+            if (path is not null
+                && path.EndsWith(".sql", StringComparison.OrdinalIgnoreCase)
+                && _viewModel.OpenQueryFileCommand.CanExecute(path))
             {
                 _viewModel.OpenQueryFileCommand.Execute(path);
             }
         }
-
-        e.Handled = true;
     }
 
     /// <summary>Current width of the connection sidebar column, in pixels (for persistence).</summary>
