@@ -63,7 +63,8 @@ jobs:
       channel: ${{ steps.target.outputs.channel }}
       version: ${{ steps.target.outputs.version }}
     steps:
-      # Needed to read the base <Version> from Directory.Build.props for rolling stamps.
+      # Base checkout only. GitHub fires `schedule`/`push` from the default branch, so this tree is
+      # main's regardless of what we build — the base <Version> is fetched from the *target* ref below.
       - uses: actions/checkout@v4
 
       - name: Resolve ref, channel and version
@@ -116,13 +117,18 @@ jobs:
 
           # Version: Stable takes the tag verbatim (v0.2.0 -> 0.2.0); rolling channels stamp the base
           # <Version> with channel.date.run; an explicit dispatch input overrides.
-          BASE=$(sed -n 's|.*<Version>\(.*\)</Version>.*|\1|p' Directory.Build.props)
           if [ "$CHANNEL" = stable ]; then
             VERSION="${REF#v}"
           elif [ -n "${INPUT_VERSION:-}" ]; then
             VERSION="$INPUT_VERSION"
           else
-            if [ -z "$BASE" ]; then echo "No <Version> in Directory.Build.props" >&2; exit 1; fi
+            # Read the base <Version> from the branch we actually build, NOT from this checked-out tree
+            # (which is the default branch for schedule/push). Without this a nightly building develop
+            # stamps main's version — the 0.2.0-vs-0.3.0 drift. REF here is a branch (develop|main).
+            git fetch --depth=1 origin "$REF" >/dev/null 2>&1 \
+              || { echo "Failed to fetch ref '$REF' for version lookup" >&2; exit 1; }
+            BASE=$(git show FETCH_HEAD:Directory.Build.props | sed -n 's|.*<Version>\(.*\)</Version>.*|\1|p')
+            if [ -z "$BASE" ]; then echo "No <Version> in Directory.Build.props on '$REF'" >&2; exit 1; fi
             VERSION="$BASE-$CHANNEL.$(date -u +%Y%m%d).$RUN_NUMBER"
           fi
 
