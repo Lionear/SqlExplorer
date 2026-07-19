@@ -164,15 +164,20 @@ public sealed class PluginInstaller(HttpClient http, IPluginStateStore stateStor
         }
     }
 
-    private static string? CompatError(PluginManifest manifest) => manifest.Type switch
+    // The type→contract mapping lives once in HostApiVersions.CompatFor (shared with the Store's offer
+    // gate); dispatch through it so a new plugin type (e.g. "extension", "mcp") never has to be taught to
+    // two switches. Only the known-type guard is ours, since CompatFor treats an unknown type as a provider.
+    private static string? CompatError(PluginManifest manifest)
     {
-        PluginManifest.Types.Provider when !ProviderHostApi.IsCompatible(manifest.HostApiVersion) =>
-            $"Plugin targets provider host API v{manifest.HostApiVersion}, this host is v{ProviderHostApi.Version}.",
-        PluginManifest.Types.Tool when !ToolHostApi.IsCompatible(manifest.HostApiVersion) =>
-            $"Plugin targets tool host API v{manifest.HostApiVersion}, this host is v{ToolHostApi.Version}.",
-        PluginManifest.Types.Provider or PluginManifest.Types.Tool => null,
-        _ => $"Unknown plugin type '{manifest.Type}'."
-    };
+        if (!PluginManifest.Types.IsKnown(manifest.Type))
+            return $"Unknown plugin type '{manifest.Type}'.";
+
+        var compat = HostApiVersions.CompatFor(manifest.Type);
+        return compat.Accepts(manifest.HostApiVersion)
+            ? null
+            : $"Plugin targets host API v{manifest.HostApiVersion}, this host accepts "
+              + $"v{compat.MinSupported}–v{compat.Current}.";
+    }
 
     private async Task DownloadAsync(
         string url, string destPath, long cap, string id, IProgress<InstallProgress>? progress, CancellationToken ct)

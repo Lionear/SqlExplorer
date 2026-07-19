@@ -77,5 +77,9 @@ public sealed record PluginManifest
         /// loader-hint so the provider/tool/mcp loaders skip it; capabilities — not the type — decide what it
         /// may do.</summary>
         public const string Extension = "extension";
+
+        /// <summary>Whether <paramref name="type"/> is a plugin type this host knows how to load.</summary>
+        public static bool IsKnown(string? type) =>
+            type is Provider or Tool or Mcp or Extension;
     }
 }
