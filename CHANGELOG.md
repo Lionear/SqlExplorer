@@ -70,6 +70,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   dialog no longer shows a mismatched build version.
 - The bottom tool panels (Output, Containers, AI activity) can now be **resized** by dragging their
   top edge — previously dragging did nothing, or left an empty band above the status bar.
+- **"Restart app"** (and the in-app updater's relaunch) now reliably brings the app back: the new
+  instance no longer connects to the still-closing old one, defers to it and exits — which could leave
+  no window at all. It also relaunches correctly when the app runs through the dotnet muxer.
 
 <!--
 Add bullets under the section that fits, in this order (omit the empty ones):
