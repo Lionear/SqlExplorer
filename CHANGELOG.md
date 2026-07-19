@@ -46,6 +46,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   connection from the AI without opening the Connection Manager.
 - **One bottom panel at a time** — a Settings ▸ Appearance toggle (on by default) so opening a bottom
   panel (Output, Containers, AI activity) closes the others instead of stacking them.
+- **Search the Settings** — a search box above the category rail filters categories by name or by the
+  settings inside them (e.g. "token" surfaces MCP, "theme" surfaces Appearance).
 
 ### Changed
 

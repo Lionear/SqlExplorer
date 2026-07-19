@@ -53,19 +53,24 @@
     <!-- ============ Category rail ============ -->
     <Border Grid.Column="0" Background="{DynamicResource SEPanelBgBrush}"
             BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="0,0,1,0">
-      <ListBox Background="Transparent" Padding="0,8"
-               ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}">
-        <ListBox.ItemTemplate>
-          <DataTemplate>
-            <StackPanel Orientation="Horizontal" Spacing="10">
-              <Path Width="16" Height="16" VerticalAlignment="Center" Data="{Binding Icon}"
-                    Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.3"
-                    StrokeJoin="Round" StrokeLineCap="Round" />
-              <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
-            </StackPanel>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
+      <Grid RowDefinitions="Auto,*">
+        <!-- Search box (SE-161): filters the categories below by label or keyword. -->
+        <TextBox Grid.Row="0" Margin="8,8,8,4" PlaceholderText="{Binding Loc[SettingsSearch]}"
+                 Text="{Binding SettingsSearch}" />
+        <ListBox Grid.Row="1" Background="Transparent" Padding="0,4"
+                 ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Path Width="16" Height="16" VerticalAlignment="Center" Data="{Binding Icon}"
+                      Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.3"
+                      StrokeJoin="Round" StrokeLineCap="Round" />
+                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
     </Border>
 
     <!-- ============ Content ============ -->
@@ -74,7 +79,7 @@
 
         <!-- General (scrollable: the Updates cards can push it past the window height) -->
         <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                      IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=General}">
+                      IsVisible="{Binding ActiveCategoryKey, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=General}">
         <StackPanel Spacing="10">
           <TextBlock Text="{Binding Loc[SettingsGeneralCat]}" FontSize="14" FontWeight="SemiBold" />
           <TextBlock Text="{Binding Loc[SettingsGeneral]}" FontSize="12" Foreground="{DynamicResource SETextSecondaryBrush}" />
@@ -198,7 +203,7 @@
 
         <!-- Appearance -->
         <StackPanel Spacing="10"
-                    IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Appearance}">
+                    IsVisible="{Binding ActiveCategoryKey, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Appearance}">
           <TextBlock Text="{Binding Loc[SettingsAppearance]}" FontSize="14" FontWeight="SemiBold" />
           <TextBlock Text="{Binding Loc[AppearanceDesc]}" FontSize="12" Foreground="{DynamicResource SETextSecondaryBrush}" />
           <TextBlock Text="{Binding Loc[Theme]}" FontWeight="SemiBold" Margin="0,6,0,0" />
@@ -223,7 +228,7 @@
 
         <!-- Editor -->
         <StackPanel Spacing="10"
-                    IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Editor}">
+                    IsVisible="{Binding ActiveCategoryKey, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Editor}">
           <TextBlock Text="{Binding Loc[SettingsEditor]}" FontSize="14" FontWeight="SemiBold" />
           <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
             <TextBlock Grid.Column="0" Text="{Binding Loc[EditorFontSize]}" VerticalAlignment="Center" />
@@ -254,7 +259,7 @@
 
         <!-- Query -->
         <StackPanel Spacing="10"
-                    IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Query}">
+                    IsVisible="{Binding ActiveCategoryKey, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Query}">
           <TextBlock Text="{Binding Loc[SettingsQuery]}" FontSize="14" FontWeight="SemiBold" />
           <ToggleSwitch IsChecked="{Binding ConfirmBeforeSave}" Margin="0,6,0,0"
                         OnContent="{Binding Loc[ConfirmBeforeSave]}" OffContent="{Binding Loc[ConfirmBeforeSave]}" />
@@ -276,7 +281,7 @@
 
         <!-- Query Log -->
         <StackPanel Spacing="8" MaxWidth="560" HorizontalAlignment="Left"
-                    IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=QueryLog}">
+                    IsVisible="{Binding ActiveCategoryKey, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=QueryLog}">
           <TextBlock Text="{Binding Loc[SettingsQueryLog]}" FontSize="14" FontWeight="SemiBold" />
           <TextBlock Text="{Binding Loc[QueryLogDesc]}" FontSize="12" TextWrapping="Wrap"
                      Foreground="{DynamicResource SETextSecondaryBrush}" />
@@ -297,7 +302,7 @@
 
         <!-- Security (master password) -->
         <StackPanel Spacing="8" MaxWidth="560" HorizontalAlignment="Left"
-                    IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Security}">
+                    IsVisible="{Binding ActiveCategoryKey, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Security}">
           <TextBlock Text="{Binding Loc[SettingsSecurity]}" FontSize="14" FontWeight="SemiBold" />
           <TextBlock Text="{Binding Loc[MasterPwSectionDesc]}" FontSize="12" TextWrapping="Wrap"
                      Foreground="{DynamicResource SETextSecondaryBrush}" />
@@ -335,7 +340,7 @@
 
         <!-- Keyboard -->
         <Grid RowDefinitions="Auto,Auto,Auto,*"
-              IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Keyboard}">
+              IsVisible="{Binding ActiveCategoryKey, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Keyboard}">
           <TextBlock Grid.Row="0" Text="{Binding Loc[SettingsKeyboard]}" FontSize="14" FontWeight="SemiBold" />
           <TextBlock Grid.Row="1" Text="{Binding Loc[KeyboardDesc]}" FontSize="12" TextWrapping="Wrap"
                      Foreground="{DynamicResource SETextSecondaryBrush}" Margin="0,4,0,10" />
@@ -399,7 +404,7 @@
         </Grid>
 
         <!-- MCP server (AI query access) -->
-        <ScrollViewer IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Mcp}">
+        <ScrollViewer IsVisible="{Binding ActiveCategoryKey, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Mcp}">
           <StackPanel Spacing="10" MaxWidth="560" HorizontalAlignment="Left">
             <TextBlock Text="{Binding Loc[SettingsMcp]}" FontSize="14" FontWeight="SemiBold" />
             <TextBlock Text="{Binding Loc[McpDesc]}" FontSize="12" TextWrapping="Wrap"
@@ -541,7 +546,7 @@
 
         <!-- Plugins -->
         <Grid RowDefinitions="Auto,Auto,Auto,*"
-              IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Plugins}">
+              IsVisible="{Binding ActiveCategoryKey, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=Plugins}">
           <TextBlock Grid.Row="0" Text="{Binding Loc[SettingsPlugins]}" FontSize="14" FontWeight="SemiBold" />
           <TextBlock Grid.Row="1" Text="{Binding Loc[PluginsDesc]}" FontSize="12" TextWrapping="Wrap"
                      Foreground="{DynamicResource SETextSecondaryBrush}" Margin="0,4,0,12" />
@@ -612,7 +617,7 @@
         </Grid>
 
         <!-- ===== Plugin Sources pane (SE-122, relocated from Plugin Store's Sources tab) ===== -->
-        <ScrollViewer IsVisible="{Binding SelectedCategory.Key, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=PluginSources}">
+        <ScrollViewer IsVisible="{Binding ActiveCategoryKey, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter=PluginSources}">
           <StackPanel Margin="24,20" Spacing="20">
             <!-- Discovery (read-only) -->
             <StackPanel Spacing="6">

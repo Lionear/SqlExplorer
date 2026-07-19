@@ -21,8 +21,10 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace SqlExplorer.App.ViewModels;
 
-/// <summary>One entry in the Settings category rail: a stable key, a localized label and a vector icon.</summary>
-public sealed record SettingsCategory(string Key, string Label, Geometry Icon);
+/// <summary>One entry in the Settings category rail: a stable key, a localized label, a vector icon, and
+/// optional space-separated search <paramref name="Keywords"/> (EN/NL terms for settings inside it) so the
+/// search box (SE-161) can surface a category by the setting you're looking for, not just its label.</summary>
+public sealed record SettingsCategory(string Key, string Label, Geometry Icon, string Keywords = "");
 
 /// <summary>
 /// Backs the Preferences window: General/Appearance/Editor/Query plus a Plugins category that lists
@@ -53,6 +55,57 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private SettingsCategory? _selectedCategory;
+
+    // The full category list; Categories is the (search-)filtered view bound by the rail (SE-161).
+    private IReadOnlyList<SettingsCategory> _allCategories = [];
+
+    /// <summary>The key of the category whose content pane is shown. Driven by the rail selection but kept
+    /// separate so a search that filters the rail (and momentarily nulls the ListBox selection) can never
+    /// leave the content area blank — or, worse, show every pane at once (SE-161).</summary>
+    [ObservableProperty]
+    private string _activeCategoryKey = "General";
+
+    partial void OnSelectedCategoryChanged(SettingsCategory? value)
+    {
+        if (value is not null)
+        {
+            ActiveCategoryKey = value.Key;
+        }
+    }
+
+    /// <summary>Search text for the category rail (SE-161): filters categories by label or keywords.</summary>
+    [ObservableProperty]
+    private string? _settingsSearch;
+
+    partial void OnSettingsSearchChanged(string? value) => ApplyCategoryFilter();
+
+    // Filter the rail to categories whose label or keywords contain the query; empty shows all. The content
+    // pane follows ActiveCategoryKey (not the rail selection), so a no-match query just empties the rail and
+    // leaves the last pane showing — the rail selection can safely go null without blanking the content.
+    private void ApplyCategoryFilter()
+    {
+        var query = SettingsSearch?.Trim();
+        var visible = string.IsNullOrEmpty(query)
+            ? _allCategories
+            : _allCategories
+                .Where(c => c.Label.Contains(query, StringComparison.OrdinalIgnoreCase)
+                            || c.Keywords.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+        var previous = SelectedCategory;
+        Categories.Clear();
+        foreach (var category in visible)
+        {
+            Categories.Add(category);
+        }
+
+        // Select the previously-shown category if it's still visible, else the first match; on no match leave
+        // the selection null (empty rail) — ActiveCategoryKey keeps the content on the last-shown pane.
+        if (visible.Count > 0)
+        {
+            SelectedCategory = previous is not null && visible.Contains(previous) ? previous : visible[0];
+        }
+    }
 
     [ObservableProperty]
     private string? _language;
@@ -610,20 +663,33 @@ public partial class SettingsViewModel : ViewModelBase
             new(PluginUpdatePolicy.Auto, localizer["PluginUpdatePolicyAuto"]),
         ];
 
-        Categories =
+        // Keywords are EN/NL terms for the settings inside each category, so the search box (SE-161) can
+        // surface a category by the setting you're after, not only its label. Kept language-agnostic here.
+        _allCategories =
         [
-            new SettingsCategory("General", localizer["SettingsGeneralCat"], NodeIcons.SettingsGeneral),
-            new SettingsCategory("Appearance", localizer["SettingsAppearance"], NodeIcons.SettingsAppearance),
-            new SettingsCategory("Editor", localizer["SettingsEditor"], NodeIcons.SettingsEditor),
-            new SettingsCategory("Query", localizer["SettingsQuery"], NodeIcons.SettingsQuery),
-            new SettingsCategory("QueryLog", localizer["SettingsQueryLog"], NodeIcons.SettingsQuery),
-            new SettingsCategory("Keyboard", localizer["SettingsKeyboard"], NodeIcons.SettingsKeyboard),
-            new SettingsCategory("Mcp", localizer["SettingsMcp"], NodeIcons.SettingsPlugins),
-            new SettingsCategory("Security", localizer["SettingsSecurity"], NodeIcons.SettingsGeneral),
-            new SettingsCategory("Plugins", localizer["SettingsPlugins"], NodeIcons.SettingsPlugins),
-            new SettingsCategory("PluginSources", localizer["SettingsPluginSources"], NodeIcons.SettingsPlugins),
+            new SettingsCategory("General", localizer["SettingsGeneralCat"], NodeIcons.SettingsGeneral,
+                "language taal startup opstarten restore tabs herstel tray exit afsluiten system databases updates channel kanaal interval"),
+            new SettingsCategory("Appearance", localizer["SettingsAppearance"], NodeIcons.SettingsAppearance,
+                "theme thema dark donker light licht panel paneel bottom onder"),
+            new SettingsCategory("Editor", localizer["SettingsEditor"], NodeIcons.SettingsEditor,
+                "font lettergrootte size word wrap terugloop format opmaak keyword casing indent inspringen"),
+            new SettingsCategory("Query", localizer["SettingsQuery"], NodeIcons.SettingsQuery,
+                "timeout page pagina rows rijen results resultaten browse confirm bevestig"),
+            new SettingsCategory("QueryLog", localizer["SettingsQueryLog"], NodeIcons.SettingsQuery,
+                "query log audit logging"),
+            new SettingsCategory("Keyboard", localizer["SettingsKeyboard"], NodeIcons.SettingsKeyboard,
+                "keyboard toetsenbord shortcuts sneltoetsen keybindings gestures"),
+            new SettingsCategory("Mcp", localizer["SettingsMcp"], NodeIcons.SettingsPlugins,
+                "mcp ai server token port poort auth connection connectie create aanmaken host scrub secrets redact rows"),
+            new SettingsCategory("Security", localizer["SettingsSecurity"], NodeIcons.SettingsGeneral,
+                "security beveiliging master password wachtwoord lock vergrendel idle"),
+            new SettingsCategory("Plugins", localizer["SettingsPlugins"], NodeIcons.SettingsPlugins,
+                "plugins update policy beleid auto notify"),
+            new SettingsCategory("PluginSources", localizer["SettingsPluginSources"], NodeIcons.SettingsPlugins,
+                "plugin sources bronnen bron source url discovery manual"),
         ];
-        _selectedCategory = Categories[0];
+        Categories = [.._allCategories];
+        _selectedCategory = _allCategories[0];
 
         LoadFromStore();
         BuildPluginCatalog();

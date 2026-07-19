@@ -582,6 +582,9 @@
   <data name="SettingsAppearance" xml:space="preserve">
     <value>Appearance</value>
   </data>
+  <data name="SettingsSearch" xml:space="preserve">
+    <value>Search settings…</value>
+  </data>
   <data name="SettingsEditor" xml:space="preserve">
     <value>Editor</value>
   </data>
