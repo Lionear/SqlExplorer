@@ -19,6 +19,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The unit-test project drives internal helpers (ContainerMonitor) directly. -->
+    <InternalsVisibleTo Include="SqlExplorer.Backends.Docker.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="SqlExplorer.Sdk.Extensibility" />
   </ItemGroup>
 

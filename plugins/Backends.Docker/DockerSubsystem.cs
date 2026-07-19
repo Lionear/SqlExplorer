@@ -11,14 +11,15 @@ namespace SqlExplorer.Backends.Docker;
 /// <c>connections</c> (each managed container surfaces as a real host connection tagged with this plugin as
 /// origin, via <see cref="IPluginRuntimeContext.Connections"/>), and <c>panel</c> (<see cref="IPanelPlugin"/> —
 /// a docked "Containers" panel). It also declares <c>process</c> (it can shell out to <c>docker</c>).
-/// Live status polling wires in with the background seam next; everything else is here.
+/// It dogfoods every SE-164 seam: storage, connections, panel, menu (create flow) and background (live status).
 /// </summary>
-public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin, IMenuPlugin
+public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin, IMenuPlugin, IBackgroundPlugin
 {
     private IPluginRuntimeContext? _context;
     private IContainerRegistryStore? _registry;
     private DockerComposeBuilder? _builder;
     private ContainerService? _service;
+    private ContainersPanelView? _panel;
 
     public void Initialize(IPluginRuntimeContext context)
     {
@@ -80,6 +81,52 @@ public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin, IMenuPlugi
         _registry = null;
         _builder = null;
         _service = null;
+        _panel = null;
+    }
+
+    // --- IBackgroundPlugin (SE-164 background seam) ------------------------------------------------------
+
+    public async Task RunAsync(CancellationToken cancellationToken)
+    {
+        if (_service is null || _registry is null)
+        {
+            return;
+        }
+
+        // Poll every managed container's run-state on an interval and push it to the panel. Resilient: a poll
+        // failure (Docker went away mid-run) is logged once per streak — not every tick — and the loop keeps
+        // going, so it recovers if Docker comes back. An empty registry makes no Docker calls at all.
+        try
+        {
+            var loggedError = false;
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    var statuses = await ContainerMonitor.PollAsync(_registry, _service, cancellationToken);
+                    _panel?.SetStatuses(statuses);
+                    loggedError = false;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    if (!loggedError)
+                    {
+                        _context?.Log($"Local Containers: status polling paused ({ex.Message}).");
+                        loggedError = true;
+                    }
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(4), cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Normal shutdown.
+        }
     }
 
     // --- IMenuPlugin (SE-164 menu seam) -----------------------------------------------------------------
@@ -110,37 +157,16 @@ public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin, IMenuPlugi
 
     public string Title => "Containers";
 
-    /// <summary>Build the Containers panel: a snapshot of the managed container registry. No hardcoded colours
-    /// — text inherits the host theme, so it reads in light and dark. Live <c>docker ps</c> status and a
-    /// richer table arrive with the background seam.</summary>
+    /// <summary>Build the Containers panel: a live list of the managed containers + their run-state. The view
+    /// rebuilds on registry changes and on the background poll's status pushes (see <see cref="RunAsync"/>).</summary>
     public Control CreatePanel()
     {
-        var body = new StackPanel { Margin = new Thickness(12, 8, 12, 12), Spacing = 4 };
-
-        var containers = _registry?.GetAll() ?? [];
-        if (containers.Count == 0)
+        if (_registry is null)
         {
-            body.Children.Add(new TextBlock
-            {
-                Text = "No managed containers yet.",
-                Opacity = 0.7
-            });
-        }
-        else
-        {
-            foreach (var container in containers)
-            {
-                body.Children.Add(new TextBlock
-                {
-                    Text = $"{container.Name}   ·   {container.Image}:{container.Tag}   ·   localhost:{container.HostPort}"
-                });
-            }
+            return new TextBlock { Text = "Local Containers: storage unavailable.", Margin = new Thickness(12) };
         }
 
-        return new ScrollViewer
-        {
-            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-            Content = body
-        };
+        _panel = new ContainersPanelView(_registry);
+        return _panel.Root;
     }
 }

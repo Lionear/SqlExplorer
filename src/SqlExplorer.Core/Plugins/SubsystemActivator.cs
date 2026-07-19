@@ -3,10 +3,13 @@ using SqlExplorer.Sdk.Extensibility;
 namespace SqlExplorer.Core.Plugins;
 
 /// <summary>What activation produced: the registry for shutdown teardown, plus the capability-gated
-/// contributions the host wires up — panels mounted as tool-windows and menu items added to the Tools menu.
-/// More contribution lists (background) join here as those seams land.</summary>
+/// contributions the host wires up — panels mounted as tool-windows, menu items added to the Tools menu, and
+/// background loops the host starts under the shutdown token.</summary>
 public sealed record SubsystemActivationResult(
-    SubsystemRegistry Registry, IReadOnlyList<IPanelPlugin> Panels, IReadOnlyList<IMenuPlugin> Menus);
+    SubsystemRegistry Registry,
+    IReadOnlyList<IPanelPlugin> Panels,
+    IReadOnlyList<IMenuPlugin> Menus,
+    IReadOnlyList<IBackgroundPlugin> Background);
 
 /// <summary>
 /// Activates the loaded subsystem plugins (SE-164) <em>after</em> the host's ServiceProvider is built — the
@@ -51,6 +54,7 @@ public sealed class SubsystemActivator
         var active = new List<ISubsystemPlugin>();
         var panels = new List<IPanelPlugin>();
         var menus = new List<IMenuPlugin>();
+        var background = new List<IBackgroundPlugin>();
         foreach (var activation in _activations)
         {
             try
@@ -74,6 +78,12 @@ public sealed class SubsystemActivator
                 {
                     menus.Add(menu);
                 }
+
+                if (activation.Capabilities.Contains(PluginCapabilities.Background)
+                    && activation.Plugin is IBackgroundPlugin bg)
+                {
+                    background.Add(bg);
+                }
             }
             catch (Exception ex)
             {
@@ -81,6 +91,6 @@ public sealed class SubsystemActivator
             }
         }
 
-        return new SubsystemActivationResult(new SubsystemRegistry(active), panels, menus);
+        return new SubsystemActivationResult(new SubsystemRegistry(active), panels, menus, background);
     }
 }

@@ -203,6 +203,31 @@ public class DockerSubsystemIntegrationTests
         }
     }
 
+    [Fact] // The plugin declares `background` + implements IBackgroundPlugin, so the activator surfaces it as a
+           // background loop for the host to run under the shutdown token.
+    public void Activator_surfaces_the_docker_background_contribution()
+    {
+        var activation = LoadDockerActivation();
+        var storageRoot = Path.Combine(Path.GetTempPath(), "se164-int-" + Guid.NewGuid().ToString("N"));
+        var (service, _) = NewConnectionService();
+        try
+        {
+            var activator = new SubsystemActivator(
+                [activation],
+                id => new JsonPluginStorage(id, storageRoot),
+                id => new ManagedConnections(id, service));
+
+            Assert.Single(activator.ActivateAll().Background);
+        }
+        finally
+        {
+            if (Directory.Exists(storageRoot))
+            {
+                Directory.Delete(storageRoot, recursive: true);
+            }
+        }
+    }
+
     private sealed class FakeConnectionStore : IConnectionStore
     {
         private readonly List<SavedConnection> _items = new();

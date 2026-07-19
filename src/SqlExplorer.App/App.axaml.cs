@@ -80,6 +80,13 @@ public partial class App : Application
             }
         }
 
+        // Start any background loops (SE-164) under the shutdown token — fire-and-forget, like the update
+        // checks; they stop cleanly when _shutdownCts cancels at exit (desktop.Exit, below).
+        foreach (var background in subsystems.Background)
+        {
+            _ = background.RunAsync(_shutdownCts.Token);
+        }
+
         switch (ApplicationLifetime)
         {
             case IClassicDesktopStyleApplicationLifetime desktop:
