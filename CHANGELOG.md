@@ -29,6 +29,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **Plugin Store "Updates" section** — installed plugins with an available update are grouped at the
   top of the Installed tab under "Updates", so you no longer have to hunt for which ones can update
   (they no longer also appear in the list below).
+- **AI can create connections over MCP** — with the MCP server on and the new "Let the AI create
+  connections" setting enabled (off by default), an AI client can list the available providers and
+  create or delete database connections. Fail-closed: creation is refused unless you opt in, only
+  loopback hosts are allowed until you add more, persistent connections are capped at read-write, and
+  every create/delete is audited. New connections land in an "MCP" folder; temporary ones are
+  session-only and cleared when the app closes.
+- **AI-activity panel** — a bottom tool panel (toggled from the status bar) showing what an AI does
+  over MCP: each call, the connection, and whether it was allowed or denied.
+- **AI access on the connection tree** — connections carry "AI" and "Temporary" badges, and a
+  right-click **AI access** submenu sets the level (None / Read-only / Read-write) or excludes a
+  connection from the AI without opening the Connection Manager.
+- **One bottom panel at a time** — a Settings ▸ Appearance toggle (on by default) so opening a bottom
+  panel (Output, Containers, AI activity) closes the others instead of stacking them.
 
 ### Changed
 
@@ -51,6 +64,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   prompted to "update" to `0.2.0-preview`.
 - Nightly and preview builds now stamp the version from the branch they are built from, so the About
   dialog no longer shows a mismatched build version.
+- The bottom tool panels (Output, Containers, AI activity) can now be **resized** by dragging their
+  top edge — previously dragging did nothing, or left an empty band above the status bar.
 
 <!--
 Add bullets under the section that fits, in this order (omit the empty ones):
