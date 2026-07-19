@@ -85,6 +85,36 @@ internal static class CreateContainerView
             FontFamily = new FontFamily("Cascadia Code,Consolas,Menlo,monospace"), FontSize = 11, MinHeight = 150
         };
 
+        // Progress checklist shown during "Create & run" (the mockup's step list). Fixed status colours read
+        // in both themes; the steps are driven off ContainerService's progress reports below.
+        var doneBrush = new SolidColorBrush(Color.Parse("#3FB950"));
+        var runBrush = new SolidColorBrush(Color.Parse("#2F6FEB"));
+        var failBrush = new SolidColorBrush(Color.Parse("#C4362F"));
+        var stepIcons = new List<TextBlock>();
+        var steps = new StackPanel { Margin = new Thickness(16, 4, 16, 0), Spacing = 4, IsVisible = false };
+        foreach (var label in new[] { "Write compose & start the container", "Wait until it's ready", "Add the host connection" })
+        {
+            var icon = new TextBlock { Text = "○", Width = 16, Opacity = 0.5, VerticalAlignment = VerticalAlignment.Center };
+            stepIcons.Add(icon);
+            steps.Children.Add(new StackPanel
+            {
+                Orientation = Orientation.Horizontal, Spacing = 8,
+                Children = { icon, new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center } }
+            });
+        }
+
+        void SetStep(int i, string glyph, IBrush? brush, double opacity)
+        {
+            if (i < 0 || i >= stepIcons.Count) return;
+            stepIcons[i].Text = glyph;
+            stepIcons[i].Foreground = brush;
+            stepIcons[i].Opacity = opacity;
+        }
+        void ResetSteps() { for (var i = 0; i < stepIcons.Count; i++) SetStep(i, "○", null, 0.5); }
+        void StepRunning(int i) => SetStep(i, "●", runBrush, 1);
+        void StepDone(int i) => SetStep(i, "✓", doneBrush, 1);
+        void StepFailed(int i) => SetStep(i, "✕", failBrush, 1);
+
         var grid = new Grid
         {
             Margin = new Thickness(16, 14, 16, 8),
@@ -121,7 +151,7 @@ internal static class CreateContainerView
             Margin = new Thickness(16, 0, 16, 4), Children = { generateButton, createButton, closeButton }
         };
 
-        var body = new StackPanel { Children = { grid, buttons, new Border { Margin = new Thickness(16, 0, 16, 12), Child = status } } };
+        var body = new StackPanel { Children = { grid, buttons, steps, new Border { Margin = new Thickness(16, 8, 16, 12), Child = status } } };
         var root = new ScrollViewer { Content = body, MaxHeight = 640 };
 
         // Initial prefill.
@@ -179,19 +209,40 @@ internal static class CreateContainerView
             }
 
             output.IsVisible = false;
+            status.Text = "";
+            ResetSteps();
+            steps.IsVisible = true;
             createButton.IsEnabled = false;
             generateButton.IsEnabled = false;
+
+            // Map ContainerService's coarse progress reports onto the checklist. `current` tracks the running
+            // step so a failure marks the right one.
+            var current = 0;
             try
             {
-                var progress = new Progress<string>(msg => status.Text = msg);
+                StepRunning(0);
+                var progress = new Progress<string>(msg =>
+                {
+                    if (msg.Contains("Waiting", StringComparison.OrdinalIgnoreCase)) { StepDone(0); StepRunning(1); current = 1; }
+                    else if (msg.Contains("ready", StringComparison.OrdinalIgnoreCase)) { StepDone(1); current = 2; }
+                    else if (msg.Contains("Starting", StringComparison.OrdinalIgnoreCase)) { StepRunning(0); current = 0; }
+                });
+
                 await service.CreateAndRunAsync(request, progress, CancellationToken.None);
+                StepDone(0);
+                StepDone(1);
+                current = 2;
+                StepRunning(2);
                 onCreated();
+                StepDone(2);
+
                 log($"Local Containers: created container '{request.ContainerName}'.");
                 status.Text = $"Created '{request.ContainerName}'. It's in your connection list under Local Containers.";
                 createButton.Content = "Create another";
             }
             catch (Exception ex)
             {
+                StepFailed(current);
                 status.Text = ex.Message;
             }
             finally
