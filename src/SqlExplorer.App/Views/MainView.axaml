@@ -609,9 +609,17 @@
     </Border>
 
     <!-- Plugin panel region (SE-164 panel seam): one Bottom-docked region rendering the plugin-contributed
-         panels; each item shows only while its tool-window is toggled on. The splitter's visibility and the
-         row's collapse/restore are driven from the code-behind, same mechanism as the Output row. -->
-    <GridSplitter Grid.Row="4" x:Name="SubsystemSplitter" Height="3" ResizeDirection="Rows" IsVisible="False" />
+         panels; each item shows only while its tool-window is toggled on. The row's collapse/restore is driven
+         from the code-behind, same mechanism as the Output row. This splitter is a hand-dragged Border, not a
+         GridSplitter: sitting between the two fixed rows (Output above, panel below) a GridSplitter would
+         resize against the Output row instead of the star body — dragging up did nothing and dragging down
+         inflated the collapsed Output row into dead space (SE-170). The code-behind resizes only this row, so
+         the star body absorbs the change. -->
+    <Border Grid.Row="4" x:Name="SubsystemSplitter" Height="4" IsVisible="False"
+            Background="{DynamicResource SEHairlineBrush}" Cursor="SizeNorthSouth"
+            PointerPressed="OnSubsystemSplitterPressed"
+            PointerMoved="OnSubsystemSplitterMoved"
+            PointerReleased="OnSubsystemSplitterReleased" />
 
     <Border Grid.Row="5" Background="{DynamicResource SEPanelBgBrush}">
       <!-- The plugin owns the whole panel chrome (its own header/toolbar), so the host adds no title row here

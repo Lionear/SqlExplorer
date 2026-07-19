@@ -132,7 +132,16 @@ public partial class MainView : UserControl
     // SE-164 panel seam: the shared bottom region for plugin-contributed panels (RootGrid row 5, its
     // splitter row 4). One region for all plugin panels in v1; its height is session-local (not persisted).
     private const int SubsystemRowIndex = 5;
+    private const int ToolbarRowIndex = 0;
+    private const int StatusBarRowIndex = 6;
+    private const double SubsystemMinBody = 140; // content kept above the panel while dragging it taller
     private double _subsystemHeight = 200;
+
+    // Hand-rolled drag state for the subsystem splitter (SE-170): a GridSplitter here would resize the wrong
+    // (fixed) neighbour, so we drive the row height ourselves and let the star body row absorb it.
+    private bool _subsystemDragging;
+    private double _subsystemDragStartY;
+    private double _subsystemDragStartHeight;
 
     /// <summary>Push the persisted sizes into the grid definitions (call once, after DataContext is set).</summary>
     public void RestoreToolWindowSizes(double outputHeight, double historyWidth)
@@ -186,6 +195,56 @@ public partial class MainView : UserControl
         subsystemRow.MinHeight = anyPanelVisible ? SubsystemMinHeight : 0;
         subsystemRow.Height = anyPanelVisible ? new GridLength(_subsystemHeight) : new GridLength(0);
         SubsystemSplitter.IsVisible = anyPanelVisible;
+    }
+
+    // --- Subsystem-panel resize (SE-170) -----------------------------------------------------------------
+    // The subsystem splitter sits between two fixed rows (Output above, panel below), so a GridSplitter would
+    // trade pixels with the Output row — doing nothing when Output is collapsed and leaving dead space. We
+    // resize only the panel row instead; the star body row (row 1) gives up / reclaims the difference.
+
+    private void OnSubsystemSplitterPressed(object? sender, PointerPressedEventArgs e)
+    {
+        _subsystemDragging = true;
+        _subsystemDragStartY = e.GetPosition(RootGrid).Y;
+        _subsystemDragStartHeight = RootGrid.RowDefinitions[SubsystemRowIndex].ActualHeight;
+        e.Pointer.Capture(sender as IInputElement);
+        e.Handled = true;
+    }
+
+    private void OnSubsystemSplitterMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_subsystemDragging)
+        {
+            return;
+        }
+
+        // Dragging up (negative delta) grows the panel; clamp so the body never collapses past its minimum.
+        var delta = e.GetPosition(RootGrid).Y - _subsystemDragStartY;
+        _subsystemHeight = Math.Clamp(_subsystemDragStartHeight - delta, SubsystemMinHeight, MaxSubsystemHeight());
+        RootGrid.RowDefinitions[SubsystemRowIndex].Height = new GridLength(_subsystemHeight);
+    }
+
+    private void OnSubsystemSplitterReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_subsystemDragging)
+        {
+            return;
+        }
+
+        _subsystemDragging = false;
+        e.Pointer.Capture(null);
+        e.Handled = true;
+    }
+
+    // The tallest the panel may get: whatever is left after the toolbar, the (possibly open) Output row, the
+    // status bar and a minimum body — so growing it never squeezes the content above to nothing.
+    private double MaxSubsystemHeight()
+    {
+        var reserved = RootGrid.RowDefinitions[ToolbarRowIndex].ActualHeight
+                     + RootGrid.RowDefinitions[OutputRowIndex].ActualHeight
+                     + RootGrid.RowDefinitions[StatusBarRowIndex].ActualHeight
+                     + SubsystemMinBody;
+        return Math.Max(SubsystemMinHeight, RootGrid.Bounds.Height - reserved);
     }
 
     // Keep the VM's Size in step with a splitter drag, and collapse/restore the track on toggle.
