@@ -72,6 +72,18 @@ public partial class App : Application
             viewModel.AddSubsystemPanel(panel.PanelId, panel.Title, panel.CreatePanel(hostUi));
         }
 
+        // First-party "AI activity" panel (SE-159): a bottom tool-window fed by the MCP audit ring, mounted
+        // the same way as the plugin panels so it gets a status-bar toggle for free. Renders its own chrome.
+        var loc0 = services.GetRequiredService<ILocalizer>();
+        var aiActivity = new Views.AiActivityView
+        {
+            DataContext = new ViewModels.AiActivityViewModel(
+                services.GetRequiredService<Core.Mcp.McpActivityLog>(),
+                services.GetRequiredService<Core.Connections.ConnectionService>(),
+                loc0)
+        };
+        viewModel.AddSubsystemPanel("AiActivity", loc0["AiActivity"], aiActivity);
+
         // Mount any Tools-menu contributions (SE-164 menu seam).
         foreach (var menuPlugin in subsystems.Menus)
         {
@@ -133,6 +145,9 @@ public partial class App : Application
                     // Best-effort teardown of the standing-subsystem plugins (SE-164) — one failing Deactivate
                     // never blocks the rest (SubsystemRegistry swallows), and this must not hold up exit.
                     subsystems.Registry.DeactivateAll();
+                    // Drop any MCP-created transient connections (SE-155): they are session-only, held only in
+                    // memory, and must never outlive the process.
+                    services.GetRequiredService<Core.Connections.ConnectionService>().ClearTransient();
                     _trayIcon?.Dispose();
                 };
                 // Stop the MCP listener cleanly on exit so its loopback port is released promptly. Run it

@@ -14,5 +14,11 @@ public enum AiAccessMode
     ReadOnly,
 
     /// <summary>DML (INSERT/UPDATE/DELETE) additionally allowed; DDL is still always rejected over MCP.</summary>
-    ReadWrite
+    ReadWrite,
+
+    /// <summary>Read + DML + DDL — a throwaway sandbox for the AI to build and test a schema against. Only
+    /// ever valid for a <see cref="SavedConnection.IsTransient">transient</see> connection to a loopback host
+    /// (enforced at creation, SE-155); it must never be selectable for a persisted connection, whose ceiling
+    /// stays <see cref="ReadWrite"/>. Multi-statement / unknown SQL is still rejected.</summary>
+    Sandbox
 }

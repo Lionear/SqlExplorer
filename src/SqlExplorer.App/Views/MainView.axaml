@@ -4,6 +4,7 @@
              xmlns:cvt="using:SqlExplorer.App.Converters"
              xmlns:vm="using:SqlExplorer.App.ViewModels"
              xmlns:views="using:SqlExplorer.App.Views"
+             xmlns:conn="using:SqlExplorer.Core.Connections"
              x:Class="SqlExplorer.App.Views.MainView">
   <UserControl.Resources>
     <!-- Recursive menu-item theme for the tools tree (ToolMenuNode): a leaf binds its Run command; a
@@ -291,6 +292,24 @@
                           IsVisible="{Binding SelectedNode.IsConnectionNode, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[Delete]}" Command="{Binding DeleteConnectionCommand}"
                           IsVisible="{Binding SelectedNode.IsConnectionNode, FallbackValue=False}" />
+                <!-- Quick AI (MCP) access on a connection root (SE-158): set the level or exclude it, without
+                     opening the Connection Manager. Hidden for transient MCP connections (AI-managed). -->
+                <MenuItem Header="{Binding Loc[AiAccess]}"
+                          IsVisible="{Binding SelectedNode.CanSetAiAccess, FallbackValue=False}">
+                  <MenuItem Header="{Binding Loc[AiAccessNone]}" Command="{Binding SetAiAccessCommand}"
+                            CommandParameter="{x:Static conn:AiAccessMode.None}" />
+                  <MenuItem Header="{Binding Loc[AiAccessReadOnly]}" Command="{Binding SetAiAccessCommand}"
+                            CommandParameter="{x:Static conn:AiAccessMode.ReadOnly}" />
+                  <MenuItem Header="{Binding Loc[AiAccessReadWrite]}" Command="{Binding SetAiAccessCommand}"
+                            CommandParameter="{x:Static conn:AiAccessMode.ReadWrite}" />
+                  <Separator />
+                  <MenuItem Header="{Binding Loc[ExcludeFromMcp]}" Command="{Binding ToggleExcludeFromMcpCommand}">
+                    <MenuItem.Icon>
+                      <PathIcon Width="11" Height="11" Data="M4 8.5 L7 11.5 L12.5 4.5"
+                                IsVisible="{Binding SelectedNode.IsExcludedFromMcp, FallbackValue=False}" />
+                    </MenuItem.Icon>
+                  </MenuItem>
+                </MenuItem>
                 <!-- Tool plugins applicable to the selected node (universal backup, dumps, …). The
                      ItemContainerTheme is self-referencing (binds ItemsSource to each node's Children and
                      re-applies itself), so a tool's MenuPath renders as arbitrarily deep submenus. -->
@@ -392,6 +411,20 @@
                             ToolTip.Tip="{Binding ManagedOrigin}">
                       <TextBlock Text="Managed" FontSize="9.5" FontWeight="SemiBold"
                                  Foreground="{DynamicResource SEAccentBrush}" VerticalAlignment="Center" />
+                    </Border>
+                    <!-- "Temporary" pill on in-memory, session-only connections (SE-155, MCP-created). -->
+                    <Border VerticalAlignment="Center" IsVisible="{Binding IsTransientConnection}"
+                            Background="{DynamicResource SEHairlineBrush}" CornerRadius="9" Padding="6,0"
+                            ToolTip.Tip="Session-only — cleared when SQL Explorer closes">
+                      <TextBlock Text="Temporary" FontSize="9.5" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource SETextSecondaryBrush}" VerticalAlignment="Center" />
+                    </Border>
+                    <!-- "AI" pill on MCP-reachable connections (SE-158); tooltip names the access level. -->
+                    <Border VerticalAlignment="Center" IsVisible="{Binding IsAiReachable}"
+                            Background="{DynamicResource SESelectionBgBrush}" CornerRadius="9" Padding="6,0"
+                            ToolTip.Tip="{Binding AiAccessLabel}">
+                      <TextBlock Text="AI" FontSize="9.5" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource SETextSecondaryBrush}" VerticalAlignment="Center" />
                     </Border>
                   </StackPanel>
                   <!-- Right-aligned on-disk size badge (databases/tables), DataGrip-style. -->

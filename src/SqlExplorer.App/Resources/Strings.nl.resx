@@ -270,6 +270,42 @@
   <data name="McpNoScrubWarning" xml:space="preserve">
     <value>Redactie staat uit — live secrets in query-resultaten (tokens, API-sleutels, wachtwoorden) gaan ongefilterd naar de AI.</value>
   </data>
+  <data name="McpConnectionCreateTitle" xml:space="preserve">
+    <value>Connecties aanmaken</value>
+  </data>
+  <data name="McpAllowConnectionCreate" xml:space="preserve">
+    <value>Laat de AI connecties aanmaken</value>
+  </data>
+  <data name="McpAllowConnectionCreateHint" xml:space="preserve">
+    <value>Indien aan kan een AI-client via MCP databaseconnecties aanmaken. Standaard uit. Nieuwe connecties komen in de map hieronder; alleen loopback-hosts zijn toegestaan tenzij je er meer toevoegt.</value>
+  </data>
+  <data name="McpConnectionCreateWarning" xml:space="preserve">
+    <value>Elk lokaal proces dat de MCP-server bereikt kan nu connecties aanmaken — en DDL draaien tegen een tijdelijke loopback-connectie. Laat dit uit tenzij je het nodig hebt.</value>
+  </data>
+  <data name="McpConnectionFolder" xml:space="preserve">
+    <value>Connectiemap</value>
+  </data>
+  <data name="McpAllowedHosts" xml:space="preserve">
+    <value>Toegestane hosts</value>
+  </data>
+  <data name="McpAllowedHostsHint" xml:space="preserve">
+    <value>Hosts waar een AI-aangemaakte connectie naartoe mag. Loopback (localhost, 127.0.0.1, ::1) is altijd toegestaan.</value>
+  </data>
+  <data name="McpAllowedHostAddHint" xml:space="preserve">
+    <value>Host of IP (bijv. db.internal)</value>
+  </data>
+  <data name="McpAllowedHostInvalid" xml:space="preserve">
+    <value>Dat lijkt geen geldige host of IP-adres.</value>
+  </data>
+  <data name="AiAccessNone" xml:space="preserve">
+    <value>Geen</value>
+  </data>
+  <data name="AiAccessReadOnly" xml:space="preserve">
+    <value>Alleen-lezen</value>
+  </data>
+  <data name="AiAccessReadWrite" xml:space="preserve">
+    <value>Lezen &amp; schrijven</value>
+  </data>
   <data name="AiAccess" xml:space="preserve">
     <value>AI-toegang (MCP)</value>
   </data>
@@ -365,6 +401,9 @@
   </data>
   <data name="ClearOutput" xml:space="preserve">
     <value>Wissen</value>
+  </data>
+  <data name="AiActivity" xml:space="preserve">
+    <value>AI-activiteit</value>
   </data>
   <data name="ImportConnectionString" xml:space="preserve">
     <value>Importeren uit connectiestring</value>

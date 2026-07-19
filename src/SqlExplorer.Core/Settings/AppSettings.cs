@@ -161,6 +161,18 @@ public sealed class AppSettings
     /// the AI context. Turning it off restores verbatim values — the UI warns on disable.</summary>
     public bool McpScrubSecrets { get; set; } = true;
 
+    /// <summary>Allow an MCP (AI) client to CREATE connections (SE-155). Off by default (fail-closed): even
+    /// with the server on, <c>create_connection</c> is refused until the user opts in. The UI warns on enable.</summary>
+    public bool McpAllowConnectionCreate { get; set; }
+
+    /// <summary>Extra hosts an MCP-created connection may target beyond loopback (SE-155). Null/empty = loopback
+    /// only (localhost/127.0.0.1/::1). A non-loopback host can never get the Sandbox (DDL) access level — only
+    /// transient loopback connections can.</summary>
+    public List<string>? McpAllowedHosts { get; set; }
+
+    /// <summary>Tree folder that MCP-created connections are grouped under (SE-155). Default "MCP".</summary>
+    public string McpConnectionFolder { get; set; } = "MCP";
+
     // ── App updates (SE-137) ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>Release channel the in-app updater follows. Null = never chosen → follow the channel of the

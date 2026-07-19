@@ -107,13 +107,14 @@ public static class McpSqlClassifier
     }
 
     /// <summary>Whether <paramref name="sql"/> is permitted for a connection at <paramref name="mode"/>,
-    /// applying the plan §5 table: reads need ReadOnly+, DML needs ReadWrite, DDL/multi/unknown are always
-    /// rejected, and None permits nothing.</summary>
+    /// applying the plan §5 table: reads need ReadOnly+, DML needs ReadWrite, DDL needs Sandbox (transient
+    /// loopback only, gated at creation), and multi/unknown are always rejected. None permits nothing.</summary>
     public static bool IsAllowed(string? sql, AiAccessMode mode) => mode switch
     {
         AiAccessMode.None => false,
         AiAccessMode.ReadOnly => Classify(sql) == SqlStatementKind.Read,
         AiAccessMode.ReadWrite => Classify(sql) is SqlStatementKind.Read or SqlStatementKind.Dml,
+        AiAccessMode.Sandbox => Classify(sql) is SqlStatementKind.Read or SqlStatementKind.Dml or SqlStatementKind.Ddl,
         _ => false
     };
 

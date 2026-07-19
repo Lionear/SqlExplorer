@@ -417,6 +417,62 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Warn that live secrets in results may reach the AI when scrubbing is turned off (SE-145).</summary>
     public bool ShowNoScrubWarning => !McpScrubSecrets;
 
+    // ── MCP connection creation (SE-155) ─────────────────────────────────────────────────────────────
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowConnectionCreateWarning))]
+    private bool _mcpAllowConnectionCreate;
+
+    [ObservableProperty]
+    private string _mcpConnectionFolder = "MCP";
+
+    /// <summary>Warn when AI connection-creation is enabled — any local MCP client can then create (and, for a
+    /// transient loopback connection, DDL against) connections. Off by default; the UI makes the change loud.</summary>
+    public bool ShowConnectionCreateWarning => McpAllowConnectionCreate;
+
+    /// <summary>Extra hosts (beyond loopback, which is always allowed) an AI-created connection may target.</summary>
+    public ObservableCollection<string> McpAllowedHosts { get; } = [];
+
+    [ObservableProperty]
+    private string? _newAllowedHost;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasHostError))]
+    private string? _hostError;
+
+    public bool HasHostError => HostError is not null;
+
+    [RelayCommand]
+    private void AddAllowedHost()
+    {
+        var host = NewAllowedHost?.Trim();
+        if (string.IsNullOrEmpty(host))
+        {
+            return;
+        }
+
+        if (!IsValidHost(host))
+        {
+            HostError = Loc["McpAllowedHostInvalid"];
+            return;
+        }
+
+        if (!McpAllowedHosts.Contains(host, StringComparer.OrdinalIgnoreCase))
+        {
+            McpAllowedHosts.Add(host);
+        }
+
+        NewAllowedHost = null;
+        HostError = null;
+    }
+
+    [RelayCommand]
+    private void RemoveAllowedHost(string host) => McpAllowedHosts.Remove(host);
+
+    // A hostname or IP literal: letters/digits/dot/hyphen/underscore/colon (IPv6). Deliberately permissive —
+    // the real gate is the exact-match allowlist check at create time; this only rejects obvious junk.
+    private static bool IsValidHost(string host) =>
+        host.Length <= 253 && host.All(c => char.IsLetterOrDigit(c) || c is '.' or '-' or ':' or '_');
+
     [RelayCommand]
     private void RegenerateMcpToken() =>
         McpToken = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
@@ -477,6 +533,9 @@ public partial class SettingsViewModel : ViewModelBase
         settings.McpMaxRows = McpMaxRows;
         settings.McpTimeoutSeconds = McpTimeoutSeconds;
         settings.McpScrubSecrets = McpScrubSecrets;
+        settings.McpAllowConnectionCreate = McpAllowConnectionCreate;
+        settings.McpAllowedHosts = McpAllowedHosts.Count > 0 ? McpAllowedHosts.ToList() : null;
+        settings.McpConnectionFolder = string.IsNullOrWhiteSpace(McpConnectionFolder) ? "MCP" : McpConnectionFolder.Trim();
     }
 
     public SettingsViewModel(
@@ -752,6 +811,18 @@ public partial class SettingsViewModel : ViewModelBase
         McpMaxRows = settings.McpMaxRows;
         McpTimeoutSeconds = settings.McpTimeoutSeconds;
         McpScrubSecrets = settings.McpScrubSecrets;
+        McpAllowConnectionCreate = settings.McpAllowConnectionCreate;
+        McpConnectionFolder = string.IsNullOrWhiteSpace(settings.McpConnectionFolder) ? "MCP" : settings.McpConnectionFolder;
+        McpAllowedHosts.Clear();
+        foreach (var host in settings.McpAllowedHosts ?? [])
+        {
+            if (!string.IsNullOrWhiteSpace(host))
+            {
+                McpAllowedHosts.Add(host.Trim());
+            }
+        }
+
+        HostError = null;
     }
 
     // A plugin (provider or tool) gets a tree entry only if it declares fields (Route A) or a custom
@@ -895,6 +966,10 @@ public partial class SettingsViewModel : ViewModelBase
         McpMaxRows = defaults.McpMaxRows;
         McpTimeoutSeconds = defaults.McpTimeoutSeconds;
         McpScrubSecrets = defaults.McpScrubSecrets;
+        McpAllowConnectionCreate = defaults.McpAllowConnectionCreate;
+        McpConnectionFolder = defaults.McpConnectionFolder;
+        McpAllowedHosts.Clear();
+        HostError = null;
 
         // Keyboard shortcuts reset to their factory bindings too.
         foreach (var shortcut in _allShortcuts)

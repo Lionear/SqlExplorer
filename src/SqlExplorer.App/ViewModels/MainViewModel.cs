@@ -1323,6 +1323,56 @@ public partial class MainViewModel : ViewModelBase
         return OpenConnectionManagerAsync(manager => manager.SelectConnection(connection.Id));
     }
 
+    /// <summary>Quick-set the selected connection's AI (MCP) access level from the tree context menu (SE-158),
+    /// preserving every other field — secrets included (re-read from the keychain, so they survive the save).
+    /// A transient MCP connection is skipped (it isn't user-editable).</summary>
+    [RelayCommand]
+    private void SetAiAccess(AiAccessMode mode)
+    {
+        if (SelectedNode is not { IsConnectionNode: true } node || node.Connection.IsTransient)
+        {
+            return;
+        }
+
+        var c = node.Connection;
+        if (c.AiAccess == mode)
+        {
+            return;
+        }
+
+        var values = _connections.GetEditableValues(c);
+        var saved = _connections.Save(
+            c.Id, c.Name, c.ProviderId, values, c.Color, c.ReadOnly, c.Folder, mode, c.ExcludeFromMcp, c.Origin);
+
+        // A user connection (no Origin) isn't refreshed by OnConnectionSavedExternally, so rebuild its node
+        // here; an Origin-tagged one refreshes off the Saved event.
+        if (saved.Origin is null)
+        {
+            UpsertConnectionNode(saved);
+        }
+    }
+
+    /// <summary>Toggle the selected connection's "exclude from AI (MCP)" hard override from the tree context
+    /// menu (SE-158). Same field-preserving save as <see cref="SetAiAccess"/>.</summary>
+    [RelayCommand]
+    private void ToggleExcludeFromMcp()
+    {
+        if (SelectedNode is not { IsConnectionNode: true } node || node.Connection.IsTransient)
+        {
+            return;
+        }
+
+        var c = node.Connection;
+        var values = _connections.GetEditableValues(c);
+        var saved = _connections.Save(
+            c.Id, c.Name, c.ProviderId, values, c.Color, c.ReadOnly, c.Folder, c.AiAccess, !c.ExcludeFromMcp, c.Origin);
+
+        if (saved.Origin is null)
+        {
+            UpsertConnectionNode(saved);
+        }
+    }
+
     /// <summary>Open the Connection Manager window, optionally pre-positioned, then reconcile the tree
     /// with whatever changed while it was open (add/edit/delete/move) — see <see cref="SyncConnectionsFromStore"/>.</summary>
     [RelayCommand]

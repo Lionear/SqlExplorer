@@ -270,6 +270,42 @@
   <data name="McpNoScrubWarning" xml:space="preserve">
     <value>Redaction is off — live secrets in query results (tokens, API keys, passwords) are sent to the AI verbatim.</value>
   </data>
+  <data name="McpConnectionCreateTitle" xml:space="preserve">
+    <value>Connection creation</value>
+  </data>
+  <data name="McpAllowConnectionCreate" xml:space="preserve">
+    <value>Let the AI create connections</value>
+  </data>
+  <data name="McpAllowConnectionCreateHint" xml:space="preserve">
+    <value>When on, an AI client can create database connections over MCP. Off by default. New connections are grouped under the folder below; only loopback hosts are allowed unless you add more.</value>
+  </data>
+  <data name="McpConnectionCreateWarning" xml:space="preserve">
+    <value>Any local process that can reach the MCP server can now create connections — and run DDL against a temporary loopback one. Keep this off unless you need it.</value>
+  </data>
+  <data name="McpConnectionFolder" xml:space="preserve">
+    <value>Connection folder</value>
+  </data>
+  <data name="McpAllowedHosts" xml:space="preserve">
+    <value>Allowed hosts</value>
+  </data>
+  <data name="McpAllowedHostsHint" xml:space="preserve">
+    <value>Hosts an AI-created connection may target. Loopback (localhost, 127.0.0.1, ::1) is always allowed.</value>
+  </data>
+  <data name="McpAllowedHostAddHint" xml:space="preserve">
+    <value>Host or IP (e.g. db.internal)</value>
+  </data>
+  <data name="McpAllowedHostInvalid" xml:space="preserve">
+    <value>That doesn't look like a valid host or IP address.</value>
+  </data>
+  <data name="AiAccessNone" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="AiAccessReadOnly" xml:space="preserve">
+    <value>Read-only</value>
+  </data>
+  <data name="AiAccessReadWrite" xml:space="preserve">
+    <value>Read &amp; write</value>
+  </data>
   <data name="AiAccess" xml:space="preserve">
     <value>AI access (MCP)</value>
   </data>
@@ -365,6 +401,9 @@
   </data>
   <data name="ClearOutput" xml:space="preserve">
     <value>Clear</value>
+  </data>
+  <data name="AiActivity" xml:space="preserve">
+    <value>AI activity</value>
   </data>
   <data name="ImportConnectionString" xml:space="preserve">
     <value>Import from connection string</value>

@@ -38,3 +38,42 @@ public sealed record McpQueryLogEntry(
 /// MCP-reachable, statement not permitted for the access mode, DDL/multi-statement, missing connection).
 /// The plugin maps it to an MCP error — the refusal happens in the host, never at the driver.</summary>
 public sealed class McpAccessException(string message) : Exception(message);
+
+/// <summary>A provider (database driver) an MCP client may target with <c>create_connection</c>, plus the
+/// fields it needs (SE-155). The <see cref="Description"/> spells out that a provider is a driver so the AI
+/// uses the right term. Backs <c>list_providers</c> — metadata only, never any field <em>values</em>.</summary>
+public sealed record McpProviderInfo(string Id, string DisplayName, string Description, IReadOnlyList<McpProviderField> Fields);
+
+/// <summary>One connection field a provider declares, as an MCP client needs to understand it: which values
+/// to supply for <c>create_connection</c>, which are <see cref="Required"/> vs optional, which are
+/// <see cref="Secret"/> (passwords — the host routes these to the keychain and never echoes them back),
+/// which are <see cref="Advanced"/>, and the allowed <see cref="Choices"/> for a choice field.</summary>
+public sealed record McpProviderField(
+    string Key,
+    string Label,
+    string Type,
+    bool Required,
+    bool Secret,
+    string? Default,
+    bool Advanced,
+    IReadOnlyList<string>? Choices);
+
+/// <summary>An MCP client's request to create a connection (SE-155). <see cref="Persistent"/> false = an
+/// in-memory, session-only connection wiped on shutdown; true = saved to the config file/keychain.
+/// <see cref="Access"/> is the requested AI-access level ("readonly"/"readwrite"/"sandbox"; null = the host's
+/// default) — the host may cap it (persistent can't get Sandbox; non-loopback can't get Sandbox).</summary>
+public sealed record McpCreateConnectionRequest(
+    string ProviderId,
+    string Name,
+    IReadOnlyDictionary<string, string?> Values,
+    bool Persistent,
+    string? Access);
+
+/// <summary>Result of a <c>create_connection</c> call: the new connection's id (use it with the other tools)
+/// plus the access level actually granted, which may be lower than requested.</summary>
+public sealed record McpCreateConnectionResult(
+    string ConnectionId,
+    string Name,
+    string ProviderId,
+    bool Persistent,
+    string Access);
