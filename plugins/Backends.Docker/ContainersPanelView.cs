@@ -140,7 +140,7 @@ internal sealed class ContainersPanelView
 
         var table = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("2*,Auto,Auto,2*,Auto"),
+            ColumnDefinitions = new ColumnDefinitions("Auto,Auto,Auto,*,Auto"),
             Margin = new Thickness(10, 0, 10, 10)
         };
         table.RowDefinitions.Add(new RowDefinition(GridLength.Auto));

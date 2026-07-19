@@ -607,14 +607,12 @@
     <GridSplitter Grid.Row="4" x:Name="SubsystemSplitter" Height="3" ResizeDirection="Rows" IsVisible="False" />
 
     <Border Grid.Row="5" Background="{DynamicResource SEPanelBgBrush}">
+      <!-- The plugin owns the whole panel chrome (its own header/toolbar), so the host adds no title row here
+           — otherwise the panel's title shows twice. Just render the plugin's control when its window is on. -->
       <ItemsControl ItemsSource="{Binding SubsystemPanels}">
         <ItemsControl.ItemTemplate>
           <DataTemplate>
-            <Grid IsVisible="{Binding Window.IsVisible}" RowDefinitions="Auto,*">
-              <TextBlock Grid.Row="0" Text="{Binding Window.Title}" FontWeight="SemiBold" FontSize="12"
-                         Foreground="{DynamicResource SETextSecondaryBrush}" Margin="10,6,8,4" />
-              <ContentControl Grid.Row="1" Content="{Binding Content}" />
-            </Grid>
+            <ContentControl IsVisible="{Binding Window.IsVisible}" Content="{Binding Content}" />
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
