@@ -82,10 +82,20 @@ public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin, IMenuPlugi
     // the connections seam isn't granted.
     private void ReleaseConnection(ManagedContainer container)
     {
-        if (_context?.Connections is { } connections && container.ConnectionId is { } connectionId)
+        if (_context?.Connections is { } connections)
+        {
+            ReleaseContainerConnection(connections, container, _context.Log);
+        }
+    }
+
+    // Drop the host connection a container created, if any. Origin-scoped Remove only touches this plugin's
+    // own connections; a container that was never linked (ConnectionId null) is a no-op.
+    internal static void ReleaseContainerConnection(IManagedConnections connections, ManagedContainer container, Action<string>? log = null)
+    {
+        if (container.ConnectionId is { } connectionId)
         {
             connections.Remove(connectionId);
-            _context.Log($"Local Containers: released the managed connection for '{container.Name}'.");
+            log?.Invoke($"Local Containers: released the managed connection for '{container.Name}'.");
         }
     }
 
@@ -96,12 +106,18 @@ public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin, IMenuPlugi
     // restart's ReconcileConnections skips it. No-op if the connections seam wasn't granted or it's already linked.
     private void LinkNewContainer(CreateContainerRequest request)
     {
-        if (_context?.Connections is not { } connections || _registry is null)
+        if (_context?.Connections is { } connections && _registry is { } registry)
         {
-            return;
+            LinkContainer(connections, registry, request, _context.Log);
         }
+    }
 
-        if (_registry.Get(request.ContainerName) is not { } container || container.ConnectionId is not null)
+    // Link the just-created container to a host connection with its full field values (credentials included)
+    // and stamp the ConnectionId so a later restart's ReconcileConnections skips it. Idempotent: a container
+    // that's already linked (ConnectionId set) or missing from the registry is a no-op.
+    internal static void LinkContainer(IManagedConnections connections, IContainerRegistryStore registry, CreateContainerRequest request, Action<string>? log = null)
+    {
+        if (registry.Get(request.ContainerName) is not { } container || container.ConnectionId is not null)
         {
             return;
         }
@@ -109,8 +125,8 @@ public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin, IMenuPlugi
         var connectionId = connections.Create(new NewConnectionSpec(
             container.Name, container.ProviderId, BuildConnectionValues(request), Folder: "Local Containers"));
 
-        _registry.Save(container with { ConnectionId = connectionId });
-        _context.Log($"Local Containers: linked the managed connection for '{container.Name}'.");
+        registry.Save(container with { ConnectionId = connectionId });
+        log?.Invoke($"Local Containers: linked the managed connection for '{container.Name}'.");
     }
 
     // The host-connection field values for a container: host/port plus the engine credentials it was created
