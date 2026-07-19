@@ -138,7 +138,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     public ObservableCollection<InstalledListItem> UpdatablePlugins { get; } = [];
     public ObservableCollection<InstalledListItem> BundledPlugins { get; } = [];
     public ObservableCollection<InstalledListItem> UserPlugins { get; } = [];
-    public ObservableCollection<string> ConsentCapabilities { get; } = [];
+    public ObservableCollection<CapabilityInfo> ConsentCapabilities { get; } = [];
 
     /// <summary>One line per install phase entered (Downloading/Verifying/…) — the mini install log.</summary>
     public ObservableCollection<string> ProgressLog { get; } = [];
@@ -766,7 +766,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         ConsentCapabilities.Clear();
         foreach (var capability in capabilities)
         {
-            ConsentCapabilities.Add(capability);
+            ConsentCapabilities.Add(CapabilityCatalog.Describe(capability));
         }
 
         IsConsentVisible = true;
