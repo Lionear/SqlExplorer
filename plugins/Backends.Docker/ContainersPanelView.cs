@@ -269,31 +269,10 @@ internal sealed class ContainersPanelView
         }
     }
 
-    private async Task ShowLogsAsync(ManagedContainer container)
-    {
-        string logs;
-        try
-        {
-            logs = await _service.LogsAsync(container.Id, tailLines: 200, CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            logs = $"Could not read logs: {ex.Message}";
-        }
-
-        var text = new TextBox
-        {
-            Text = string.IsNullOrWhiteSpace(logs) ? "(no output)" : logs,
-            IsReadOnly = true,
-            AcceptsReturn = true,
-            TextWrapping = TextWrapping.NoWrap,
-            FontFamily = new FontFamily("Cascadia Code,Consolas,Menlo,monospace"),
-            FontSize = 11,
-            MinWidth = 620,
-            MinHeight = 360
-        };
-        await _hostUi.ShowDialogAsync($"Logs — {container.Name}", new ScrollViewer { Content = text });
-    }
+    private Task ShowLogsAsync(ManagedContainer container) =>
+        _hostUi.ShowDialogAsync(
+            $"Logs — {container.Name}",
+            ContainerLogsView.Build(container.Name, ct => _service.LogsAsync(container.Id, tailLines: 300, ct)));
 
     private Control BuildDockerMissing()
     {
