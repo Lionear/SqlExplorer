@@ -296,7 +296,29 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
             _ => null
         };
 
-        return PluginIconRenderer.Render(icon);
+        // Extension/MCP plugins have no SDK icon property; fall back to an icon.png staged beside the plugin.
+        return PluginIconRenderer.Render(icon) ?? LoadDiskIcon(plugin.Directory);
+    }
+
+    // Best-effort decode of <pluginDir>/icon.png; any failure (missing/unreadable/not an image) yields null.
+    private static Avalonia.Media.IImage? LoadDiskIcon(string directory)
+    {
+        try
+        {
+            var path = System.IO.Path.Combine(directory, "icon.png");
+            if (!System.IO.File.Exists(path))
+            {
+                return null;
+            }
+
+            using var stream = System.IO.File.OpenRead(path);
+            return Avalonia.Media.Imaging.Bitmap.DecodeToWidth(
+                stream, PluginIconRenderer.IconDecodeWidth, Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     // Best-effort read of the kept previous version's manifest, to label the rollback button.

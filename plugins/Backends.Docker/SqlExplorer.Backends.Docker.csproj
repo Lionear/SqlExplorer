@@ -16,6 +16,9 @@
 
   <ItemGroup>
     <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Brand icon, staged beside the plugin so the host reads it from the plugin dir (extension/mcp plugins
+         have no SDK icon property; the host falls back to <pluginDir>/icon.png). -->
+    <Content Include="icon.png" CopyToOutputDirectory="PreserveNewest" Condition="Exists('icon.png')" />
   </ItemGroup>
 
   <ItemGroup>
