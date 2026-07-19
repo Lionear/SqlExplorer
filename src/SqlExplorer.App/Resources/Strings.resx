@@ -1143,6 +1143,9 @@
   <data name="StoreCategoryMcpTools" xml:space="preserve">
     <value>MCP Tools</value>
   </data>
+  <data name="StoreCategoryExtensions" xml:space="preserve">
+    <value>Extensions</value>
+  </data>
   <data name="StoreCategoryOther" xml:space="preserve">
     <value>Other</value>
   </data>

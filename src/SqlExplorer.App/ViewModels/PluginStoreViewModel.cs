@@ -60,6 +60,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     public const string CategoryProviders = "Providers";
     public const string CategoryTools = "Tools";
     public const string CategoryMcpTools = "McpTools";
+    public const string CategoryExtensions = "Extensions";
     public const string CategoryOther = "Other";
 
     [ObservableProperty]
@@ -152,6 +153,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     public int ProvidersCount => _allBrowse.Count(i => TabForItem(i) == CategoryProviders);
     public int ToolsCount => _allBrowse.Count(i => TabForItem(i) == CategoryTools);
     public int McpToolsCount => _allBrowse.Count(i => TabForItem(i) == CategoryMcpTools);
+    public int ExtensionsCount => _allBrowse.Count(i => TabForItem(i) == CategoryExtensions);
     public int OtherCount => _allBrowse.Count(i => !i.IsBundle && TabForItem(i) == CategoryOther);
     public bool HasUserPlugins => UserPlugins.Count > 0;
     public bool HasBundledPlugins => BundledPlugins.Count > 0;
@@ -342,6 +344,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         OnPropertyChanged(nameof(ProvidersCount));
         OnPropertyChanged(nameof(ToolsCount));
         OnPropertyChanged(nameof(McpToolsCount));
+        OnPropertyChanged(nameof(ExtensionsCount));
         OnPropertyChanged(nameof(OtherCount));
         OnPropertyChanged(nameof(HasOtherItems));
 
@@ -395,6 +398,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         CategoryOptions.Add(new CategoryOption(CategoryProviders, $"{Loc["StoreCategoryProviders"]} ({ProvidersCount})"));
         CategoryOptions.Add(new CategoryOption(CategoryTools, $"{Loc["StoreCategoryTools"]} ({ToolsCount})"));
         CategoryOptions.Add(new CategoryOption(CategoryMcpTools, $"{Loc["StoreCategoryMcpTools"]} ({McpToolsCount})"));
+        CategoryOptions.Add(new CategoryOption(CategoryExtensions, $"{Loc["StoreCategoryExtensions"]} ({ExtensionsCount})"));
         if (HasOtherItems)
         {
             CategoryOptions.Add(new CategoryOption(CategoryOther, $"{Loc["StoreCategoryOther"]} ({OtherCount})"));
@@ -442,6 +446,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         PluginManifest.Types.Provider => CategoryProviders,
         PluginManifest.Types.Tool => CategoryTools,
         PluginManifest.Types.Mcp => CategoryMcpTools,
+        PluginManifest.Types.Extension => CategoryExtensions,
         _ => CategoryOther
     };
 
