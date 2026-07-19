@@ -277,7 +277,7 @@
     <value>Laat de AI connecties aanmaken</value>
   </data>
   <data name="McpAllowConnectionCreateHint" xml:space="preserve">
-    <value>Indien aan kan een AI-client via MCP databaseconnecties aanmaken. Standaard uit. Nieuwe connecties komen in de map hieronder; alleen loopback-hosts zijn toegestaan tenzij je er meer toevoegt.</value>
+    <value>Indien aan, kan een AI-client via MCP databaseconnecties aanmaken. Standaard uit. Nieuwe connecties komen in de map hieronder; alleen loopback-hosts zijn toegestaan tenzij je er meer toevoegt.</value>
   </data>
   <data name="McpConnectionCreateWarning" xml:space="preserve">
     <value>Elk lokaal proces dat de MCP-server bereikt kan nu connecties aanmaken — en DDL draaien tegen een tijdelijke loopback-connectie. Laat dit uit tenzij je het nodig hebt.</value>
