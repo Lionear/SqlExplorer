@@ -21,6 +21,8 @@ using SqlExplorer.Core.Update;
 using SqlExplorer.Sdk.Shortcuts;
 using SqlExplorer.Sdk.Localization;
 using SqlExplorer.Sdk.Tools;
+using SqlExplorer.Sdk.Extensibility;
+using SqlExplorer.Infrastructure.Extensibility;
 using SqlExplorer.Infrastructure.Persistence;
 using SqlExplorer.Infrastructure.Secrets;
 using SqlExplorer.Infrastructure.Store;
@@ -120,10 +122,47 @@ public static class AppServices
             }
         }
 
+        // Standing-subsystem plugins (type: "extension", SE-164): loaded here in their own ALC, but NOT yet
+        // activated. Their capability-gated context needs services — notably the ConnectionService behind
+        // IManagedConnections — that don't exist until the container below is built, so the loader only
+        // produces activations. SubsystemActivator (resolved + ActivateAll()'d in App startup, post-build)
+        // builds each context and calls Initialize.
+        var subsystemResults = new SubsystemPluginLoader(
+            localizer, msg => Console.Error.WriteLine($"[subsystem] {msg}")).Load(enabled);
+        var subsystemActivations = new List<SubsystemActivation>();
+        foreach (var result in subsystemResults)
+        {
+            if (result is { Succeeded: true, Activation: { } activation })
+            {
+                subsystemActivations.Add(activation);
+            }
+            else if (result.Error is not null)
+            {
+                Console.Error.WriteLine($"[plugin] skipped extension '{result.PluginDirectory}': {result.Error}");
+            }
+        }
+
+        // The activator resolves after BuildServiceProvider (App startup): its connections provider pulls the
+        // live ConnectionService from the built container, so a connection a plugin creates lands in the real
+        // host list (secrets to the keychain), tagged with the plugin id as origin. Storage is plugin-scoped
+        // JSON; Log routes to stderr for now (Output-panel wiring is a later seam).
+        services.AddSingleton(sp => new SubsystemActivator(
+            subsystemActivations,
+            id => new JsonPluginStorage(id),
+            id => new ManagedConnections(id, sp.GetRequiredService<ConnectionService>()),
+            msg => Console.Error.WriteLine($"[subsystem] {msg}")));
+
         // Host-side view of everything installed (loaded or not, enabled or not) for the Plugin Store's
         // Installed tab. Enable/disable/uninstall stage a change here, applied on next startup.
         services.AddSingleton<IPluginStateStore>(stateStore);
-        services.AddSingleton(new PluginCatalogService(stateStore, discovered, providerResults, toolResults));
+        // Feed every loader's outcome in, not just provider/tool: a plugin kind missing here reads as
+        // "enabled but not loaded" and pins the restart banner forever (SE-164 extensions did exactly that).
+        var loadOutcomes = providerResults.Select(r => new PluginLoadOutcome(r.PluginDirectory, r.Succeeded, r.Error))
+            .Concat(toolResults.Select(r => new PluginLoadOutcome(r.PluginDirectory, r.Succeeded, r.Error)))
+            .Concat(mcpToolResults.Select(r => new PluginLoadOutcome(r.PluginDirectory, r.Succeeded, r.Error)))
+            .Concat(subsystemResults.Select(r => new PluginLoadOutcome(r.PluginDirectory, r.Succeeded, r.Error)))
+            .ToList();
+        services.AddSingleton(new PluginCatalogService(stateStore, discovered, loadOutcomes));
 
         // Plugin Store: one shared HttpClient feeds the Discovery feed, the catalog merge and the
         // installer. The store window is opened from the menu, same factory-delegate pattern as the dialogs.
@@ -246,6 +285,9 @@ public static class AppServices
 
         services.AddTransient<MainViewModel>();
 
+        // In-memory MCP audit ring backing the "AI activity" panel (SE-159); the McpHost writes to it.
+        services.AddSingleton<McpActivityLog>();
+
         // MCP host + server: the host owns the transport + all authorization (McpHost). Registered here so
         // the settings view can restart it on change; started once below after the container is built.
         services.AddSingleton(sp =>
@@ -270,6 +312,19 @@ public static class AppServices
             // "[MCP DENY]" audit lines from McpHost.
             void Audit(string message) => System.Diagnostics.Trace.WriteLine(message);
 
+            // Connection-create policy (SE-155), read live so a settings change takes effect without a
+            // server restart. A list-of-hosts can't ride the string-only GetSetting, hence its own reader.
+            McpConnectionPolicy ReadConnectionPolicy()
+            {
+                var s = settingsStore.Load();
+                var hosts = (s.McpAllowedHosts ?? [])
+                    .Where(h => !string.IsNullOrWhiteSpace(h))
+                    .Select(h => h.Trim())
+                    .ToList();
+                var folder = string.IsNullOrWhiteSpace(s.McpConnectionFolder) ? "MCP" : s.McpConnectionFolder.Trim();
+                return new McpConnectionPolicy(s.McpAllowConnectionCreate, hosts, folder);
+            }
+
             var mcpHost = new McpHost(
                 sp.GetRequiredService<ConnectionService>(),
                 sp.GetRequiredService<IDbProviderRegistry>(),
@@ -277,6 +332,8 @@ public static class AppServices
                 sp.GetRequiredService<IQueryLog>(),
                 sp.GetRequiredService<MasterPasswordService>(),
                 GetSetting,
+                ReadConnectionPolicy,
+                sp.GetRequiredService<McpActivityLog>(),
                 Audit);
 
             var server = new McpServer(mcpHost, Audit);

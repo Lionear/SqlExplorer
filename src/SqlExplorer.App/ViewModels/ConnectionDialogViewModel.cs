@@ -21,6 +21,11 @@ public partial class ConnectionDialogViewModel : ViewModelBase
     private readonly IDbProviderRegistry _providers;
     private string _id = Guid.NewGuid().ToString("N");
 
+    // The plugin that owns this connection (SavedConnection.Origin), or null for a user connection. Captured
+    // on load and passed straight back on Save so editing never silently un-manages it (which would drop the
+    // "Managed" badge and break the owning plugin's origin-scoped remove).
+    private string? _origin;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanSave))]
     private string _name = "New connection";
@@ -146,9 +151,19 @@ public partial class ConnectionDialogViewModel : ViewModelBase
         && Fields.All(f => !f.Field.Required || !string.IsNullOrWhiteSpace(f.Value));
 
     /// <summary>Switch the dialog to edit an existing connection: prefill everything, keep its id.</summary>
+    /// <summary>True when this connection is plugin-managed (has an origin). The form surfaces a warning
+    /// because changing its settings here can break the link the owning plugin maintains.</summary>
+    public bool IsManaged => !string.IsNullOrEmpty(_origin);
+
+    /// <summary>Localised, origin-named warning shown for a managed connection; empty for a user connection.</summary>
+    public string ManagedNotice => IsManaged ? Loc.Get("ManagedConnectionWarning", _origin!) : string.Empty;
+
     public void LoadForEdit(SavedConnection connection)
     {
         _id = connection.Id;
+        _origin = connection.Origin;
+        OnPropertyChanged(nameof(IsManaged));
+        OnPropertyChanged(nameof(ManagedNotice));
         IsEditing = true;
         Name = connection.Name;
         Color = connection.Color;
@@ -319,7 +334,7 @@ public partial class ConnectionDialogViewModel : ViewModelBase
 
     /// <summary>Persist and return the saved connection (secrets go to the keychain).</summary>
     public SavedConnection Save() =>
-        _connections.Save(_id, Name, SelectedProvider!.Id, Values(), Color, ReadOnly, Folder, AiAccess, ExcludeFromMcp);
+        _connections.Save(_id, Name, SelectedProvider!.Id, Values(), Color, ReadOnly, Folder, AiAccess, ExcludeFromMcp, origin: _origin);
 
     /// <summary>Bridges a provider's custom advanced view (Route B) to the dialog's field inputs by key,
     /// so its edits land in the same values the host saves and passes to BuildConnectionString.</summary>

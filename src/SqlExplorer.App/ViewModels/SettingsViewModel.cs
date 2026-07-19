@@ -21,8 +21,10 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace SqlExplorer.App.ViewModels;
 
-/// <summary>One entry in the Settings category rail: a stable key, a localized label and a vector icon.</summary>
-public sealed record SettingsCategory(string Key, string Label, Geometry Icon);
+/// <summary>One entry in the Settings category rail: a stable key, a localized label, a vector icon, and
+/// optional space-separated search <paramref name="Keywords"/> (EN/NL terms for settings inside it) so the
+/// search box (SE-161) can surface a category by the setting you're looking for, not just its label.</summary>
+public sealed record SettingsCategory(string Key, string Label, Geometry Icon, string Keywords = "");
 
 /// <summary>
 /// Backs the Preferences window: General/Appearance/Editor/Query plus a Plugins category that lists
@@ -53,6 +55,57 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private SettingsCategory? _selectedCategory;
+
+    // The full category list; Categories is the (search-)filtered view bound by the rail (SE-161).
+    private IReadOnlyList<SettingsCategory> _allCategories = [];
+
+    /// <summary>The key of the category whose content pane is shown. Driven by the rail selection but kept
+    /// separate so a search that filters the rail (and momentarily nulls the ListBox selection) can never
+    /// leave the content area blank — or, worse, show every pane at once (SE-161).</summary>
+    [ObservableProperty]
+    private string _activeCategoryKey = "General";
+
+    partial void OnSelectedCategoryChanged(SettingsCategory? value)
+    {
+        if (value is not null)
+        {
+            ActiveCategoryKey = value.Key;
+        }
+    }
+
+    /// <summary>Search text for the category rail (SE-161): filters categories by label or keywords.</summary>
+    [ObservableProperty]
+    private string? _settingsSearch;
+
+    partial void OnSettingsSearchChanged(string? value) => ApplyCategoryFilter();
+
+    // Filter the rail to categories whose label or keywords contain the query; empty shows all. The content
+    // pane follows ActiveCategoryKey (not the rail selection), so a no-match query just empties the rail and
+    // leaves the last pane showing — the rail selection can safely go null without blanking the content.
+    private void ApplyCategoryFilter()
+    {
+        var query = SettingsSearch?.Trim();
+        var visible = string.IsNullOrEmpty(query)
+            ? _allCategories
+            : _allCategories
+                .Where(c => c.Label.Contains(query, StringComparison.OrdinalIgnoreCase)
+                            || c.Keywords.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+        var previous = SelectedCategory;
+        Categories.Clear();
+        foreach (var category in visible)
+        {
+            Categories.Add(category);
+        }
+
+        // Select the previously-shown category if it's still visible, else the first match; on no match leave
+        // the selection null (empty rail) — ActiveCategoryKey keeps the content on the last-shown pane.
+        if (visible.Count > 0)
+        {
+            SelectedCategory = previous is not null && visible.Contains(previous) ? previous : visible[0];
+        }
+    }
 
     [ObservableProperty]
     private string? _language;
@@ -309,6 +362,10 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _closeToTray;
 
+    /// <summary>Show only one bottom-docked tool panel (Output/Containers/plugin panels) at a time (SE-165).</summary>
+    [ObservableProperty]
+    private bool _singleBottomPanel;
+
     // ── Query log ────────────────────────────────────────────────────────────────────────────────────
     [ObservableProperty]
     private bool _queryLogEnabled;
@@ -417,6 +474,62 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Warn that live secrets in results may reach the AI when scrubbing is turned off (SE-145).</summary>
     public bool ShowNoScrubWarning => !McpScrubSecrets;
 
+    // ── MCP connection creation (SE-155) ─────────────────────────────────────────────────────────────
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowConnectionCreateWarning))]
+    private bool _mcpAllowConnectionCreate;
+
+    [ObservableProperty]
+    private string _mcpConnectionFolder = "MCP";
+
+    /// <summary>Warn when AI connection-creation is enabled — any local MCP client can then create (and, for a
+    /// transient loopback connection, DDL against) connections. Off by default; the UI makes the change loud.</summary>
+    public bool ShowConnectionCreateWarning => McpAllowConnectionCreate;
+
+    /// <summary>Extra hosts (beyond loopback, which is always allowed) an AI-created connection may target.</summary>
+    public ObservableCollection<string> McpAllowedHosts { get; } = [];
+
+    [ObservableProperty]
+    private string? _newAllowedHost;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasHostError))]
+    private string? _hostError;
+
+    public bool HasHostError => HostError is not null;
+
+    [RelayCommand]
+    private void AddAllowedHost()
+    {
+        var host = NewAllowedHost?.Trim();
+        if (string.IsNullOrEmpty(host))
+        {
+            return;
+        }
+
+        if (!IsValidHost(host))
+        {
+            HostError = Loc["McpAllowedHostInvalid"];
+            return;
+        }
+
+        if (!McpAllowedHosts.Contains(host, StringComparer.OrdinalIgnoreCase))
+        {
+            McpAllowedHosts.Add(host);
+        }
+
+        NewAllowedHost = null;
+        HostError = null;
+    }
+
+    [RelayCommand]
+    private void RemoveAllowedHost(string host) => McpAllowedHosts.Remove(host);
+
+    // A hostname or IP literal: letters/digits/dot/hyphen/underscore/colon (IPv6). Deliberately permissive —
+    // the real gate is the exact-match allowlist check at create time; this only rejects obvious junk.
+    private static bool IsValidHost(string host) =>
+        host.Length <= 253 && host.All(c => char.IsLetterOrDigit(c) || c is '.' or '-' or ':' or '_');
+
     [RelayCommand]
     private void RegenerateMcpToken() =>
         McpToken = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
@@ -477,6 +590,9 @@ public partial class SettingsViewModel : ViewModelBase
         settings.McpMaxRows = McpMaxRows;
         settings.McpTimeoutSeconds = McpTimeoutSeconds;
         settings.McpScrubSecrets = McpScrubSecrets;
+        settings.McpAllowConnectionCreate = McpAllowConnectionCreate;
+        settings.McpAllowedHosts = McpAllowedHosts.Count > 0 ? McpAllowedHosts.ToList() : null;
+        settings.McpConnectionFolder = string.IsNullOrWhiteSpace(McpConnectionFolder) ? "MCP" : McpConnectionFolder.Trim();
     }
 
     public SettingsViewModel(
@@ -547,20 +663,33 @@ public partial class SettingsViewModel : ViewModelBase
             new(PluginUpdatePolicy.Auto, localizer["PluginUpdatePolicyAuto"]),
         ];
 
-        Categories =
+        // Keywords are EN/NL terms for the settings inside each category, so the search box (SE-161) can
+        // surface a category by the setting you're after, not only its label. Kept language-agnostic here.
+        _allCategories =
         [
-            new SettingsCategory("General", localizer["SettingsGeneralCat"], NodeIcons.SettingsGeneral),
-            new SettingsCategory("Appearance", localizer["SettingsAppearance"], NodeIcons.SettingsAppearance),
-            new SettingsCategory("Editor", localizer["SettingsEditor"], NodeIcons.SettingsEditor),
-            new SettingsCategory("Query", localizer["SettingsQuery"], NodeIcons.SettingsQuery),
-            new SettingsCategory("QueryLog", localizer["SettingsQueryLog"], NodeIcons.SettingsQuery),
-            new SettingsCategory("Keyboard", localizer["SettingsKeyboard"], NodeIcons.SettingsKeyboard),
-            new SettingsCategory("Mcp", localizer["SettingsMcp"], NodeIcons.SettingsPlugins),
-            new SettingsCategory("Security", localizer["SettingsSecurity"], NodeIcons.SettingsGeneral),
-            new SettingsCategory("Plugins", localizer["SettingsPlugins"], NodeIcons.SettingsPlugins),
-            new SettingsCategory("PluginSources", localizer["SettingsPluginSources"], NodeIcons.SettingsPlugins),
+            new SettingsCategory("General", localizer["SettingsGeneralCat"], NodeIcons.SettingsGeneral,
+                "language taal startup opstarten restore tabs herstel tray exit afsluiten system databases updates channel kanaal interval"),
+            new SettingsCategory("Appearance", localizer["SettingsAppearance"], NodeIcons.SettingsAppearance,
+                "theme thema dark donker light licht panel paneel bottom onder"),
+            new SettingsCategory("Editor", localizer["SettingsEditor"], NodeIcons.SettingsEditor,
+                "font lettergrootte size word wrap terugloop format opmaak keyword casing indent inspringen"),
+            new SettingsCategory("Query", localizer["SettingsQuery"], NodeIcons.SettingsQuery,
+                "timeout page pagina rows rijen results resultaten browse confirm bevestig"),
+            new SettingsCategory("QueryLog", localizer["SettingsQueryLog"], NodeIcons.SettingsQuery,
+                "query log audit logging"),
+            new SettingsCategory("Keyboard", localizer["SettingsKeyboard"], NodeIcons.SettingsKeyboard,
+                "keyboard toetsenbord shortcuts sneltoetsen keybindings gestures"),
+            new SettingsCategory("Mcp", localizer["SettingsMcp"], NodeIcons.SettingsPlugins,
+                "mcp ai server token port poort auth connection connectie create aanmaken host scrub secrets redact rows"),
+            new SettingsCategory("Security", localizer["SettingsSecurity"], NodeIcons.SettingsGeneral,
+                "security beveiliging master password wachtwoord lock vergrendel idle"),
+            new SettingsCategory("Plugins", localizer["SettingsPlugins"], NodeIcons.SettingsPlugins,
+                "plugins update policy beleid auto notify"),
+            new SettingsCategory("PluginSources", localizer["SettingsPluginSources"], NodeIcons.SettingsPlugins,
+                "plugin sources bronnen bron source url discovery manual"),
         ];
-        _selectedCategory = Categories[0];
+        Categories = [.._allCategories];
+        _selectedCategory = _allCategories[0];
 
         LoadFromStore();
         BuildPluginCatalog();
@@ -737,6 +866,7 @@ public partial class SettingsViewModel : ViewModelBase
         SelectedUpdateIntervalMinutes = settings.UpdateCheckIntervalMinutes;
         UpdateCheckStatus = null;
         ShowSystemDatabases = settings.ShowSystemDatabases;
+        SingleBottomPanel = settings.SingleBottomPanel;
         ConfirmOnExit = settings.ConfirmOnExit;
         CloseToTray = settings.CloseToTray;
         QueryLogEnabled = settings.QueryLogEnabled;
@@ -752,6 +882,18 @@ public partial class SettingsViewModel : ViewModelBase
         McpMaxRows = settings.McpMaxRows;
         McpTimeoutSeconds = settings.McpTimeoutSeconds;
         McpScrubSecrets = settings.McpScrubSecrets;
+        McpAllowConnectionCreate = settings.McpAllowConnectionCreate;
+        McpConnectionFolder = string.IsNullOrWhiteSpace(settings.McpConnectionFolder) ? "MCP" : settings.McpConnectionFolder;
+        McpAllowedHosts.Clear();
+        foreach (var host in settings.McpAllowedHosts ?? [])
+        {
+            if (!string.IsNullOrWhiteSpace(host))
+            {
+                McpAllowedHosts.Add(host.Trim());
+            }
+        }
+
+        HostError = null;
     }
 
     // A plugin (provider or tool) gets a tree entry only if it declares fields (Route A) or a custom
@@ -883,6 +1025,7 @@ public partial class SettingsViewModel : ViewModelBase
         CheckForUpdatesOnStartup = defaults.CheckForUpdatesOnStartup;
         SelectedUpdateIntervalMinutes = defaults.UpdateCheckIntervalMinutes;
         ShowSystemDatabases = defaults.ShowSystemDatabases;
+        SingleBottomPanel = defaults.SingleBottomPanel;
         ConfirmOnExit = defaults.ConfirmOnExit;
         CloseToTray = defaults.CloseToTray;
         QueryLogEnabled = defaults.QueryLogEnabled;
@@ -895,6 +1038,10 @@ public partial class SettingsViewModel : ViewModelBase
         McpMaxRows = defaults.McpMaxRows;
         McpTimeoutSeconds = defaults.McpTimeoutSeconds;
         McpScrubSecrets = defaults.McpScrubSecrets;
+        McpAllowConnectionCreate = defaults.McpAllowConnectionCreate;
+        McpConnectionFolder = defaults.McpConnectionFolder;
+        McpAllowedHosts.Clear();
+        HostError = null;
 
         // Keyboard shortcuts reset to their factory bindings too.
         foreach (var shortcut in _allShortcuts)
@@ -943,6 +1090,7 @@ public partial class SettingsViewModel : ViewModelBase
         settings.CheckForUpdatesOnStartup = CheckForUpdatesOnStartup;
         settings.UpdateCheckIntervalMinutes = SelectedUpdateIntervalMinutes;
         settings.ShowSystemDatabases = ShowSystemDatabases;
+        settings.SingleBottomPanel = SingleBottomPanel;
         settings.ConfirmOnExit = ConfirmOnExit;
         settings.CloseToTray = CloseToTray;
         settings.QueryLogEnabled = QueryLogEnabled;

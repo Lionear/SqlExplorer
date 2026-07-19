@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlExplorer.Backends.Docker</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Contract only. Private=false keeps SqlExplorer.Sdk.dll out of the plugin folder so the host's copy
+         is used across the ALC boundary (single ISubsystemPlugin/IPluginRuntimeContext type identity). -->
+    <ProjectReference Include="..\..\src\SqlExplorer.Sdk\SqlExplorer.Sdk.csproj" Private="false" />
+    <!-- The panel seam (IPanelPlugin) returns an Avalonia Control, and the SDK keeps Avalonia PrivateAssets,
+         so this plugin references Avalonia itself. ExcludeAssets="runtime" keeps the DLLs out of the plugin
+         folder — the host's copy is shared across the ALC, so the Control has one type identity. -->
+    <PackageReference Include="Avalonia" Version="12.0.5" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Brand icon, staged beside the plugin so the host reads it from the plugin dir (extension/mcp plugins
+         have no SDK icon property; the host falls back to <pluginDir>/icon.png). -->
+    <Content Include="icon.png" CopyToOutputDirectory="PreserveNewest" Condition="Exists('icon.png')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The unit-test project drives internal helpers (ContainerMonitor) directly. -->
+    <InternalsVisibleTo Include="SqlExplorer.Backends.Docker.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="SqlExplorer.Sdk.Extensibility" />
+  </ItemGroup>
+
+</Project>

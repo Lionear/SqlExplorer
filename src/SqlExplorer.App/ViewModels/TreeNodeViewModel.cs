@@ -142,6 +142,30 @@ public partial class TreeNodeViewModel : ViewModelBase
 
     public bool HasConnectionColor => ConnectionColorBrush is not null;
 
+    /// <summary>True when this connection root was created by a plugin (SE-164, <see cref="SavedConnection.Origin"/>
+    /// set) — drives the "Managed" tree badge.</summary>
+    public bool IsManagedConnection => IsConnectionNode && !string.IsNullOrEmpty(Connection.Origin);
+
+    /// <summary>The plugin origin that manages this connection (tooltip for the badge); empty when not managed.</summary>
+    public string ManagedOrigin => IsManagedConnection ? $"Managed by {Connection.Origin}" : string.Empty;
+
+    /// <summary>True for an in-memory, session-only connection (SE-155) — drives a "Temporary" tree badge.</summary>
+    public bool IsTransientConnection => IsConnectionNode && Connection.IsTransient;
+
+    /// <summary>True when this connection is reachable by the MCP server — opted in (AiAccess ≠ None) and not
+    /// hard-excluded (SE-158). Drives an "AI" tree badge with the access level as its tooltip.</summary>
+    public bool IsAiReachable => IsConnectionNode && Connection.IsMcpReachable;
+
+    /// <summary>Tooltip for the AI badge, naming the granted access level (SE-158); empty when not reachable.</summary>
+    public string AiAccessLabel => IsAiReachable ? $"AI access: {Connection.AiAccess}" : string.Empty;
+
+    /// <summary>The AI-access quick-set submenu is offered on a real (non-transient) connection root (SE-158);
+    /// a transient MCP connection is managed by the AI, not edited here.</summary>
+    public bool CanSetAiAccess => IsConnectionNode && !Connection.IsTransient;
+
+    /// <summary>Whether this connection is hard-excluded from MCP (drives the submenu's check mark, SE-158).</summary>
+    public bool IsExcludedFromMcp => IsConnectionNode && Connection.ExcludeFromMcp;
+
     /// <summary>Connect is offered on a connection root that isn't currently connected.</summary>
     public bool CanConnect => IsConnectionNode && State != ConnectionState.Connected;
 

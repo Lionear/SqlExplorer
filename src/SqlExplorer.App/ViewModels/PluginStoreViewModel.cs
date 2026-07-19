@@ -60,6 +60,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     public const string CategoryProviders = "Providers";
     public const string CategoryTools = "Tools";
     public const string CategoryMcpTools = "McpTools";
+    public const string CategoryExtensions = "Extensions";
     public const string CategoryOther = "Other";
 
     [ObservableProperty]
@@ -138,7 +139,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     public ObservableCollection<InstalledListItem> UpdatablePlugins { get; } = [];
     public ObservableCollection<InstalledListItem> BundledPlugins { get; } = [];
     public ObservableCollection<InstalledListItem> UserPlugins { get; } = [];
-    public ObservableCollection<string> ConsentCapabilities { get; } = [];
+    public ObservableCollection<CapabilityInfo> ConsentCapabilities { get; } = [];
 
     /// <summary>One line per install phase entered (Downloading/Verifying/…) — the mini install log.</summary>
     public ObservableCollection<string> ProgressLog { get; } = [];
@@ -152,6 +153,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
     public int ProvidersCount => _allBrowse.Count(i => TabForItem(i) == CategoryProviders);
     public int ToolsCount => _allBrowse.Count(i => TabForItem(i) == CategoryTools);
     public int McpToolsCount => _allBrowse.Count(i => TabForItem(i) == CategoryMcpTools);
+    public int ExtensionsCount => _allBrowse.Count(i => TabForItem(i) == CategoryExtensions);
     public int OtherCount => _allBrowse.Count(i => !i.IsBundle && TabForItem(i) == CategoryOther);
     public bool HasUserPlugins => UserPlugins.Count > 0;
     public bool HasBundledPlugins => BundledPlugins.Count > 0;
@@ -294,7 +296,29 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
             _ => null
         };
 
-        return PluginIconRenderer.Render(icon);
+        // Extension/MCP plugins have no SDK icon property; fall back to an icon.png staged beside the plugin.
+        return PluginIconRenderer.Render(icon) ?? LoadDiskIcon(plugin.Directory);
+    }
+
+    // Best-effort decode of <pluginDir>/icon.png; any failure (missing/unreadable/not an image) yields null.
+    private static Avalonia.Media.IImage? LoadDiskIcon(string directory)
+    {
+        try
+        {
+            var path = System.IO.Path.Combine(directory, "icon.png");
+            if (!System.IO.File.Exists(path))
+            {
+                return null;
+            }
+
+            using var stream = System.IO.File.OpenRead(path);
+            return Avalonia.Media.Imaging.Bitmap.DecodeToWidth(
+                stream, PluginIconRenderer.IconDecodeWidth, Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     // Best-effort read of the kept previous version's manifest, to label the rollback button.
@@ -342,6 +366,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         OnPropertyChanged(nameof(ProvidersCount));
         OnPropertyChanged(nameof(ToolsCount));
         OnPropertyChanged(nameof(McpToolsCount));
+        OnPropertyChanged(nameof(ExtensionsCount));
         OnPropertyChanged(nameof(OtherCount));
         OnPropertyChanged(nameof(HasOtherItems));
 
@@ -395,6 +420,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         CategoryOptions.Add(new CategoryOption(CategoryProviders, $"{Loc["StoreCategoryProviders"]} ({ProvidersCount})"));
         CategoryOptions.Add(new CategoryOption(CategoryTools, $"{Loc["StoreCategoryTools"]} ({ToolsCount})"));
         CategoryOptions.Add(new CategoryOption(CategoryMcpTools, $"{Loc["StoreCategoryMcpTools"]} ({McpToolsCount})"));
+        CategoryOptions.Add(new CategoryOption(CategoryExtensions, $"{Loc["StoreCategoryExtensions"]} ({ExtensionsCount})"));
         if (HasOtherItems)
         {
             CategoryOptions.Add(new CategoryOption(CategoryOther, $"{Loc["StoreCategoryOther"]} ({OtherCount})"));
@@ -442,6 +468,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         PluginManifest.Types.Provider => CategoryProviders,
         PluginManifest.Types.Tool => CategoryTools,
         PluginManifest.Types.Mcp => CategoryMcpTools,
+        PluginManifest.Types.Extension => CategoryExtensions,
         _ => CategoryOther
     };
 
@@ -766,7 +793,7 @@ public sealed partial class PluginStoreViewModel : ViewModelBase
         ConsentCapabilities.Clear();
         foreach (var capability in capabilities)
         {
-            ConsentCapabilities.Add(capability);
+            ConsentCapabilities.Add(CapabilityCatalog.Describe(capability, Loc));
         }
 
         IsConsentVisible = true;

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -154,8 +155,11 @@ public partial class MainViewModel : ViewModelBase
             "History", ToolWindowEdge.Right, localizer["History"], NodeIcons.ToolHistory,
             settings.HistoryWidth ?? 300);
         ToolWindows = [OutputWindow, HistoryWindow];
+        // Plugin panels (SE-164) are appended to ToolWindows/SubsystemPanels after startup activation.
 
         _history.Changed += OnHistoryChanged;
+        _connections.Saved += OnConnectionSavedExternally;
+        _connections.Removed += OnConnectionRemovedExternally;
         RefreshConnections();
         RestoreOpenTabs();
         RefreshRecentFiles();
@@ -225,8 +229,63 @@ public partial class MainViewModel : ViewModelBase
     public ToolWindow HistoryWindow { get; }
 
     /// <summary>Every tool window, in stripe order — the view binds the right-hand stripe to the
-    /// Right-edge ones and the status bar to the Bottom-edge ones, so a third panel needs no XAML.</summary>
-    public IReadOnlyList<ToolWindow> ToolWindows { get; }
+    /// Right-edge ones and the status bar to the Bottom-edge ones, so a third panel needs no XAML.
+    /// Observable so plugin-contributed panels (SE-164) can join after startup activation.</summary>
+    public ObservableCollection<ToolWindow> ToolWindows { get; }
+
+    /// <summary>Plugin-contributed bottom panels (SE-164 <c>panel</c> seam): each pairs a tool-window (its
+    /// toggle/visibility/size) with the plugin-built Avalonia control the panel region renders.</summary>
+    public ObservableCollection<SubsystemPanel> SubsystemPanels { get; } = [];
+
+    /// <summary>Mount a plugin panel: a Bottom-docked tool-window (toggle in the status bar, hidden until the
+    /// user opens it) plus its control. Called during App startup, before the view subscribes its windows.</summary>
+    public void AddSubsystemPanel(string id, string title, Control content)
+    {
+        var window = new ToolWindow(id, ToolWindowEdge.Bottom, title, NodeIcons.Object, 200)
+        {
+            IsVisible = false
+        };
+        ToolWindows.Add(window);
+        SubsystemPanels.Add(new SubsystemPanel(window, content));
+    }
+
+    /// <summary>Plugin-contributed Tools-menu items (SE-164 <c>menu</c> seam), appended to the Tools menu by
+    /// the window's code-behind at startup.</summary>
+    public ObservableCollection<ToolMenuNode> SubsystemMenuItems { get; } = [];
+
+    /// <summary>Add one plugin Tools-menu item that runs <paramref name="invokeAsync"/> when clicked.</summary>
+    public void AddSubsystemMenuItem(string title, Func<Task> invokeAsync) =>
+        SubsystemMenuItems.Add(new ToolMenuNode(title, new AsyncRelayCommand(invokeAsync)));
+
+    /// <summary>Show a plugin-built control modally over the main window (SE-164 menu seam) — set by the view's
+    /// code-behind, which owns the window. Backs the <c>IMenuActionContext.ShowDialogAsync</c> a menu action gets.</summary>
+    public Func<string, Control, Task>? ShowPluginDialogRequested { get; set; }
+
+    public Task ShowPluginDialogAsync(string title, Control content) =>
+        ShowPluginDialogRequested?.Invoke(title, content) ?? Task.CompletedTask;
+
+    /// <summary>Ask a yes/no question modally over the main window (SE-164) — set by the view's code-behind.
+    /// Backs <c>IHostUi.ConfirmAsync</c> so a plugin can confirm a destructive action. No handler = declined.</summary>
+    public Func<string, string, Task<bool>>? ShowPluginConfirmRequested { get; set; }
+
+    public Task<bool> ConfirmPluginAsync(string title, string message) =>
+        ShowPluginConfirmRequested?.Invoke(title, message) ?? Task.FromResult(false);
+
+    /// <summary>Plugin-contributed connection context-menu items (SE-164): each pairs an applicability
+    /// predicate with the action to run against the right-clicked connection. Rendered by the tree's
+    /// context menu in the view's code-behind.</summary>
+    public sealed record SubsystemConnectionMenuItem(
+        string Title,
+        Func<Sdk.Extensibility.ManagedConnectionInfo, bool> AppliesTo,
+        Func<Sdk.Extensibility.ManagedConnectionInfo, Task> Invoke);
+
+    public ObservableCollection<SubsystemConnectionMenuItem> SubsystemConnectionMenuItems { get; } = [];
+
+    public void AddConnectionMenuItem(
+        string title,
+        Func<Sdk.Extensibility.ManagedConnectionInfo, bool> appliesTo,
+        Func<Sdk.Extensibility.ManagedConnectionInfo, Task> invoke) =>
+        SubsystemConnectionMenuItems.Add(new SubsystemConnectionMenuItem(title, appliesTo, invoke));
 
     /// <summary>Query-history rows shown in the (toggleable) history panel, newest first.</summary>
     public ObservableCollection<QueryHistoryEntry> HistoryEntries { get; } = [];
@@ -258,6 +317,22 @@ public partial class MainViewModel : ViewModelBase
         if (window is null)
         {
             return;
+        }
+
+        // Exclusive bottom panels (SE-165): opening a bottom-docked panel closes the other bottom panels, so
+        // only one is visible at a time — unless the user turned the setting off. Right-edge windows (History)
+        // are never affected. The view is subscribed to every ToolWindow's PropertyChanged, so hiding the
+        // others collapses their tracks live.
+        var opening = !window.IsVisible;
+        if (opening && window.Edge == ToolWindowEdge.Bottom && _settingsStore.Load().SingleBottomPanel)
+        {
+            foreach (var other in ToolWindows)
+            {
+                if (other.Edge == ToolWindowEdge.Bottom && !ReferenceEquals(other, window) && other.IsVisible)
+                {
+                    other.IsVisible = false;
+                }
+            }
         }
 
         if (ReferenceEquals(window, HistoryWindow))
@@ -956,6 +1031,38 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    // A connection persisted outside the tree's own add/edit flows — a subsystem plugin creating a managed
+    // connection through IManagedConnections — has no explicit UpsertConnectionNode behind it, so splice it
+    // in live off the service event instead of waiting for a restart. Scoped to plugin-owned connections
+    // (Origin set): the user's own flows already upsert their node directly, so this never double-fires for
+    // them. Marshalled to the UI thread — a plugin's create/reconcile can run off a background flow.
+    private void OnConnectionSavedExternally(SavedConnection saved)
+    {
+        if (saved.Origin is null)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            UpsertConnectionNode(saved, select: false);
+            SortConnectionsTree();
+        });
+    }
+
+    // Mirror of OnConnectionSavedExternally for teardown: a plugin removing its managed connection (e.g. the
+    // Docker container behind it was deleted) has no explicit RemoveConnectionNode behind it, so drop the node
+    // live off the service event. Same Origin scoping — the user's own delete already removes its node.
+    private void OnConnectionRemovedExternally(SavedConnection removed)
+    {
+        if (removed.Origin is null)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() => RemoveConnectionNode(removed.Id));
+    }
+
     private void RemoveConnectionNode(string id)
     {
         if (FindConnectionNode(id) is not { } node)
@@ -1230,6 +1337,56 @@ public partial class MainViewModel : ViewModelBase
         }
 
         return OpenConnectionManagerAsync(manager => manager.SelectConnection(connection.Id));
+    }
+
+    /// <summary>Quick-set the selected connection's AI (MCP) access level from the tree context menu (SE-158),
+    /// preserving every other field — secrets included (re-read from the keychain, so they survive the save).
+    /// A transient MCP connection is skipped (it isn't user-editable).</summary>
+    [RelayCommand]
+    private void SetAiAccess(AiAccessMode mode)
+    {
+        if (SelectedNode is not { IsConnectionNode: true } node || node.Connection.IsTransient)
+        {
+            return;
+        }
+
+        var c = node.Connection;
+        if (c.AiAccess == mode)
+        {
+            return;
+        }
+
+        var values = _connections.GetEditableValues(c);
+        var saved = _connections.Save(
+            c.Id, c.Name, c.ProviderId, values, c.Color, c.ReadOnly, c.Folder, mode, c.ExcludeFromMcp, c.Origin);
+
+        // A user connection (no Origin) isn't refreshed by OnConnectionSavedExternally, so rebuild its node
+        // here; an Origin-tagged one refreshes off the Saved event.
+        if (saved.Origin is null)
+        {
+            UpsertConnectionNode(saved);
+        }
+    }
+
+    /// <summary>Toggle the selected connection's "exclude from AI (MCP)" hard override from the tree context
+    /// menu (SE-158). Same field-preserving save as <see cref="SetAiAccess"/>.</summary>
+    [RelayCommand]
+    private void ToggleExcludeFromMcp()
+    {
+        if (SelectedNode is not { IsConnectionNode: true } node || node.Connection.IsTransient)
+        {
+            return;
+        }
+
+        var c = node.Connection;
+        var values = _connections.GetEditableValues(c);
+        var saved = _connections.Save(
+            c.Id, c.Name, c.ProviderId, values, c.Color, c.ReadOnly, c.Folder, c.AiAccess, !c.ExcludeFromMcp, c.Origin);
+
+        if (saved.Origin is null)
+        {
+            UpsertConnectionNode(saved);
+        }
     }
 
     /// <summary>Open the Connection Manager window, optionally pre-positioned, then reconcile the tree

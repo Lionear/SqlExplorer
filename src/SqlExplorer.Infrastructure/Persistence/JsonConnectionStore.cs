@@ -151,7 +151,8 @@ public sealed class JsonConnectionStore : IConnectionStore
         AiAccess = dto.AiAccess,
         ExcludeFromMcp = dto.ExcludeFromMcp,
         Values = dto.Values ?? new Dictionary<string, string?>(),
-        SortOrder = dto.SortOrder
+        SortOrder = dto.SortOrder,
+        Origin = dto.Origin
     };
 
     private static ConnectionDto ToDto(SavedConnection connection) => new()
@@ -165,7 +166,8 @@ public sealed class JsonConnectionStore : IConnectionStore
         AiAccess = connection.AiAccess,
         ExcludeFromMcp = connection.ExcludeFromMcp,
         Values = connection.Values.ToDictionary(kv => kv.Key, kv => kv.Value),
-        SortOrder = connection.SortOrder
+        SortOrder = connection.SortOrder,
+        Origin = connection.Origin
     };
 
     // Files written before host-API v10 carry a "Kind" enum name instead of a "ProviderId".
@@ -201,5 +203,9 @@ public sealed class JsonConnectionStore : IConnectionStore
         public bool ExcludeFromMcp { get; init; }
         public Dictionary<string, string?>? Values { get; init; }
         public int SortOrder { get; init; }
+
+        /// <summary>The plugin that created this connection (SE-164), or null for a user connection.
+        /// Persisted so the "Managed" badge and origin-scoped IManagedConnections survive a restart.</summary>
+        public string? Origin { get; init; }
     }
 }

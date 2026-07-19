@@ -129,6 +129,19 @@ public partial class MainView : UserControl
     // x:Name on a RowDefinition/ColumnDefinition generates no field — hence the index access.
     private const int OutputRowIndex = 3;
     private const int HistoryColumnIndex = 4;
+    // SE-164 panel seam: the shared bottom region for plugin-contributed panels (RootGrid row 5, its
+    // splitter row 4). One region for all plugin panels in v1; its height is session-local (not persisted).
+    private const int SubsystemRowIndex = 5;
+    private const int ToolbarRowIndex = 0;
+    private const int StatusBarRowIndex = 6;
+    private const double SubsystemMinBody = 140; // content kept above the panel while dragging it taller
+    private double _subsystemHeight = 200;
+
+    // Hand-rolled drag state for the subsystem splitter (SE-170): a GridSplitter here would resize the wrong
+    // (fixed) neighbour, so we drive the row height ourselves and let the star body row absorb it.
+    private bool _subsystemDragging;
+    private double _subsystemDragStartY;
+    private double _subsystemDragStartHeight;
 
     /// <summary>Push the persisted sizes into the grid definitions (call once, after DataContext is set).</summary>
     public void RestoreToolWindowSizes(double outputHeight, double historyWidth)
@@ -151,6 +164,7 @@ public partial class MainView : UserControl
     // empty band above the status bar). Hence: set Min* together with the size, never in XAML.
     private const double OutputMinHeight = 80;
     private const double HistoryMinWidth = 200;
+    private const double SubsystemMinHeight = 80;
 
     // A hidden panel must not keep reserving its track: IsVisible on the Border alone still leaves the
     // fixed-pixel row/column occupying space. Collapse the track to 0 while hidden and restore the VM's
@@ -173,6 +187,64 @@ public partial class MainView : UserControl
         historyColumn.Width = _viewModel.HistoryWindow.IsVisible
             ? new GridLength(_viewModel.HistoryWindow.Size)
             : new GridLength(0);
+
+        // Plugin panel region (SE-164): the row (and its splitter) live only while at least one plugin panel
+        // is toggled open — a shared bottom region, same collapse-to-0 rule as Output.
+        var anyPanelVisible = _viewModel.SubsystemPanels.Any(p => p.Window.IsVisible);
+        var subsystemRow = RootGrid.RowDefinitions[SubsystemRowIndex];
+        subsystemRow.MinHeight = anyPanelVisible ? SubsystemMinHeight : 0;
+        subsystemRow.Height = anyPanelVisible ? new GridLength(_subsystemHeight) : new GridLength(0);
+        SubsystemSplitter.IsVisible = anyPanelVisible;
+    }
+
+    // --- Subsystem-panel resize (SE-170) -----------------------------------------------------------------
+    // The subsystem splitter sits between two fixed rows (Output above, panel below), so a GridSplitter would
+    // trade pixels with the Output row — doing nothing when Output is collapsed and leaving dead space. We
+    // resize only the panel row instead; the star body row (row 1) gives up / reclaims the difference.
+
+    private void OnSubsystemSplitterPressed(object? sender, PointerPressedEventArgs e)
+    {
+        _subsystemDragging = true;
+        _subsystemDragStartY = e.GetPosition(RootGrid).Y;
+        _subsystemDragStartHeight = RootGrid.RowDefinitions[SubsystemRowIndex].ActualHeight;
+        e.Pointer.Capture(sender as IInputElement);
+        e.Handled = true;
+    }
+
+    private void OnSubsystemSplitterMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_subsystemDragging)
+        {
+            return;
+        }
+
+        // Dragging up (negative delta) grows the panel; clamp so the body never collapses past its minimum.
+        var delta = e.GetPosition(RootGrid).Y - _subsystemDragStartY;
+        _subsystemHeight = Math.Clamp(_subsystemDragStartHeight - delta, SubsystemMinHeight, MaxSubsystemHeight());
+        RootGrid.RowDefinitions[SubsystemRowIndex].Height = new GridLength(_subsystemHeight);
+    }
+
+    private void OnSubsystemSplitterReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_subsystemDragging)
+        {
+            return;
+        }
+
+        _subsystemDragging = false;
+        e.Pointer.Capture(null);
+        e.Handled = true;
+    }
+
+    // The tallest the panel may get: whatever is left after the toolbar, the (possibly open) Output row, the
+    // status bar and a minimum body — so growing it never squeezes the content above to nothing.
+    private double MaxSubsystemHeight()
+    {
+        var reserved = RootGrid.RowDefinitions[ToolbarRowIndex].ActualHeight
+                     + RootGrid.RowDefinitions[OutputRowIndex].ActualHeight
+                     + RootGrid.RowDefinitions[StatusBarRowIndex].ActualHeight
+                     + SubsystemMinBody;
+        return Math.Max(SubsystemMinHeight, RootGrid.Bounds.Height - reserved);
     }
 
     // Keep the VM's Size in step with a splitter drag, and collapse/restore the track on toggle.
@@ -216,6 +288,12 @@ public partial class MainView : UserControl
         if (historyWidth > 0)
         {
             _viewModel.HistoryWindow.Size = historyWidth;
+        }
+
+        var subsystemHeight = RootGrid.RowDefinitions[SubsystemRowIndex].Height.Value;
+        if (subsystemHeight > 0)
+        {
+            _subsystemHeight = subsystemHeight;
         }
     }
 
@@ -428,6 +506,9 @@ public partial class MainView : UserControl
             _viewModel.ExportFileRequested = WriteExportFileAsync;
             _viewModel.SettingsDialogRequested = ShowSettingsDialogAsync;
             _viewModel.ToolDialogRequested = ShowToolDialogAsync;
+            _viewModel.ShowPluginDialogRequested = ShowPluginDialogAsync;
+            _viewModel.ShowPluginConfirmRequested = ShowPluginConfirmAsync;
+            PopulateConnectionMenu(_viewModel);
             _viewModel.RoutineParametersRequested = ShowRoutineParametersDialogAsync;
             _viewModel.NodeInfoRequested = ShowNodeInfoDialogAsync;
             _viewModel.SecurityViewRequested = ShowSecurityDialogAsync;
@@ -656,6 +737,103 @@ public partial class MainView : UserControl
 
         var dialog = new ToolDialog { DataContext = dialogViewModel };
         await dialog.ShowDialog(owner);
+    }
+
+    // SE-164 connection-menu seam: append the plugin-contributed items to the tree's context menu (once), and
+    // toggle each one's visibility when the menu opens based on the right-clicked connection.
+    private bool _connMenuBuilt;
+    private Separator? _connMenuSeparator;
+    private readonly List<(MenuItem Item, MainViewModel.SubsystemConnectionMenuItem Def)> _connMenuItems = new();
+
+    private void PopulateConnectionMenu(MainViewModel vm)
+    {
+        if (_connMenuBuilt || vm.SubsystemConnectionMenuItems.Count == 0 || TreeContextMenu is null)
+        {
+            return;
+        }
+
+        _connMenuBuilt = true;
+        _connMenuSeparator = new Separator();
+        TreeContextMenu.Items.Add(_connMenuSeparator);
+        foreach (var def in vm.SubsystemConnectionMenuItems)
+        {
+            var item = new MenuItem { Header = def.Title };
+            item.Click += async (_, _) =>
+            {
+                if (SelectedConnectionInfo() is { } info)
+                {
+                    await def.Invoke(info);
+                }
+            };
+            _connMenuItems.Add((item, def));
+            TreeContextMenu.Items.Add(item);
+        }
+
+        TreeContextMenu.Opening += (_, _) =>
+        {
+            var info = SelectedConnectionInfo();
+            var anyVisible = false;
+            foreach (var (item, def) in _connMenuItems)
+            {
+                var visible = info is not null && def.AppliesTo(info);
+                item.IsVisible = visible;
+                anyVisible |= visible;
+            }
+
+            if (_connMenuSeparator is not null)
+            {
+                _connMenuSeparator.IsVisible = anyVisible;
+            }
+        };
+    }
+
+    private SqlExplorer.Sdk.Extensibility.ManagedConnectionInfo? SelectedConnectionInfo()
+    {
+        if (_viewModel?.SelectedNode is not { IsConnectionNode: true } node)
+        {
+            return null;
+        }
+
+        var c = node.Connection;
+        return new SqlExplorer.Sdk.Extensibility.ManagedConnectionInfo(c.Id, c.Name, c.ProviderId, c.Folder, c.Values);
+    }
+
+    // SE-164 menu seam: host a plugin-built control in a modal window (generic chrome — the plugin's control
+    // carries its own buttons and closes the window itself). The plugin owns the content; we own the frame.
+    private async Task ShowPluginDialogAsync(string title, Control content)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+
+        var dialog = new Window
+        {
+            Title = title,
+            Content = content,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+            MinWidth = 400
+        };
+        if (this.TryFindResource("SEPanelBgBrush", out var bg) && bg is Avalonia.Media.IBrush brush)
+        {
+            dialog.Background = brush;
+        }
+
+        await dialog.ShowDialog(owner);
+    }
+
+    private async Task<bool> ShowPluginConfirmAsync(string title, string message)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return false;
+        }
+
+        var loc = _viewModel?.Loc;
+        var dialog = new ConfirmDialog(title, message, loc?["Yes"] ?? "Yes", loc?["No"] ?? "No");
+        return await dialog.ShowDialog<bool>(owner);
     }
 
     private async Task ShowRoutineParametersDialogAsync(RoutineParametersDialogViewModel dialogViewModel)

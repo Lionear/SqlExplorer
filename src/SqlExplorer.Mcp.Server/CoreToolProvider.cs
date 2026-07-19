@@ -97,7 +97,60 @@ public sealed class CoreToolProvider : IMcpToolProvider
               "additionalProperties": false
             }
             """,
-            (args, host, _) => Task.FromResult<object?>(host.GetQueryLog(ReadInt(args, "limit"), ReadString(args, "source"))))
+            (args, host, _) => Task.FromResult<object?>(host.GetQueryLog(ReadInt(args, "limit"), ReadString(args, "source")))),
+
+        new McpToolDefinition(
+            "list_providers",
+            "List the database providers (drivers) available for create_connection, each with its connection fields (which are required, optional, secret, or have a fixed set of choices). Call this first to learn what a create_connection request needs. Never returns any secret or field value.",
+            """{"type":"object","properties":{},"additionalProperties":false}""",
+            (_, host, _) => Task.FromResult<object?>(host.ListProviders())),
+
+        new McpToolDefinition(
+            "create_connection",
+            "Create a database connection. Off unless the user enabled it in settings. 'persistent' false makes an in-memory, session-only connection wiped when SQL Explorer closes; true saves it. 'access' requests an AI-access level (readonly/readwrite/sandbox); the host may lower it — persistent connections cap at readwrite, and 'sandbox' (which also allows DDL) is only granted to a transient loopback connection. Call list_providers first for the provider id and its fields. Only connections you create this way can later be removed with delete_connection.",
+            """
+            {
+              "type": "object",
+              "properties": {
+                "providerId": { "type": "string", "description": "Provider (driver) id from list_providers." },
+                "name": { "type": "string", "description": "Display name for the connection." },
+                "values": { "type": "object", "description": "Field key → value map (from list_providers' fields); include every required field.", "additionalProperties": { "type": ["string", "null"] } },
+                "persistent": { "type": "boolean", "description": "Save it (true) or keep it in-memory/session-only (false). Default false." },
+                "access": { "type": "string", "enum": ["readonly", "readwrite", "sandbox"], "description": "Requested AI-access level; the host may lower it. Omit for the host default." }
+              },
+              "required": ["providerId", "name", "values"],
+              "additionalProperties": false
+            }
+            """,
+            async (args, host, ct) =>
+            {
+                var providerId = RequireString(args, "providerId");
+                var name = RequireString(args, "name");
+                var values = ReadStringMap(args, "values");
+                var persistent = ReadBool(args, "persistent") ?? false;
+                var access = ReadString(args, "access");
+                return await host.CreateConnectionAsync(
+                    new McpCreateConnectionRequest(providerId, name, values, persistent, access), ct);
+            }),
+
+        new McpToolDefinition(
+            "delete_connection",
+            "Delete a connection the AI created earlier over MCP — a transient (session-only) one, or a persisted one created with create_connection. Scoped to the AI's own connections: it refuses the user's own connections and other plugins' managed connections, even ones the AI can otherwise read or query.",
+            """
+            {
+              "type": "object",
+              "properties": {
+                "connectionId": { "type": "string", "description": "Connection id from create_connection or list_connections." }
+              },
+              "required": ["connectionId"],
+              "additionalProperties": false
+            }
+            """,
+            (args, host, _) =>
+            {
+                host.DeleteConnection(RequireString(args, "connectionId"));
+                return Task.FromResult<object?>(new { deleted = true });
+            })
     ];
 
     private static string? ReadString(JsonElement args, string name) =>
@@ -121,6 +174,39 @@ public sealed class CoreToolProvider : IMcpToolProvider
         && value.TryGetInt32(out var i)
             ? i
             : null;
+
+    private static bool? ReadBool(JsonElement args, string name) =>
+        args.ValueKind == JsonValueKind.Object
+        && args.TryGetProperty(name, out var value)
+        && value.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? value.GetBoolean()
+            : null;
+
+    // Read an object argument as a string→string? map (create_connection's field values). Non-string scalar
+    // values are stringified so a JSON number/bool for, say, a port still comes through; null stays null.
+    private static IReadOnlyDictionary<string, string?> ReadStringMap(JsonElement args, string name)
+    {
+        var map = new Dictionary<string, string?>();
+        if (args.ValueKind != JsonValueKind.Object
+            || !args.TryGetProperty(name, out var obj)
+            || obj.ValueKind != JsonValueKind.Object)
+        {
+            return map;
+        }
+
+        foreach (var prop in obj.EnumerateObject())
+        {
+            map[prop.Name] = prop.Value.ValueKind switch
+            {
+                JsonValueKind.String => prop.Value.GetString(),
+                JsonValueKind.Null => null,
+                JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False => prop.Value.GetRawText(),
+                _ => null
+            };
+        }
+
+        return map;
+    }
 
     private static IReadOnlyList<string>? ReadStringArray(JsonElement args, string name)
     {

@@ -24,10 +24,24 @@ public sealed class McpHost(
     IQueryLog queryLog,
     MasterPasswordService masterPassword,
     Func<string, string?> getSetting,
+    Func<McpConnectionPolicy> connectionPolicy,
+    McpActivityLog activity,
     Action<string> audit) : IMcpHost
 {
     private const int DefaultMaxRows = 200;
     private const int DefaultTimeoutSeconds = 30;
+
+    /// <summary>Origin stamp on connections the MCP server creates (SE-155), so <c>delete_connection</c> can
+    /// scope deletes to only the AI's own persisted connections and the tree can badge them.</summary>
+    public const string CreatedByOrigin = "mcp";
+
+    // Field keys that carry the target host, in priority order — used to enforce the create allowlist.
+    // File-based providers (e.g. SQLite) declare none, so a create with no host counts as local.
+    private static readonly string[] HostKeys = ["host", "server", "hostname", "endpoint"];
+
+    // Persisted connections plus in-memory transient ones — the MCP surface treats both alike, so the AI can
+    // list, query and delete a connection it just created transiently.
+    private IEnumerable<SavedConnection> AllConnections() => connections.List().Concat(connections.ListTransient());
 
     // Host settings are top-level (not per-plugin); the host constructs this with a reader over them.
     private bool RequireAuthOn => getSetting("requireAuth") is not "false"; // default on
@@ -38,7 +52,7 @@ public sealed class McpHost(
     private readonly SecretScrubber scrubber = new();
 
     public IReadOnlyList<McpConnectionInfo> ListConnections() =>
-        connections.List()
+        AllConnections()
             .Where(c => c.IsMcpReachable)
             .Select(c => new McpConnectionInfo(c.Id, c.Name, c.ProviderId, c.ReadOnly, c.AiAccess.ToString()))
             .ToList();
@@ -47,7 +61,7 @@ public sealed class McpHost(
     {
         // Fail-closed: only surface log entries for connections that are MCP-reachable right now, so the log
         // never reveals a connection (or the SQL run against it) the AI could not otherwise reach.
-        var reachable = connections.List().Where(c => c.IsMcpReachable).Select(c => c.Id).ToHashSet();
+        var reachable = AllConnections().Where(c => c.IsMcpReachable).Select(c => c.Id).ToHashSet();
 
         var want = Math.Clamp(limit ?? 100, 1, 1000);
         var filter = new QueryLogFilter
@@ -74,7 +88,7 @@ public sealed class McpHost(
     // or non-reachable id is refused identically (no distinction that could confirm an excluded id exists).
     private SavedConnection RequireReachable(string connectionId, string tool)
     {
-        var connection = connections.List().FirstOrDefault(c => c.Id == connectionId);
+        var connection = AllConnections().FirstOrDefault(c => c.Id == connectionId);
         if (connection is not { IsMcpReachable: true })
         {
             LogAudit(tool, connectionId, allowed: false, "connection not AI-accessible", RequireAuthOn);
@@ -181,7 +195,158 @@ public sealed class McpHost(
         var verdict = allowed ? "ALLOW" : "DENY";
         var authState = requireAuthOn ? "auth" : "NO-AUTH";
         audit($"[MCP {verdict}] {tool} conn={connectionId ?? "-"} ({authState}){(reason is null ? "" : $": {reason}")}");
+        // Structured mirror for the in-app "AI activity" panel (SE-159), alongside the Trace line above.
+        activity.Record(new McpActivityEntry(DateTime.UtcNow, tool, connectionId, allowed, reason));
     }
+
+    public IReadOnlyList<McpProviderInfo> ListProviders()
+    {
+        var result = providers.All
+            .Select(r => new McpProviderInfo(
+                r.Id,
+                r.Provider.DisplayName,
+                $"Database driver (provider) for {r.Provider.DisplayName}. Supply the fields below to create a connection with create_connection.",
+                r.Provider.ConnectionFields
+                    .Select(f => new McpProviderField(
+                        f.Key, f.Label, f.Type.ToString(), f.Required, f.IsSecret, f.Default, f.Advanced, f.Choices))
+                    .ToList()))
+            .ToList();
+
+        // Read-only schema discovery — creates nothing, so it is never gated by the create policy. Audited
+        // for visibility so the activity panel shows the AI enumerating drivers.
+        LogAudit("list_providers", null, allowed: true, $"{result.Count} providers", RequireAuthOn);
+        return result;
+    }
+
+    public Task<McpCreateConnectionResult> CreateConnectionAsync(McpCreateConnectionRequest request, CancellationToken ct)
+    {
+        var policy = connectionPolicy();
+
+        // (1) Feature gate — fail-closed. Even with the server on, creation is off until the user opts in.
+        if (!policy.Allow)
+        {
+            LogAudit("create_connection", null, allowed: false, "connection creation disabled", RequireAuthOn);
+            throw new McpAccessException("Creating connections over MCP is disabled. Enable it in SQL Explorer settings.");
+        }
+
+        // (2) Provider must exist.
+        if (!providers.TryGet(request.ProviderId, out var provider))
+        {
+            LogAudit("create_connection", null, allowed: false, $"unknown provider '{request.ProviderId}'", RequireAuthOn);
+            throw new McpAccessException($"Unknown provider '{request.ProviderId}'. Call list_providers for the available drivers.");
+        }
+
+        // (3) Every required field must be supplied.
+        var missing = provider.ConnectionFields
+            .Where(f => f.Required && string.IsNullOrEmpty(Value(request.Values, f.Key)))
+            .Select(f => f.Key)
+            .ToList();
+        if (missing.Count > 0)
+        {
+            LogAudit("create_connection", null, allowed: false, $"missing required: {string.Join(", ", missing)}", RequireAuthOn);
+            throw new McpAccessException(
+                $"Missing required field(s): {string.Join(", ", missing)}. Call list_providers for this provider's fields.");
+        }
+
+        // (4) Host allowlist — loopback always; anything else must be configured. File-based providers (no
+        // host field) skip this and count as local.
+        var host = HostValue(request.Values);
+        if (host is not null && !policy.IsHostAllowed(host))
+        {
+            LogAudit("create_connection", null, allowed: false, $"host '{host}' not allowed", RequireAuthOn);
+            throw new McpAccessException($"Host '{host}' is not in the MCP allowed-hosts list. Add it in SQL Explorer settings.");
+        }
+
+        // (5) Master-password gate: persisting a secret while locked would strand it un-decryptable.
+        var hasSecret = provider.ConnectionFields.Any(f => f.IsSecret && !string.IsNullOrEmpty(Value(request.Values, f.Key)));
+        if (request.Persistent && hasSecret && masterPassword.IsEnabled && !masterPassword.IsUnlocked)
+        {
+            LogAudit("create_connection", null, allowed: false, "master password locked", RequireAuthOn);
+            throw new McpAccessException(
+                "The master password is locked; unlock SQL Explorer before creating a connection with a stored secret.");
+        }
+
+        // (6) Resolve the access level actually granted (may be capped below the request).
+        var isLoopback = host is null || policy.IsLoopback(host);
+        var granted = ResolveAccess(ParseAccess(request.Access), request.Persistent, isLoopback);
+
+        var id = Guid.NewGuid().ToString("N");
+        if (request.Persistent)
+        {
+            connections.Save(id, request.Name, request.ProviderId, request.Values,
+                folder: policy.Folder, aiAccess: granted, origin: CreatedByOrigin);
+        }
+        else
+        {
+            connections.CreateTransient(id, request.Name, request.ProviderId, request.Values,
+                folder: policy.Folder, aiAccess: granted, origin: CreatedByOrigin);
+        }
+
+        LogAudit("create_connection", id, allowed: true, $"{(request.Persistent ? "persistent" : "transient")} {granted}", RequireAuthOn);
+        return Task.FromResult(new McpCreateConnectionResult(id, request.Name, request.ProviderId, request.Persistent, granted.ToString()));
+    }
+
+    public void DeleteConnection(string connectionId)
+    {
+        // Transient connections are always MCP-created — drop from the in-memory overlay first.
+        if (connections.RemoveTransient(connectionId))
+        {
+            LogAudit("delete_connection", connectionId, allowed: true, "transient removed", RequireAuthOn);
+            return;
+        }
+
+        // Persisted: only ever delete a connection the MCP server itself created (origin match) — never the
+        // user's or another plugin's.
+        var connection = connections.List().FirstOrDefault(c => c.Id == connectionId);
+        if (connection is null || connection.Origin != CreatedByOrigin)
+        {
+            LogAudit("delete_connection", connectionId, allowed: false, "not an MCP-created connection", RequireAuthOn);
+            throw new McpAccessException("Only connections created over MCP can be deleted this way.");
+        }
+
+        connections.Delete(connectionId);
+        LogAudit("delete_connection", connectionId, allowed: true, "persistent removed", RequireAuthOn);
+    }
+
+    // Resolve the granted access level from what was requested, capping per the security model: persisted
+    // connections never get Sandbox (DDL) — capped at ReadWrite; transient connections get Sandbox only on
+    // loopback. Unspecified defaults to Sandbox for a transient loopback connection (so the AI can build and
+    // test a schema) and ReadWrite otherwise.
+    private static AiAccessMode ResolveAccess(AiAccessMode? requested, bool persistent, bool isLoopback)
+    {
+        if (persistent)
+        {
+            return requested switch
+            {
+                AiAccessMode.ReadOnly => AiAccessMode.ReadOnly,
+                _ => AiAccessMode.ReadWrite // None/unspecified/ReadWrite/Sandbox → cap at ReadWrite
+            };
+        }
+
+        return requested switch
+        {
+            AiAccessMode.ReadOnly => AiAccessMode.ReadOnly,
+            AiAccessMode.ReadWrite => AiAccessMode.ReadWrite,
+            AiAccessMode.Sandbox => isLoopback ? AiAccessMode.Sandbox : AiAccessMode.ReadWrite,
+            _ => isLoopback ? AiAccessMode.Sandbox : AiAccessMode.ReadWrite // unspecified
+        };
+    }
+
+    private static AiAccessMode? ParseAccess(string? access) => access?.Trim().ToLowerInvariant() switch
+    {
+        null or "" => null,
+        "readonly" or "read" => AiAccessMode.ReadOnly,
+        "readwrite" or "write" => AiAccessMode.ReadWrite,
+        "sandbox" => AiAccessMode.Sandbox,
+        "none" => AiAccessMode.None,
+        _ => null
+    };
+
+    private static string? Value(IReadOnlyDictionary<string, string?> values, string key) =>
+        values.TryGetValue(key, out var v) ? v : null;
+
+    private static string? HostValue(IReadOnlyDictionary<string, string?> values) =>
+        HostKeys.Select(k => Value(values, k)).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))?.Trim();
 
     // Row cap: the caller may only ever request FEWER rows than the server cap, never more (HIGH-1 — the AI
     // can't raise the limit itself).

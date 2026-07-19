@@ -53,6 +53,11 @@ public sealed class AppSettings
     /// <summary>Restored width of the History tool-window (Edge.Right), in pixels. Null = default.</summary>
     public double? HistoryWidth { get; set; }
 
+    /// <summary>Show only one bottom-docked tool panel at a time — Output, Containers and plugin panels
+    /// (Edge.Bottom): opening one closes the others (SE-165). On by default; turn off to stack several.
+    /// Right-edge windows (History) are never affected.</summary>
+    public bool SingleBottomPanel { get; set; } = true;
+
     /// <summary>Two-letter culture code (e.g. "nl", "en"); null = follow the OS/thread default.</summary>
     public string? Language { get; set; }
 
@@ -160,6 +165,18 @@ public sealed class AppSettings
     /// any MCP-reachable connection is AI-facing, so live tokens/keys in result cells would otherwise leak into
     /// the AI context. Turning it off restores verbatim values — the UI warns on disable.</summary>
     public bool McpScrubSecrets { get; set; } = true;
+
+    /// <summary>Allow an MCP (AI) client to CREATE connections (SE-155). Off by default (fail-closed): even
+    /// with the server on, <c>create_connection</c> is refused until the user opts in. The UI warns on enable.</summary>
+    public bool McpAllowConnectionCreate { get; set; }
+
+    /// <summary>Extra hosts an MCP-created connection may target beyond loopback (SE-155). Null/empty = loopback
+    /// only (localhost/127.0.0.1/::1). A non-loopback host can never get the Sandbox (DDL) access level — only
+    /// transient loopback connections can.</summary>
+    public List<string>? McpAllowedHosts { get; set; }
+
+    /// <summary>Tree folder that MCP-created connections are grouped under (SE-155). Default "MCP".</summary>
+    public string McpConnectionFolder { get; set; } = "MCP";
 
     // ── App updates (SE-137) ─────────────────────────────────────────────────────────────────────────
 

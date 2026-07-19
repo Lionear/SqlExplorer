@@ -4,6 +4,7 @@
              xmlns:cvt="using:SqlExplorer.App.Converters"
              xmlns:vm="using:SqlExplorer.App.ViewModels"
              xmlns:views="using:SqlExplorer.App.Views"
+             xmlns:conn="using:SqlExplorer.Core.Connections"
              x:Class="SqlExplorer.App.Views.MainView">
   <UserControl.Resources>
     <!-- Recursive menu-item theme for the tools tree (ToolMenuNode): a leaf binds its Run command; a
@@ -86,6 +87,10 @@
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="170" />
+      <!-- SE-164 panel seam: splitter + body for plugin-contributed bottom panels. Collapsed to 0 by the
+           code-behind until a plugin panel is toggled open, exactly like the Output row above. -->
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="0" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
@@ -274,7 +279,7 @@
               </Style>
             </TreeView.Styles>
             <TreeView.ContextMenu>
-              <ContextMenu>
+              <ContextMenu x:Name="TreeContextMenu">
                 <MenuItem Header="{Binding Loc[Connect]}" Command="{Binding ConnectCommand}"
                           IsVisible="{Binding SelectedNode.CanConnect, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[Disconnect]}" Command="{Binding DisconnectCommand}"
@@ -287,6 +292,24 @@
                           IsVisible="{Binding SelectedNode.IsConnectionNode, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[Delete]}" Command="{Binding DeleteConnectionCommand}"
                           IsVisible="{Binding SelectedNode.IsConnectionNode, FallbackValue=False}" />
+                <!-- Quick AI (MCP) access on a connection root (SE-158): set the level or exclude it, without
+                     opening the Connection Manager. Hidden for transient MCP connections (AI-managed). -->
+                <MenuItem Header="{Binding Loc[AiAccess]}"
+                          IsVisible="{Binding SelectedNode.CanSetAiAccess, FallbackValue=False}">
+                  <MenuItem Header="{Binding Loc[AiAccessNone]}" Command="{Binding SetAiAccessCommand}"
+                            CommandParameter="{x:Static conn:AiAccessMode.None}" />
+                  <MenuItem Header="{Binding Loc[AiAccessReadOnly]}" Command="{Binding SetAiAccessCommand}"
+                            CommandParameter="{x:Static conn:AiAccessMode.ReadOnly}" />
+                  <MenuItem Header="{Binding Loc[AiAccessReadWrite]}" Command="{Binding SetAiAccessCommand}"
+                            CommandParameter="{x:Static conn:AiAccessMode.ReadWrite}" />
+                  <Separator />
+                  <MenuItem Header="{Binding Loc[ExcludeFromMcp]}" Command="{Binding ToggleExcludeFromMcpCommand}">
+                    <MenuItem.Icon>
+                      <PathIcon Width="11" Height="11" Data="M4 8.5 L7 11.5 L12.5 4.5"
+                                IsVisible="{Binding SelectedNode.IsExcludedFromMcp, FallbackValue=False}" />
+                    </MenuItem.Icon>
+                  </MenuItem>
+                </MenuItem>
                 <!-- Tool plugins applicable to the selected node (universal backup, dumps, …). The
                      ItemContainerTheme is self-referencing (binds ItemsSource to each node's Children and
                      re-applies itself), so a tool's MenuPath renders as arbitrarily deep submenus. -->
@@ -382,6 +405,27 @@
                           StrokeJoin="Round" StrokeLineCap="Round"
                           IsVisible="{Binding HasVectorIcon}" />
                     <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                    <!-- "Managed" pill on plugin-created connections (SE-164, e.g. Docker-managed). -->
+                    <Border VerticalAlignment="Center" IsVisible="{Binding IsManagedConnection}"
+                            Background="{DynamicResource SESelectionBgBrush}" CornerRadius="9" Padding="6,0"
+                            ToolTip.Tip="{Binding ManagedOrigin}">
+                      <TextBlock Text="Managed" FontSize="9.5" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource SEAccentBrush}" VerticalAlignment="Center" />
+                    </Border>
+                    <!-- "Temporary" pill on in-memory, session-only connections (SE-155, MCP-created). -->
+                    <Border VerticalAlignment="Center" IsVisible="{Binding IsTransientConnection}"
+                            Background="{DynamicResource SEHairlineBrush}" CornerRadius="9" Padding="6,0"
+                            ToolTip.Tip="Session-only — cleared when SQL Explorer closes">
+                      <TextBlock Text="Temporary" FontSize="9.5" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource SETextSecondaryBrush}" VerticalAlignment="Center" />
+                    </Border>
+                    <!-- "AI" pill on MCP-reachable connections (SE-158); tooltip names the access level. -->
+                    <Border VerticalAlignment="Center" IsVisible="{Binding IsAiReachable}"
+                            Background="{DynamicResource SESelectionBgBrush}" CornerRadius="9" Padding="6,0"
+                            ToolTip.Tip="{Binding AiAccessLabel}">
+                      <TextBlock Text="AI" FontSize="9.5" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource SETextSecondaryBrush}" VerticalAlignment="Center" />
+                    </Border>
                   </StackPanel>
                   <!-- Right-aligned on-disk size badge (databases/tables), DataGrip-style. -->
                   <Border Grid.Column="1" IsVisible="{Binding HasBadge}" VerticalAlignment="Center"
@@ -597,9 +641,34 @@
       </Grid>
     </Border>
 
+    <!-- Plugin panel region (SE-164 panel seam): one Bottom-docked region rendering the plugin-contributed
+         panels; each item shows only while its tool-window is toggled on. The row's collapse/restore is driven
+         from the code-behind, same mechanism as the Output row. This splitter is a hand-dragged Border, not a
+         GridSplitter: sitting between the two fixed rows (Output above, panel below) a GridSplitter would
+         resize against the Output row instead of the star body — dragging up did nothing and dragging down
+         inflated the collapsed Output row into dead space (SE-170). The code-behind resizes only this row, so
+         the star body absorbs the change. -->
+    <Border Grid.Row="4" x:Name="SubsystemSplitter" Height="4" IsVisible="False"
+            Background="{DynamicResource SEHairlineBrush}" Cursor="SizeNorthSouth"
+            PointerPressed="OnSubsystemSplitterPressed"
+            PointerMoved="OnSubsystemSplitterMoved"
+            PointerReleased="OnSubsystemSplitterReleased" />
+
+    <Border Grid.Row="5" Background="{DynamicResource SEPanelBgBrush}">
+      <!-- The plugin owns the whole panel chrome (its own header/toolbar), so the host adds no title row here
+           — otherwise the panel's title shows twice. Just render the plugin's control when its window is on. -->
+      <ItemsControl ItemsSource="{Binding SubsystemPanels}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <ContentControl IsVisible="{Binding Window.IsVisible}" Content="{Binding Content}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+
     <!-- Bottom status bar (SE-123): connection state on the left, the Edge.Bottom tool-window toggles
          next to it (so the toggle sits on the edge its panel opens on), run stats on the right. -->
-    <Border Grid.Row="4" Background="{DynamicResource SEToolbarBgBrush}"
+    <Border Grid.Row="6" Background="{DynamicResource SEToolbarBgBrush}"
             BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="0,1,0,0">
       <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="10,3">
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">

@@ -44,6 +44,13 @@ public sealed record PluginManifest
     [JsonPropertyName("localization")]
     public string? Localization { get; init; }
 
+    /// <summary>The capabilities a standing-subsystem plugin declares it needs (SqlExplorer.Sdk.Extensibility
+    /// <c>PluginCapabilities</c>: storage/connections/panel/background/menu/process). The user consents at
+    /// install; the runtime gates each host power on this list. Empty for the classic provider/tool/mcp
+    /// plugins that don't use the extensibility seams (SE-164).</summary>
+    [JsonPropertyName("capabilities")]
+    public IReadOnlyList<string> Capabilities { get; init; } = [];
+
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = true
@@ -64,5 +71,15 @@ public sealed record PluginManifest
 
         /// <summary>Contributes MCP tools to the host-owned MCP server (see <c>IMcpToolProvider</c>).</summary>
         public const string Mcp = "mcp";
+
+        /// <summary>A standing-subsystem plugin (SE-164): loaded by <c>SubsystemPluginLoader</c>, drives its
+        /// behaviour off declared <see cref="Capabilities"/> rather than this discriminator. The value is a
+        /// loader-hint so the provider/tool/mcp loaders skip it; capabilities — not the type — decide what it
+        /// may do.</summary>
+        public const string Extension = "extension";
+
+        /// <summary>Whether <paramref name="type"/> is a plugin type this host knows how to load.</summary>
+        public static bool IsKnown(string? type) =>
+            type is Provider or Tool or Mcp or Extension;
     }
 }
