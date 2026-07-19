@@ -73,6 +73,28 @@ public class ManagedConnectionsTests
     }
 
     [Fact]
+    public void All_reads_every_connection_with_non_secret_values()
+    {
+        var (managed, store) = New();
+        managed.Create(Spec());
+        store.Save(new SavedConnection
+        {
+            Id = "user1", Name = "Prod", ProviderId = "test", Folder = "Production",
+            Values = new Dictionary<string, string?> { ["host"] = "db.example.com", ["port"] = "5432" }
+        });
+
+        var all = managed.All();
+
+        Assert.Equal(2, all.Count);
+        var prod = all.Single(c => c.Id == "user1");
+        Assert.Equal("Prod", prod.Name);
+        Assert.Equal("Production", prod.Folder);
+        Assert.Equal("db.example.com", prod.Values["host"]);
+        // The plugin's own connection is included too (All is not origin-scoped, unlike Mine).
+        Assert.Contains(all, c => c.Name == "PG local");
+    }
+
+    [Fact]
     public void Remove_only_touches_this_plugins_own_connections()
     {
         var (managed, store) = New();

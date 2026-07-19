@@ -134,21 +134,25 @@ public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin, IMenuPlugi
     public IReadOnlyList<MenuContribution> MenuItems =>
         [new MenuContribution("new-container", "New Local Container…", ShowCreateDialogAsync)];
 
-    private Task ShowCreateDialogAsync(IHostUi hostUi)
+    private Task ShowCreateDialogAsync(IHostUi hostUi) => ShowCreateDialogAsync(hostUi, preselected: null);
+
+    private Task ShowCreateDialogAsync(IHostUi hostUi, ManagedConnectionInfo? preselected)
     {
         if (_context is null || _builder is null || _service is null || _registry is null)
         {
             return Task.CompletedTask; // storage wasn't granted — nothing to build against
         }
 
-        // The dialog runs the create; on success it calls back into reconcile, which links the new container's
-        // host connection (and stamps its ConnectionId so a later restart doesn't link it twice).
+        // The dialog is connection-driven: it lists the host's containerisable connections (read via the
+        // connections seam) so the user creates an instance matching one. On success reconcile links the new
+        // container's host connection (and stamps its ConnectionId so a later restart doesn't link it twice).
+        var connections = _context.Connections?.All() ?? [];
         var content = CreateContainerView.Build(
-            _builder, _service,
+            _builder, _service, connections, preselected,
             onCreated: () => ReconcileConnections(_context, _registry),
             log: _context.Log);
 
-        return hostUi.ShowDialogAsync("New Local Container", content);
+        return hostUi.ShowDialogAsync("New local Docker instance", content);
     }
 
     // --- IPanelPlugin (SE-164 panel seam) ---------------------------------------------------------------

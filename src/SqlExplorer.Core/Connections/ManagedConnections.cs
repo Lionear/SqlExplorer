@@ -29,4 +29,11 @@ public sealed class ManagedConnections(string origin, ConnectionService connecti
 
     public IReadOnlyList<string> Mine() =>
         connections.List().Where(c => c.Origin == origin).Select(c => c.Id).ToList();
+
+    // Read-only across all connections. SavedConnection.Values already holds only the non-secret fields
+    // (secrets live in the keychain via ConnectionService), so nothing sensitive leaves the host here.
+    public IReadOnlyList<ManagedConnectionInfo> All() =>
+        connections.List()
+            .Select(c => new ManagedConnectionInfo(c.Id, c.Name, c.ProviderId, c.Folder, c.Values))
+            .ToList();
 }

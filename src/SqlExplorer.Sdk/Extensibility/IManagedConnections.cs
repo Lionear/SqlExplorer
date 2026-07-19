@@ -9,12 +9,24 @@ public sealed record NewConnectionSpec(
     IReadOnlyDictionary<string, string?> Values,
     string? Folder = null);
 
+/// <summary>A read-only view of one host connection the plugin may build on — e.g. to spin up a container
+/// matching it. <see cref="Values"/> are the <em>non-secret</em> field values only (host/port/user/database
+/// etc.); passwords stay in the OS keychain and are never handed out. <see cref="Folder"/> is its tree group.</summary>
+public sealed record ManagedConnectionInfo(
+    string Id,
+    string Name,
+    string ProviderId,
+    string? Folder,
+    IReadOnlyDictionary<string, string?> Values);
+
 /// <summary>
 /// Lets a subsystem plugin manage <em>real</em> connections in the host's connection list, tagged with the
 /// plugin as their origin (which drives a "managed by X" tree badge). On <see cref="IPluginRuntimeContext.Connections"/>
-/// when the plugin declared the <see cref="PluginCapabilities.Connections"/> capability. Deliberately
-/// scoped to the plugin's own connections — it can never see or remove the user's, or another plugin's.
-/// A plugin does not inject raw tree nodes; it creates connections the host already knows how to render.
+/// when the plugin declared the <see cref="PluginCapabilities.Connections"/> capability. Write access is
+/// scoped to the plugin's own connections — <see cref="Remove"/>/<see cref="Mine"/> never touch the user's or
+/// another plugin's. <see cref="All"/> is read-only across every connection (non-secret values only), so a
+/// plugin can offer "create a local container for this connection". A plugin does not inject raw tree nodes;
+/// it creates connections the host already knows how to render.
 /// </summary>
 public interface IManagedConnections
 {
@@ -26,4 +38,7 @@ public interface IManagedConnections
 
     /// <summary>The ids of the connections this plugin created.</summary>
     IReadOnlyList<string> Mine();
+
+    /// <summary>Read every host connection (non-secret values only) — for "new container from a connection".</summary>
+    IReadOnlyList<ManagedConnectionInfo> All();
 }
