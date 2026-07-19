@@ -155,7 +155,14 @@ public static class AppServices
         // Host-side view of everything installed (loaded or not, enabled or not) for the Plugin Store's
         // Installed tab. Enable/disable/uninstall stage a change here, applied on next startup.
         services.AddSingleton<IPluginStateStore>(stateStore);
-        services.AddSingleton(new PluginCatalogService(stateStore, discovered, providerResults, toolResults));
+        // Feed every loader's outcome in, not just provider/tool: a plugin kind missing here reads as
+        // "enabled but not loaded" and pins the restart banner forever (SE-164 extensions did exactly that).
+        var loadOutcomes = providerResults.Select(r => new PluginLoadOutcome(r.PluginDirectory, r.Succeeded, r.Error))
+            .Concat(toolResults.Select(r => new PluginLoadOutcome(r.PluginDirectory, r.Succeeded, r.Error)))
+            .Concat(mcpToolResults.Select(r => new PluginLoadOutcome(r.PluginDirectory, r.Succeeded, r.Error)))
+            .Concat(subsystemResults.Select(r => new PluginLoadOutcome(r.PluginDirectory, r.Succeeded, r.Error)))
+            .ToList();
+        services.AddSingleton(new PluginCatalogService(stateStore, discovered, loadOutcomes));
 
         // Plugin Store: one shared HttpClient feeds the Discovery feed, the catalog merge and the
         // installer. The store window is opened from the menu, same factory-delegate pattern as the dialogs.

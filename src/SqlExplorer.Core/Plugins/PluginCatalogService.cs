@@ -20,21 +20,27 @@ public sealed record InstalledPlugin(
     public bool CanManage => Origin == PluginOrigin.UserInstalled;
 }
 
+/// <summary>How one plugin folder fared with its loader this run, flattened to the only two facts the
+/// catalog cares about. Every plugin kind (provider/tool/mcp/extension) projects its own load-result into
+/// this, so the catalog learns a plugin loaded regardless of which loader owned it — a new plugin kind that
+/// forgets to feed its outcomes here would wrongly read as "enabled but not loaded" and pin the restart
+/// banner (SE-164).</summary>
+public readonly record struct PluginLoadOutcome(string PluginDirectory, bool Succeeded, string? Error);
+
 /// <summary>
 /// The host's authoritative view of installed plugins: merges what <see cref="PluginDiscovery"/> found on
-/// disk with how it loaded (<see cref="ProviderLoadResult"/> / <see cref="ToolLoadResult"/>) and its
-/// persisted <see cref="PluginStateEntry"/>. Enable/disable/uninstall stage a change in the state store
-/// that takes effect on next startup (the non-collectible load contexts can't swap live) — so the
-/// mutations here update the row's <see cref="InstalledPlugin.Pending"/>/<see cref="InstalledPlugin.Enabled"/>
-/// but never touch the running plugin. The Store shows a "restart needed" banner off the back of that.
+/// disk with how it loaded (<see cref="PluginLoadOutcome"/> per plugin kind) and its persisted
+/// <see cref="PluginStateEntry"/>. Enable/disable/uninstall stage a change in the state store that takes
+/// effect on next startup (the non-collectible load contexts can't swap live) — so the mutations here update
+/// the row's <see cref="InstalledPlugin.Pending"/>/<see cref="InstalledPlugin.Enabled"/> but never touch the
+/// running plugin. The Store shows a "restart needed" banner off the back of that.
 /// </summary>
 public sealed class PluginCatalogService(
     IPluginStateStore stateStore,
     IReadOnlyList<DiscoveredPlugin> discovered,
-    IEnumerable<ProviderLoadResult> providerResults,
-    IEnumerable<ToolLoadResult> toolResults)
+    IEnumerable<PluginLoadOutcome> loadOutcomes)
 {
-    private List<InstalledPlugin> _plugins = Build(stateStore, discovered, providerResults, toolResults);
+    private List<InstalledPlugin> _plugins = Build(stateStore, discovered, loadOutcomes);
 
     public IReadOnlyList<InstalledPlugin> Installed => _plugins;
 
@@ -92,18 +98,12 @@ public sealed class PluginCatalogService(
     private static List<InstalledPlugin> Build(
         IPluginStateStore stateStore,
         IReadOnlyList<DiscoveredPlugin> discovered,
-        IEnumerable<ProviderLoadResult> providerResults,
-        IEnumerable<ToolLoadResult> toolResults)
+        IEnumerable<PluginLoadOutcome> loadOutcomes)
     {
         // How each folder loaded, keyed by its directory (unique per discovered plugin). A disabled
         // plugin is never handed to a loader, so it simply has no outcome here.
         var outcomes = new Dictionary<string, (bool Loaded, string? Error)>(StringComparer.Ordinal);
-        foreach (var r in providerResults)
-        {
-            outcomes[r.PluginDirectory] = (r.Succeeded, r.Error);
-        }
-
-        foreach (var r in toolResults)
+        foreach (var r in loadOutcomes)
         {
             outcomes[r.PluginDirectory] = (r.Succeeded, r.Error);
         }
