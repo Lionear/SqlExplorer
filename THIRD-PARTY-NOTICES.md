@@ -9,7 +9,7 @@ this file reproduces the attribution those licences require.
 Plugins installed from the Plugin Store are not listed here: they ship their own dependency
 closure and carry their own notices.
 
-## Packages (74)
+## Packages (77)
 
 | Package | Version | Licence |
 |---|---|---|
@@ -19,9 +19,11 @@ closure and carry their own notices.
 | [Avalonia.BuildServices](https://avaloniaui.net/) | 11.3.2 | MIT |
 | [Avalonia.Controls.DataGrid](https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link) | 12.0.1 | MIT |
 | [Avalonia.Desktop](https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link) | 12.0.5 | MIT |
+| [Avalonia.Fonts.Inter](https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link) | 12.0.5 | MIT |
 | [Avalonia.FreeDesktop](https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link) | 12.0.5 | MIT |
 | [Avalonia.FreeDesktop.AtSpi](https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link) | 12.0.5 | MIT |
 | [Avalonia.HarfBuzz](https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link) | 12.0.5 | MIT |
+| [Avalonia.Headless](https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link) | 12.0.5 | MIT |
 | [Avalonia.Native](https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link) | 12.0.5 | MIT |
 | [Avalonia.Remote.Protocol](https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link) | 12.0.5 | MIT |
 | [Avalonia.Skia](https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link) | 12.0.5 | MIT |
@@ -64,6 +66,7 @@ closure and carry their own notices.
 | [Microsoft.IdentityModel.Protocols.OpenIdConnect](https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet) | 7.5.0 | MIT |
 | [Microsoft.IdentityModel.Tokens](https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet) | 7.5.0 | MIT |
 | [Microsoft.SqlServer.Server](https://aka.ms/sqlclientproject) | 1.0.0 | MIT |
+| [Microsoft.SqlServer.TransactSql.ScriptDom](https://github.com/microsoft/SqlScriptDOM) | 180.37.3 | MIT |
 | [ModelContextProtocol](https://modelcontextprotocol.github.io/csharp-sdk) | 0.8.0-preview.1 | Apache-2.0 |
 | [ModelContextProtocol.AspNetCore](https://modelcontextprotocol.github.io/csharp-sdk) | 0.8.0-preview.1 | Apache-2.0 |
 | [ModelContextProtocol.Core](https://modelcontextprotocol.github.io/csharp-sdk) | 0.8.0-preview.1 | Apache-2.0 |
