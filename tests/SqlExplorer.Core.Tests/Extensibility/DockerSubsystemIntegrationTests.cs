@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using SqlExplorer.Core.Connections;
 using SqlExplorer.Core.Plugins;
 using SqlExplorer.Core.Providers;
@@ -51,14 +52,40 @@ public class DockerSubsystemIntegrationTests
         return result.Activation!;
     }
 
-    [Fact]
-    public void Activator_activates_the_docker_extension_and_round_trips_storage()
+    // Seed the plugin's migrated container registry (containers.json) with one container — structural JSON
+    // matching the plugin's ManagedContainer shape, which the test can't reference (build-only, ALC-loaded).
+    // ConnectionId is null so the reconcile step links a connection and writes the link back.
+    private static void SeedContainer(string storageRoot) =>
+        new JsonPluginStorage("local-containers", storageRoot).Save("containers", new[]
+        {
+            new
+            {
+                Id = "pg-1", Name = "pg-1", ProviderId = "test", Image = "postgres", Tag = "16",
+                HostPort = 5432, ComposeDir = "", ConnectionId = (string?)null, CreatedAtUtc = "2024-01-01T00:00:00Z"
+            }
+        });
+
+    private static string? ReadFirstContainerConnectionId(string storageRoot)
+    {
+        var json = File.ReadAllText(Path.Combine(storageRoot, "local-containers", "containers.json"));
+        using var doc = JsonDocument.Parse(json);
+        var first = doc.RootElement[0];
+        return first.TryGetProperty("ConnectionId", out var cid) && cid.ValueKind == JsonValueKind.String
+            ? cid.GetString()
+            : null;
+    }
+
+    [Fact] // Storage seam end-to-end: seed a container, activate, and the plugin reads it, links a connection,
+           // and persists the ConnectionId back through plugin-scoped storage — proving both directions.
+    public void Activator_round_trips_the_container_registry_through_storage()
     {
         var activation = LoadDockerActivation();
         var storageRoot = Path.Combine(Path.GetTempPath(), "se164-int-" + Guid.NewGuid().ToString("N"));
         var (service, _) = NewConnectionService();
         try
         {
+            SeedContainer(storageRoot);
+
             var activator = new SubsystemActivator(
                 [activation],
                 id => new JsonPluginStorage(id, storageRoot),
@@ -67,9 +94,9 @@ public class DockerSubsystemIntegrationTests
             var result = activator.ActivateAll();
 
             Assert.Single(result.Registry.All);
-            Assert.True(
-                File.Exists(Path.Combine(storageRoot, "local-containers", "containers.json")),
-                "the plugin did not persist through the capability-gated storage");
+            Assert.False(
+                string.IsNullOrEmpty(ReadFirstContainerConnectionId(storageRoot)),
+                "the plugin did not persist the linked connection id back through storage");
 
             result.Registry.DeactivateAll();
         }
@@ -91,10 +118,7 @@ public class DockerSubsystemIntegrationTests
         var (service, store) = NewConnectionService();
         try
         {
-            // Seed the plugin's container registry (structural JSON matching its private record shape), so the
-            // reconcile step has a container to surface as a connection.
-            new JsonPluginStorage("local-containers", storageRoot).Save(
-                "containers", new[] { new { Name = "pg-1", ProviderId = "test", HostPort = 5432 } });
+            SeedContainer(storageRoot);
 
             var activator = new SubsystemActivator(
                 [activation],

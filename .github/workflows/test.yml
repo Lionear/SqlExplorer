@@ -1,8 +1,8 @@
 name: Tests
 
 # Runs the unit tests on every PR and on pushes to the integration branches, so a regression is caught
-# before it reaches a build. Deliberately light: the test project references only Core + Sdk, so this
-# does not build the Avalonia app or the provider plugins.
+# before it reaches a build. The Core suite stays light (Core + Sdk only, no Avalonia app); the
+# Backends.Docker suite is heavier because it compiles against the plugin, which references Avalonia.
 on:
   push:
     branches: [develop, main]
@@ -39,5 +39,10 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Test
+      - name: Test (Core)
         run: dotnet test tests/SqlExplorer.Core.Tests/SqlExplorer.Core.Tests.csproj -c Release
+
+      # The Docker backend plugin's unit tests (SE-164 migration): its own assembly, compiled directly against
+      # the plugin (which references Avalonia), so this step is heavier than the Core-only one above.
+      - name: Test (Backends.Docker)
+        run: dotnet test tests/SqlExplorer.Backends.Docker.Tests/SqlExplorer.Backends.Docker.Tests.csproj -c Release
