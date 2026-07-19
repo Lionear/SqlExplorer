@@ -62,6 +62,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   conditions, instead of only breaking clauses onto their own lines. **SQL Server** gets a dedicated
   T-SQL formatter (Microsoft's official ScriptDom parser); the other engines use the improved generic
   engine.
+- **Refreshed icon set** — the schema tree, tabs, toolbars and Settings now use a consistent
+  [Lucide](https://lucide.dev)-based line-icon set, drawn as crisp vectors that tint with the theme (no
+  icon font, no bundled raster assets). The AI-activity panel gets its own icon.
 
 ### Fixed
 
