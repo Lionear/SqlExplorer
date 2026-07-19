@@ -68,6 +68,18 @@ public partial class App : Application
             viewModel.AddSubsystemPanel(panel.PanelId, panel.Title, panel.CreatePanel());
         }
 
+        // Mount any Tools-menu contributions (SE-164 menu seam). Each item's action gets an IMenuActionContext
+        // whose ShowDialogAsync routes to the main window's modal host (via the VM delegate the view wires up).
+        var menuActionContext = new DependencyInjection.SubsystemMenuActionContext(viewModel.ShowPluginDialogAsync);
+        foreach (var menuPlugin in subsystems.Menus)
+        {
+            foreach (var item in menuPlugin.MenuItems)
+            {
+                var invoke = item.InvokeAsync;
+                viewModel.AddSubsystemMenuItem(item.Title, () => invoke(menuActionContext));
+            }
+        }
+
         switch (ApplicationLifetime)
         {
             case IClassicDesktopStyleApplicationLifetime desktop:

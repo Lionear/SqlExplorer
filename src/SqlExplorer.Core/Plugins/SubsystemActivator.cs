@@ -2,10 +2,11 @@ using SqlExplorer.Sdk.Extensibility;
 
 namespace SqlExplorer.Core.Plugins;
 
-/// <summary>What activation produced: the registry for shutdown teardown, plus the panel contributions
-/// (capability-gated) the host mounts as tool-windows. More contribution lists (background, menu) join here
-/// as those seams land.</summary>
-public sealed record SubsystemActivationResult(SubsystemRegistry Registry, IReadOnlyList<IPanelPlugin> Panels);
+/// <summary>What activation produced: the registry for shutdown teardown, plus the capability-gated
+/// contributions the host wires up — panels mounted as tool-windows and menu items added to the Tools menu.
+/// More contribution lists (background) join here as those seams land.</summary>
+public sealed record SubsystemActivationResult(
+    SubsystemRegistry Registry, IReadOnlyList<IPanelPlugin> Panels, IReadOnlyList<IMenuPlugin> Menus);
 
 /// <summary>
 /// Activates the loaded subsystem plugins (SE-164) <em>after</em> the host's ServiceProvider is built — the
@@ -49,6 +50,7 @@ public sealed class SubsystemActivator
     {
         var active = new List<ISubsystemPlugin>();
         var panels = new List<IPanelPlugin>();
+        var menus = new List<IMenuPlugin>();
         foreach (var activation in _activations)
         {
             try
@@ -59,12 +61,18 @@ public sealed class SubsystemActivator
                 activation.Plugin.Initialize(context);
                 active.Add(activation.Plugin);
 
-                // Pull-model contribution check, capability-gated like the runtime services: only surface a
-                // panel the plugin both declared (consent) and actually implements.
+                // Pull-model contribution checks, capability-gated like the runtime services: only surface a
+                // contribution the plugin both declared (consent) and actually implements.
                 if (activation.Capabilities.Contains(PluginCapabilities.Panel)
                     && activation.Plugin is IPanelPlugin panel)
                 {
                     panels.Add(panel);
+                }
+
+                if (activation.Capabilities.Contains(PluginCapabilities.Menu)
+                    && activation.Plugin is IMenuPlugin menu)
+                {
+                    menus.Add(menu);
                 }
             }
             catch (Exception ex)
@@ -73,6 +81,6 @@ public sealed class SubsystemActivator
             }
         }
 
-        return new SubsystemActivationResult(new SubsystemRegistry(active), panels);
+        return new SubsystemActivationResult(new SubsystemRegistry(active), panels, menus);
     }
 }

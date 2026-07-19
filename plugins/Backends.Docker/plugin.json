@@ -6,5 +6,5 @@
   "version": "0.1.0",
   "hostApiVersion": 3,
   "entryAssembly": "SqlExplorer.Backends.Docker.dll",
-  "capabilities": ["storage", "connections", "panel", "process"]
+  "capabilities": ["storage", "connections", "panel", "process", "menu"]
 }

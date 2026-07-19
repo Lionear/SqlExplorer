@@ -247,6 +247,21 @@ public partial class MainViewModel : ViewModelBase
         SubsystemPanels.Add(new SubsystemPanel(window, content));
     }
 
+    /// <summary>Plugin-contributed Tools-menu items (SE-164 <c>menu</c> seam), appended to the Tools menu by
+    /// the window's code-behind at startup.</summary>
+    public ObservableCollection<ToolMenuNode> SubsystemMenuItems { get; } = [];
+
+    /// <summary>Add one plugin Tools-menu item that runs <paramref name="invokeAsync"/> when clicked.</summary>
+    public void AddSubsystemMenuItem(string title, Func<Task> invokeAsync) =>
+        SubsystemMenuItems.Add(new ToolMenuNode(title, new AsyncRelayCommand(invokeAsync)));
+
+    /// <summary>Show a plugin-built control modally over the main window (SE-164 menu seam) — set by the view's
+    /// code-behind, which owns the window. Backs the <c>IMenuActionContext.ShowDialogAsync</c> a menu action gets.</summary>
+    public Func<string, Control, Task>? ShowPluginDialogRequested { get; set; }
+
+    public Task ShowPluginDialogAsync(string title, Control content) =>
+        ShowPluginDialogRequested?.Invoke(title, content) ?? Task.CompletedTask;
+
     /// <summary>Query-history rows shown in the (toggleable) history panel, newest first.</summary>
     public ObservableCollection<QueryHistoryEntry> HistoryEntries { get; } = [];
 

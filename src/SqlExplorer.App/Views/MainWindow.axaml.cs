@@ -45,6 +45,7 @@ public partial class MainWindow : Window
         {
             if (DataContext is MainViewModel vm)
             {
+                PopulateSubsystemMenu(vm);
                 vm.AboutRequested = ShowAboutAsync;
                 vm.Update.ChangelogRequested = ShowUpdateChangelogAsync;
                 // SE-151: the banner now downloads + installs inline, so wire its apply/reveal callbacks here.
@@ -128,6 +129,26 @@ public partial class MainWindow : Window
         catch (Exception)
         {
             return null;
+        }
+    }
+
+    private bool _subsystemMenuBuilt;
+
+    // SE-164 menu seam: append the plugin-contributed Tools-menu items after the static ones. Built once —
+    // the DataContextChanged handler also fires on the language-switch DataContext toggle, which would
+    // otherwise duplicate them. Plugin titles come from the plugin's localizer at startup.
+    private void PopulateSubsystemMenu(MainViewModel vm)
+    {
+        if (_subsystemMenuBuilt || vm.SubsystemMenuItems.Count == 0)
+        {
+            return;
+        }
+
+        _subsystemMenuBuilt = true;
+        ToolsMenu.Items.Add(new Separator());
+        foreach (var node in vm.SubsystemMenuItems)
+        {
+            ToolsMenu.Items.Add(new MenuItem { Header = node.Title, Command = node.Run });
         }
     }
 

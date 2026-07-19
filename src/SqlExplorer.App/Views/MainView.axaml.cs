@@ -447,6 +447,7 @@ public partial class MainView : UserControl
             _viewModel.ExportFileRequested = WriteExportFileAsync;
             _viewModel.SettingsDialogRequested = ShowSettingsDialogAsync;
             _viewModel.ToolDialogRequested = ShowToolDialogAsync;
+            _viewModel.ShowPluginDialogRequested = ShowPluginDialogAsync;
             _viewModel.RoutineParametersRequested = ShowRoutineParametersDialogAsync;
             _viewModel.NodeInfoRequested = ShowNodeInfoDialogAsync;
             _viewModel.SecurityViewRequested = ShowSecurityDialogAsync;
@@ -674,6 +675,32 @@ public partial class MainView : UserControl
         }
 
         var dialog = new ToolDialog { DataContext = dialogViewModel };
+        await dialog.ShowDialog(owner);
+    }
+
+    // SE-164 menu seam: host a plugin-built control in a modal window (generic chrome — the plugin's control
+    // carries its own buttons and closes the window itself). The plugin owns the content; we own the frame.
+    private async Task ShowPluginDialogAsync(string title, Control content)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+
+        var dialog = new Window
+        {
+            Title = title,
+            Content = content,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+            MinWidth = 400
+        };
+        if (this.TryFindResource("SEPanelBgBrush", out var bg) && bg is Avalonia.Media.IBrush brush)
+        {
+            dialog.Background = brush;
+        }
+
         await dialog.ShowDialog(owner);
     }
 

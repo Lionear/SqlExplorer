@@ -173,6 +173,36 @@ public class DockerSubsystemIntegrationTests
         }
     }
 
+    [Fact] // The plugin declares `menu` + implements IMenuPlugin, so the activator surfaces its Tools-menu
+           // contribution. Metadata only — invoking it needs a live window, which the host, not the test, owns.
+    public void Activator_surfaces_the_docker_menu_contribution()
+    {
+        var activation = LoadDockerActivation();
+        var storageRoot = Path.Combine(Path.GetTempPath(), "se164-int-" + Guid.NewGuid().ToString("N"));
+        var (service, _) = NewConnectionService();
+        try
+        {
+            var activator = new SubsystemActivator(
+                [activation],
+                id => new JsonPluginStorage(id, storageRoot),
+                id => new ManagedConnections(id, service));
+
+            var menu = activator.ActivateAll().Menus.SingleOrDefault();
+
+            Assert.NotNull(menu);
+            var item = Assert.Single(menu!.MenuItems);
+            Assert.Equal("new-container", item.Id);
+            Assert.Equal("New Local Container…", item.Title);
+        }
+        finally
+        {
+            if (Directory.Exists(storageRoot))
+            {
+                Directory.Delete(storageRoot, recursive: true);
+            }
+        }
+    }
+
     private sealed class FakeConnectionStore : IConnectionStore
     {
         private readonly List<SavedConnection> _items = new();

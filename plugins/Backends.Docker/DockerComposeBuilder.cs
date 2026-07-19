@@ -38,6 +38,10 @@ public sealed record ContainerSpec(
 /// </summary>
 public sealed class DockerComposeBuilder
 {
+    /// <summary>The engine ids that can be spun up as a container (everything except file-based SQLite) —
+    /// the choices the "New container" dialog offers.</summary>
+    public IReadOnlyList<string> SupportedProviderIds => Engines.Keys.ToList();
+
     /// <summary>True when this engine can be spun up as a container (everything except file-based SQLite).</summary>
     public bool Supports(string providerId) => Engines.ContainsKey(providerId);
 
@@ -49,6 +53,14 @@ public sealed class DockerComposeBuilder
 
     /// <summary>The in-container port an engine listens on (e.g. 5432), or null if unsupported.</summary>
     public int? ContainerPort(string providerId) => Engines.TryGetValue(providerId, out var e) ? e.ContainerPort : null;
+
+    /// <summary>The engine's default admin user (e.g. <c>postgres</c>), or null if unsupported / not applicable.</summary>
+    public string? DefaultUser(string providerId) =>
+        Engines.TryGetValue(providerId, out var e) && e.DefaultUser.Length > 0 ? e.DefaultUser : null;
+
+    /// <summary>The engine's default admin password prefill (e.g. <c>changeme</c>), or null if unsupported.</summary>
+    public string? DefaultPassword(string providerId) =>
+        Engines.TryGetValue(providerId, out var e) && e.DefaultPassword.Length > 0 ? e.DefaultPassword : null;
 
     /// <summary>The host port this connection would publish (the connection's own port, or Elasticsearch's
     /// URL port), falling back to the engine default — the pre-fill for the create dialog's port field.</summary>

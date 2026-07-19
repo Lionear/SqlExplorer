@@ -11,13 +11,14 @@ namespace SqlExplorer.Backends.Docker;
 /// <c>connections</c> (each managed container surfaces as a real host connection tagged with this plugin as
 /// origin, via <see cref="IPluginRuntimeContext.Connections"/>), and <c>panel</c> (<see cref="IPanelPlugin"/> —
 /// a docked "Containers" panel). It also declares <c>process</c> (it can shell out to <c>docker</c>).
-/// The create-container flow and live status polling wire in with the menu and background seams next; the
-/// engine is migrated and tested now so those slices are pure wiring.
+/// Live status polling wires in with the background seam next; everything else is here.
 /// </summary>
-public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin
+public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin, IMenuPlugin
 {
     private IPluginRuntimeContext? _context;
     private IContainerRegistryStore? _registry;
+    private DockerComposeBuilder? _builder;
+    private ContainerService? _service;
 
     public void Initialize(IPluginRuntimeContext context)
     {
@@ -30,8 +31,11 @@ public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin
         }
 
         // The registry now persists the real ManagedContainer set through the storage seam (replacing the
-        // old host-owned JSON store). ContainerService/DockerCli are constructed on demand by the create flow.
+        // old host-owned JSON store), and drives the container lifecycle service the create flow runs.
         _registry = new PluginStorageContainerRegistry(storage);
+        _builder = new DockerComposeBuilder();
+        _service = new ContainerService(_builder, new DockerCli(), _registry);
+
         var containers = _registry.GetAll();
         context.Log($"Local Containers: {containers.Count} managed container(s) restored from storage.");
 
@@ -74,6 +78,30 @@ public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin
     {
         _context = null;
         _registry = null;
+        _builder = null;
+        _service = null;
+    }
+
+    // --- IMenuPlugin (SE-164 menu seam) -----------------------------------------------------------------
+
+    public IReadOnlyList<MenuContribution> MenuItems =>
+        [new MenuContribution("new-container", "New Local Container…", ShowCreateDialogAsync)];
+
+    private async Task ShowCreateDialogAsync(IMenuActionContext menu)
+    {
+        if (_context is null || _builder is null || _service is null || _registry is null)
+        {
+            return; // storage wasn't granted — nothing to build against
+        }
+
+        // The dialog runs the create; on success it calls back into reconcile, which links the new container's
+        // host connection (and stamps its ConnectionId so a later restart doesn't link it twice).
+        var content = CreateContainerView.Build(
+            _builder, _service,
+            onCreated: () => ReconcileConnections(_context, _registry),
+            log: _context.Log);
+
+        await menu.ShowDialogAsync("New Local Container", content);
     }
 
     // --- IPanelPlugin (SE-164 panel seam) ---------------------------------------------------------------
