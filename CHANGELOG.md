@@ -29,6 +29,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **Plugin Store "Updates" section** — installed plugins with an available update are grouped at the
   top of the Installed tab under "Updates", so you no longer have to hunt for which ones can update
   (they no longer also appear in the list below).
+- **`extension` plugin type** — plugins are no longer only one-shot providers and tools: an
+  `extension` plugin can run as a long-lived subsystem that contributes its own bottom panel,
+  background work, Tools-menu items and managed connections, each behind a per-capability consent
+  shown when you install it.
 - **AI can create connections over MCP** — with the MCP server on and the new "Let the AI create
   connections" setting enabled (off by default), an AI client can list the available providers and
   create or delete database connections. Fail-closed: creation is refused unless you opt in, only
