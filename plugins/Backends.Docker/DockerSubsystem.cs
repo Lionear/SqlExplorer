@@ -143,21 +143,20 @@ public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin, IMenuPlugi
             conn => _builder?.Supports(conn.ProviderId) ?? false,
             (conn, hostUi) => ShowCreateDialogAsync(hostUi, conn))];
 
-    private Task ShowCreateDialogAsync(IHostUi hostUi) => ShowCreateDialogAsync(hostUi, preselected: null);
+    private Task ShowCreateDialogAsync(IHostUi hostUi) => ShowCreateDialogAsync(hostUi, fromConnection: null);
 
-    private Task ShowCreateDialogAsync(IHostUi hostUi, ManagedConnectionInfo? preselected)
+    private Task ShowCreateDialogAsync(IHostUi hostUi, ManagedConnectionInfo? fromConnection)
     {
         if (_context is null || _builder is null || _service is null || _registry is null)
         {
             return Task.CompletedTask; // storage wasn't granted — nothing to build against
         }
 
-        // The dialog is connection-driven: it lists the host's containerisable connections (read via the
-        // connections seam) so the user creates an instance matching one. On success reconcile links the new
-        // container's host connection (and stamps its ConnectionId so a later restart doesn't link it twice).
-        var connections = _context.Connections?.All() ?? [];
+        // Standalone (fromConnection null) → pick the engine; from a right-clicked connection → engine fixed +
+        // prefilled from it. On success reconcile links the new container's host connection (and stamps its
+        // ConnectionId so a later restart doesn't link it twice).
         var content = CreateContainerView.Build(
-            _builder, _service, connections, preselected,
+            _builder, _service, fromConnection,
             onCreated: () => ReconcileConnections(_context, _registry),
             log: _context.Log);
 

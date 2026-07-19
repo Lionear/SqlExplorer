@@ -43,7 +43,7 @@ internal sealed class ContainersPanelView
 
         _count = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Opacity = 0.6, FontSize = 12, Margin = new Thickness(6, 0, 0, 0) };
 
-        var newButton = new Button { Content = "+ New from connection…" };
+        var newButton = new Button { Content = "+ New container…" };
         newButton.Click += async (_, _) => await _onNewFromConnection();
         var refreshButton = new Button { Content = "↻ Refresh", Margin = new Thickness(0, 0, 6, 0) };
         refreshButton.Click += async (_, _) => await RefreshAsync();
@@ -131,7 +131,7 @@ internal sealed class ContainersPanelView
         {
             _content.Child = new TextBlock
             {
-                Text = "No managed containers yet. Use “New from connection…” to spin one up.",
+                Text = "No managed containers yet. Use “New container…” to spin one up.",
                 Opacity = 0.7,
                 Margin = new Thickness(12)
             };
