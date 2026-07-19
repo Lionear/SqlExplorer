@@ -21,6 +21,8 @@ using SqlExplorer.Core.Update;
 using SqlExplorer.Sdk.Shortcuts;
 using SqlExplorer.Sdk.Localization;
 using SqlExplorer.Sdk.Tools;
+using SqlExplorer.Sdk.Extensibility;
+using SqlExplorer.Infrastructure.Extensibility;
 using SqlExplorer.Infrastructure.Persistence;
 using SqlExplorer.Infrastructure.Secrets;
 using SqlExplorer.Infrastructure.Store;
@@ -119,6 +121,36 @@ public static class AppServices
                 Console.Error.WriteLine($"[plugin] skipped mcp '{result.PluginDirectory}': {result.Error}");
             }
         }
+
+        // Standing-subsystem plugins (type: "extension", SE-164): loaded here in their own ALC, but NOT yet
+        // activated. Their capability-gated context needs services — notably the ConnectionService behind
+        // IManagedConnections — that don't exist until the container below is built, so the loader only
+        // produces activations. SubsystemActivator (resolved + ActivateAll()'d in App startup, post-build)
+        // builds each context and calls Initialize.
+        var subsystemResults = new SubsystemPluginLoader(
+            localizer, msg => Console.Error.WriteLine($"[subsystem] {msg}")).Load(enabled);
+        var subsystemActivations = new List<SubsystemActivation>();
+        foreach (var result in subsystemResults)
+        {
+            if (result is { Succeeded: true, Activation: { } activation })
+            {
+                subsystemActivations.Add(activation);
+            }
+            else if (result.Error is not null)
+            {
+                Console.Error.WriteLine($"[plugin] skipped extension '{result.PluginDirectory}': {result.Error}");
+            }
+        }
+
+        // The activator resolves after BuildServiceProvider (App startup): its connections provider pulls the
+        // live ConnectionService from the built container, so a connection a plugin creates lands in the real
+        // host list (secrets to the keychain), tagged with the plugin id as origin. Storage is plugin-scoped
+        // JSON; Log routes to stderr for now (Output-panel wiring is a later seam).
+        services.AddSingleton(sp => new SubsystemActivator(
+            subsystemActivations,
+            id => new JsonPluginStorage(id),
+            id => new ManagedConnections(id, sp.GetRequiredService<ConnectionService>()),
+            msg => Console.Error.WriteLine($"[subsystem] {msg}")));
 
         // Host-side view of everything installed (loaded or not, enabled or not) for the Plugin Store's
         // Installed tab. Enable/disable/uninstall stage a change here, applied on next startup.

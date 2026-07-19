@@ -86,6 +86,10 @@
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="170" />
+      <!-- SE-164 panel seam: splitter + body for plugin-contributed bottom panels. Collapsed to 0 by the
+           code-behind until a plugin panel is toggled open, exactly like the Output row above. -->
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="0" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
@@ -274,7 +278,7 @@
               </Style>
             </TreeView.Styles>
             <TreeView.ContextMenu>
-              <ContextMenu>
+              <ContextMenu x:Name="TreeContextMenu">
                 <MenuItem Header="{Binding Loc[Connect]}" Command="{Binding ConnectCommand}"
                           IsVisible="{Binding SelectedNode.CanConnect, FallbackValue=False}" />
                 <MenuItem Header="{Binding Loc[Disconnect]}" Command="{Binding DisconnectCommand}"
@@ -382,6 +386,13 @@
                           StrokeJoin="Round" StrokeLineCap="Round"
                           IsVisible="{Binding HasVectorIcon}" />
                     <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                    <!-- "Managed" pill on plugin-created connections (SE-164, e.g. Docker-managed). -->
+                    <Border VerticalAlignment="Center" IsVisible="{Binding IsManagedConnection}"
+                            Background="{DynamicResource SESelectionBgBrush}" CornerRadius="9" Padding="6,0"
+                            ToolTip.Tip="{Binding ManagedOrigin}">
+                      <TextBlock Text="Managed" FontSize="9.5" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource SEAccentBrush}" VerticalAlignment="Center" />
+                    </Border>
                   </StackPanel>
                   <!-- Right-aligned on-disk size badge (databases/tables), DataGrip-style. -->
                   <Border Grid.Column="1" IsVisible="{Binding HasBadge}" VerticalAlignment="Center"
@@ -597,9 +608,26 @@
       </Grid>
     </Border>
 
+    <!-- Plugin panel region (SE-164 panel seam): one Bottom-docked region rendering the plugin-contributed
+         panels; each item shows only while its tool-window is toggled on. The splitter's visibility and the
+         row's collapse/restore are driven from the code-behind, same mechanism as the Output row. -->
+    <GridSplitter Grid.Row="4" x:Name="SubsystemSplitter" Height="3" ResizeDirection="Rows" IsVisible="False" />
+
+    <Border Grid.Row="5" Background="{DynamicResource SEPanelBgBrush}">
+      <!-- The plugin owns the whole panel chrome (its own header/toolbar), so the host adds no title row here
+           — otherwise the panel's title shows twice. Just render the plugin's control when its window is on. -->
+      <ItemsControl ItemsSource="{Binding SubsystemPanels}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <ContentControl IsVisible="{Binding Window.IsVisible}" Content="{Binding Content}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+
     <!-- Bottom status bar (SE-123): connection state on the left, the Edge.Bottom tool-window toggles
          next to it (so the toggle sits on the edge its panel opens on), run stats on the right. -->
-    <Border Grid.Row="4" Background="{DynamicResource SEToolbarBgBrush}"
+    <Border Grid.Row="6" Background="{DynamicResource SEToolbarBgBrush}"
             BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="0,1,0,0">
       <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="10,3">
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">

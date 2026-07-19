@@ -279,6 +279,9 @@
   <data name="AiWriteWarning" xml:space="preserve">
     <value>⚠️ Read-write lets the AI modify data on this connection. Only enable it on a connection you're sure about — never on production unless you really mean to.</value>
   </data>
+  <data name="ManagedConnectionWarning" xml:space="preserve">
+    <value>This connection is managed by “{0}”. Changing its provider, host or port here can break the link to the container it belongs to — the plugin created and maintains it.</value>
+  </data>
   <data name="ExcludeFromMcp" xml:space="preserve">
     <value>Never expose to the AI (hard block)</value>
   </data>
@@ -1143,6 +1146,9 @@
   <data name="StoreCategoryMcpTools" xml:space="preserve">
     <value>MCP Tools</value>
   </data>
+  <data name="StoreCategoryExtensions" xml:space="preserve">
+    <value>Extensions</value>
+  </data>
   <data name="StoreCategoryOther" xml:space="preserve">
     <value>Other</value>
   </data>
@@ -1205,6 +1211,42 @@
   </data>
   <data name="StoreConsentBody" xml:space="preserve">
     <value>This plugin requests the following capabilities:</value>
+  </data>
+  <data name="Cap_storage_Title" xml:space="preserve">
+    <value>Private storage</value>
+  </data>
+  <data name="Cap_storage_Desc" xml:space="preserve">
+    <value>Keeps its own data and settings in a private file.</value>
+  </data>
+  <data name="Cap_connections_Title" xml:space="preserve">
+    <value>Connections</value>
+  </data>
+  <data name="Cap_connections_Desc" xml:space="preserve">
+    <value>Reads your connections and can add its own managed ones — never your passwords.</value>
+  </data>
+  <data name="Cap_panel_Title" xml:space="preserve">
+    <value>Docked panel</value>
+  </data>
+  <data name="Cap_panel_Desc" xml:space="preserve">
+    <value>Adds a panel to the workspace, next to Output and History.</value>
+  </data>
+  <data name="Cap_menu_Title" xml:space="preserve">
+    <value>Menu items</value>
+  </data>
+  <data name="Cap_menu_Desc" xml:space="preserve">
+    <value>Adds items to the Tools menu and to a connection's right-click menu.</value>
+  </data>
+  <data name="Cap_background_Title" xml:space="preserve">
+    <value>Background task</value>
+  </data>
+  <data name="Cap_background_Desc" xml:space="preserve">
+    <value>Runs a background task while the app is open.</value>
+  </data>
+  <data name="Cap_process_Title" xml:space="preserve">
+    <value>External processes</value>
+  </data>
+  <data name="Cap_process_Desc" xml:space="preserve">
+    <value>Can start external programs on your machine (e.g. docker).</value>
   </data>
   <data name="StoreConsentApprove" xml:space="preserve">
     <value>Trust and install</value>

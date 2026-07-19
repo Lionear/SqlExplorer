@@ -25,6 +25,12 @@ public sealed record SavedConnection
     /// Null/blank = ungrouped (shown at the tree root). Purely organisational.</summary>
     public string? Folder { get; init; }
 
+    /// <summary>The plugin/subsystem that created and manages this connection (its plugin id, e.g.
+    /// <c>"local-containers"</c>), or null for a user-created one. Drives a "managed by X" tree badge and
+    /// lets a subsystem plugin list/remove only its own connections (SE-164 connections seam; the same
+    /// origin concept SE-155 uses for MCP-created connections). Absent = null, back-compat.</summary>
+    public string? Origin { get; init; }
+
     /// <summary>How much MCP (AI) access this connection grants. Absent/default = <see cref="AiAccessMode.None"/>
     /// (fail-closed): the connection is invisible to the MCP server until explicitly opted in. See the
     /// MCP-Server plan §4 / CRIT-1.</summary>

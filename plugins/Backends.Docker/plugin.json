@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "local-containers",
+  "type": "extension",
+  "name": "Local Containers (Docker)",
+  "version": "0.1.0",
+  "hostApiVersion": 3,
+  "entryAssembly": "SqlExplorer.Backends.Docker.dll",
+  "capabilities": ["storage", "connections", "panel", "process", "menu", "background"]
+}

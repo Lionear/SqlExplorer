@@ -142,6 +142,13 @@ public partial class TreeNodeViewModel : ViewModelBase
 
     public bool HasConnectionColor => ConnectionColorBrush is not null;
 
+    /// <summary>True when this connection root was created by a plugin (SE-164, <see cref="SavedConnection.Origin"/>
+    /// set) — drives the "Managed" tree badge.</summary>
+    public bool IsManagedConnection => IsConnectionNode && !string.IsNullOrEmpty(Connection.Origin);
+
+    /// <summary>The plugin origin that manages this connection (tooltip for the badge); empty when not managed.</summary>
+    public string ManagedOrigin => IsManagedConnection ? $"Managed by {Connection.Origin}" : string.Empty;
+
     /// <summary>Connect is offered on a connection root that isn't currently connected.</summary>
     public bool CanConnect => IsConnectionNode && State != ConnectionState.Connected;
 

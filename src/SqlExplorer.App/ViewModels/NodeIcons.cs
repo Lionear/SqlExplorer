@@ -109,6 +109,11 @@ public static class NodeIcons
         Parse("M3.5,4.7 H12.5 M6.2,4.7 V3.3 H9.8 V4.7 M4.8,4.7 L5.4,12.8 H10.6 L11.2,4.7 " +
               "M6.9,6.7 V10.8 M9.1,6.7 V10.8");
 
+    // Triangle with an exclamation → a warning. Stroked, so the exclamation dot is a tiny round-capped
+    // segment. Replaces the ⚠️ emoji in warning banners (Linux/Avalonia has no colour-emoji fallback).
+    public static readonly Geometry Warning =
+        Parse("M8,2.5 L14.5,13.5 H1.5 Z M8,6 V9.7 M8,11.6 V11.8");
+
     // --- Settings category-rail glyphs. Stroked 16x16, same style as the rest. ---
 
     // Two rails with knobs → general/sliders.

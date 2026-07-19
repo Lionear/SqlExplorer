@@ -93,9 +93,11 @@
       <MenuItem Header="{Binding Loc[MenuEdit]}">
         <MenuItem Header="{Binding Loc[Preferences]}" Command="{Binding OpenSettingsCommand}" />
       </MenuItem>
-      <MenuItem Header="{Binding Loc[MenuTools]}">
+      <MenuItem x:Name="ToolsMenu" Header="{Binding Loc[MenuTools]}">
         <MenuItem Header="{Binding Loc[QueryLogMenu]}" Command="{Binding OpenQueryLogCommand}" />
         <MenuItem Header="{Binding Loc[PluginStoreMenu]}" Command="{Binding OpenPluginStoreCommand}" />
+        <!-- Plugin-contributed items (SE-164 menu seam) are appended here in code-behind, so the statics
+             above keep their live Loc bindings. -->
       </MenuItem>
       <MenuItem Header="{Binding Loc[MenuHelp]}">
         <MenuItem Header="{Binding Loc[About]}" Command="{Binding ShowAboutCommand}" />
