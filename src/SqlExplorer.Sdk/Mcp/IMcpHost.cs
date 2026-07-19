@@ -41,4 +41,22 @@ public interface IMcpHost
     /// ones, and whether auth was required at the time — so an unauthenticated window is recognisable after
     /// the fact (plan §8 / CRIT-3).</summary>
     void LogAudit(string tool, string? connectionId, bool allowed, string? reason, bool requireAuthOn);
+
+    /// <summary>The providers (database drivers) available to <c>create_connection</c>, each with its
+    /// connection fields (required/optional/secret/choices) so an AI can assemble a valid request (SE-155).
+    /// Metadata only — never any secret or field value. Read-only and always available (it creates nothing),
+    /// so it is not gated by the connection-create setting. Backs <c>list_providers</c>.</summary>
+    IReadOnlyList<McpProviderInfo> ListProviders();
+
+    /// <summary>Create a connection on the user's behalf (SE-155), subject to the host's fail-closed policy:
+    /// creation must be enabled, the provider must exist, required fields must be present, the target host must
+    /// be on the allowlist (loopback always), and secrets can't be stored while the master password is locked.
+    /// Persistent connections are capped at ReadWrite; only transient loopback connections may get Sandbox
+    /// (DDL). Throws <see cref="McpAccessException"/> when refused. Backs <c>create_connection</c>.</summary>
+    Task<McpCreateConnectionResult> CreateConnectionAsync(McpCreateConnectionRequest request, CancellationToken ct);
+
+    /// <summary>Delete a connection the AI created — a transient one, or a persisted one whose origin is the
+    /// MCP server. Never touches the user's or another plugin's connections. Throws
+    /// <see cref="McpAccessException"/> otherwise. Backs <c>delete_connection</c>.</summary>
+    void DeleteConnection(string connectionId);
 }

@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:cvt="using:SqlExplorer.App.Converters"
+             x:Class="SqlExplorer.App.Views.AiActivityView">
+  <Grid RowDefinitions="Auto,*">
+    <!-- The panel owns its own header (the host renders no title row for panel-region content). -->
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="10,6,8,4">
+      <TextBlock Grid.Column="0" Text="{Binding Loc[AiActivity]}" FontWeight="SemiBold" FontSize="12"
+                 Foreground="{DynamicResource SETextSecondaryBrush}" VerticalAlignment="Center" />
+      <Button Grid.Column="1" Classes="Subtle" Padding="8,2"
+              Content="{Binding Loc[ClearOutput]}" Command="{Binding ClearCommand}" />
+    </Grid>
+
+    <ListBox Grid.Row="1" Background="Transparent" ItemsSource="{Binding Rows}">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*" Margin="0,1">
+            <TextBlock Grid.Column="0" Text="{Binding TimeText}" FontSize="11"
+                       FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                       Foreground="{DynamicResource SETextFaintBrush}" Margin="0,0,8,0" />
+            <TextBlock Grid.Column="1" Text="{Binding VerdictText}" FontSize="11" FontWeight="SemiBold"
+                       Width="52" Margin="0,0,8,0"
+                       Foreground="{Binding IsDeny, Converter={x:Static cvt:OutputLevelBrushConverter.Instance}}" />
+            <TextBlock Grid.Column="2" Text="{Binding Tool}" FontSize="11" Width="128" Margin="0,0,8,0"
+                       FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                       Foreground="{DynamicResource SETextPrimaryBrush}" />
+            <TextBlock Grid.Column="3" Text="{Binding Connection}" FontSize="11" Width="150" Margin="0,0,8,0"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource SETextSecondaryBrush}" />
+            <TextBlock Grid.Column="4" Text="{Binding Reason}" FontSize="11" TextWrapping="Wrap"
+                       Foreground="{DynamicResource SETextSecondaryBrush}" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </Grid>
+</UserControl>

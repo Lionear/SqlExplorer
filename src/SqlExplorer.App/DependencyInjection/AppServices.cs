@@ -285,6 +285,9 @@ public static class AppServices
 
         services.AddTransient<MainViewModel>();
 
+        // In-memory MCP audit ring backing the "AI activity" panel (SE-159); the McpHost writes to it.
+        services.AddSingleton<McpActivityLog>();
+
         // MCP host + server: the host owns the transport + all authorization (McpHost). Registered here so
         // the settings view can restart it on change; started once below after the container is built.
         services.AddSingleton(sp =>
@@ -309,6 +312,19 @@ public static class AppServices
             // "[MCP DENY]" audit lines from McpHost.
             void Audit(string message) => System.Diagnostics.Trace.WriteLine(message);
 
+            // Connection-create policy (SE-155), read live so a settings change takes effect without a
+            // server restart. A list-of-hosts can't ride the string-only GetSetting, hence its own reader.
+            McpConnectionPolicy ReadConnectionPolicy()
+            {
+                var s = settingsStore.Load();
+                var hosts = (s.McpAllowedHosts ?? [])
+                    .Where(h => !string.IsNullOrWhiteSpace(h))
+                    .Select(h => h.Trim())
+                    .ToList();
+                var folder = string.IsNullOrWhiteSpace(s.McpConnectionFolder) ? "MCP" : s.McpConnectionFolder.Trim();
+                return new McpConnectionPolicy(s.McpAllowConnectionCreate, hosts, folder);
+            }
+
             var mcpHost = new McpHost(
                 sp.GetRequiredService<ConnectionService>(),
                 sp.GetRequiredService<IDbProviderRegistry>(),
@@ -316,6 +332,8 @@ public static class AppServices
                 sp.GetRequiredService<IQueryLog>(),
                 sp.GetRequiredService<MasterPasswordService>(),
                 GetSetting,
+                ReadConnectionPolicy,
+                sp.GetRequiredService<McpActivityLog>(),
                 Audit);
 
             var server = new McpServer(mcpHost, Audit);

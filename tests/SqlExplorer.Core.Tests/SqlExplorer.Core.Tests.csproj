@@ -34,6 +34,9 @@
                       ReferenceOutputAssembly="false" Private="false" />
     <!-- For the ScriptDom-based MsSqlFormatter tests (SE-148 phase 2). -->
     <ProjectReference Include="..\..\src\SqlExplorer.Providers.MsSql\SqlExplorer.Providers.MsSql.csproj" />
+    <!-- For the CoreToolProvider tool-handler integration tests (SE-155): exercises the tools' JSON arg
+         parsing end-to-end against a real McpHost. -->
+    <ProjectReference Include="..\..\src\SqlExplorer.Mcp.Server\SqlExplorer.Mcp.Server.csproj" />
   </ItemGroup>
 
 </Project>

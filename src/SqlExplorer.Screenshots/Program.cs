@@ -14,6 +14,7 @@ using SqlExplorer.App.DependencyInjection;
 using SqlExplorer.App.ViewModels;
 using SqlExplorer.App.Views;
 using SqlExplorer.Core.Connections;
+using SqlExplorer.Core.Mcp;
 using SqlExplorer.Sdk.Formatting;
 using SqlExplorer.Core.History;
 using SqlExplorer.Core.Localization;
@@ -139,7 +140,7 @@ internal static class Program
 // Builds each scene as a Window ready to show, seeding synthetic data as needed.
 internal static class SceneCatalog
 {
-    public static string Names => "hero, query, store, export, main";
+    public static string Names => "hero, query, store, export, main, mcpsettings, aitree";
 
     public static Task<Window?> BuildAsync(string scene, IServiceProvider services, string sandbox) => scene switch
     {
@@ -148,8 +149,50 @@ internal static class SceneCatalog
         "store" => Task.FromResult<Window?>(BuildStore(services)),
         "export" => Task.FromResult<Window?>(BuildExport(services)),
         "main" => Task.FromResult<Window?>(BuildMain(services)),
+        "mcpsettings" => Task.FromResult(BuildMcpSettings(services)),
+        "aitree" => BuildAiTreeAsync(services, sandbox),
         _ => Task.FromResult<Window?>(null)
     };
+
+    // The MCP settings pane with connection-creation turned on (SE-155), so the enable warning, the
+    // allowed-hosts editor and the folder field are all visible.
+    private static Window? BuildMcpSettings(IServiceProvider services)
+    {
+        var viewModel = services.GetRequiredService<SettingsViewModel>();
+        viewModel.SelectCategoryByKey("Mcp");
+        viewModel.McpEnabled = true;
+        viewModel.McpAllowConnectionCreate = true;
+        viewModel.McpConnectionFolder = "MCP";
+        viewModel.McpAllowedHosts.Add("db.internal");
+        return new SettingsWindow { DataContext = viewModel };
+    }
+
+    // The sidebar tree showing the SE-155/158 connection badges: a persisted AI-reachable connection ("AI")
+    // and a transient MCP-created one ("Temporary" + "AI"), spliced in live via the ConnectionService event.
+    private static async Task<Window?> BuildAiTreeAsync(IServiceProvider services, string sandbox)
+    {
+        var dbPath = Path.Combine(sandbox, "demo-shop.db");
+        DemoData.CreateShopDatabase(dbPath);
+        var connections = services.GetRequiredService<ConnectionService>();
+
+        connections.Save("ai-shop", "Analytics (AI)", "sqlite",
+            new Dictionary<string, string?> { ["path"] = dbPath }, aiAccess: AiAccessMode.ReadWrite);
+
+        var viewModel = services.GetRequiredService<MainViewModel>();
+        viewModel.SyncConnectionsFromStore();
+
+        // A transient MCP connection: origin is set, so the Saved event splices its node in live, exactly as
+        // create_connection would at runtime.
+        connections.CreateTransient("mcp-temp", "MCP scratch", "sqlite",
+            new Dictionary<string, string?> { ["path"] = dbPath },
+            aiAccess: AiAccessMode.Sandbox, origin: McpHost.CreatedByOrigin);
+
+        Program.Settle(rounds: 20);
+
+        return new MainWindow(
+            services.GetRequiredService<IAppSettingsStore>(),
+            services.GetRequiredService<KeymapService>()) { DataContext = viewModel };
+    }
 
     // The empty main window — no connections, no data.
     private static Window BuildMain(IServiceProvider services)

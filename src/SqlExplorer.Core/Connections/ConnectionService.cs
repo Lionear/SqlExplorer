@@ -14,6 +14,12 @@ public sealed class ConnectionService
     private readonly ISecretStore _secrets;
     private readonly IDbProviderRegistry _providers;
 
+    // In-memory, session-only connections (SE-155): the full value set (incl. secrets) is held here and
+    // never touches the config file or keychain; cleared by ClearTransient() at shutdown. Keyed by id.
+    private readonly Dictionary<string, TransientConnection> _transient = new();
+
+    private sealed record TransientConnection(SavedConnection Connection, IReadOnlyDictionary<string, string?> Values);
+
     public ConnectionService(IConnectionStore store, ISecretStore secrets, IDbProviderRegistry providers)
     {
         _store = store;
@@ -81,6 +87,51 @@ public sealed class ConnectionService
         Saved?.Invoke(connection);
         return connection;
     }
+
+    /// <summary>Transient (in-memory, session-only) connections currently held — for the tree and the MCP
+    /// host to surface alongside the persisted ones.</summary>
+    public IReadOnlyList<SavedConnection> ListTransient() => _transient.Values.Select(t => t.Connection).ToList();
+
+    /// <summary>Create an in-memory, session-only connection (SE-155). Values (including secrets) are kept in
+    /// memory only — never written to the config file or keychain — and dropped by <see cref="ClearTransient"/>
+    /// at shutdown. Fires <see cref="Saved"/> so the tree shows it live, exactly like a persisted create.</summary>
+    public SavedConnection CreateTransient(
+        string id, string name, string providerId, IReadOnlyDictionary<string, string?> values,
+        string? folder = null, AiAccessMode aiAccess = AiAccessMode.None, string? origin = null)
+    {
+        var fields = _providers.Get(providerId).ConnectionFields;
+        var secretKeys = fields.Where(f => f.IsSecret).Select(f => f.Key).ToHashSet();
+        var nonSecret = values.Where(kv => !secretKeys.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value);
+
+        var connection = new SavedConnection
+        {
+            Id = id, Name = name, ProviderId = providerId,
+            Folder = string.IsNullOrWhiteSpace(folder) ? null : folder.Trim(),
+            AiAccess = aiAccess, Origin = origin, IsTransient = true, Values = nonSecret
+        };
+
+        // Keep the full value set (incl. secrets) in memory so Resolve can build a runnable profile without
+        // ever reaching the keychain.
+        _transient[id] = new TransientConnection(connection, new Dictionary<string, string?>(values));
+        Saved?.Invoke(connection);
+        return connection;
+    }
+
+    /// <summary>Drop a single transient connection (e.g. the AI removing one it created). No-op for an unknown
+    /// or persisted id. Fires <see cref="Removed"/> so the tree drops the node.</summary>
+    public bool RemoveTransient(string id)
+    {
+        if (!_transient.Remove(id, out var entry))
+        {
+            return false;
+        }
+
+        Removed?.Invoke(entry.Connection);
+        return true;
+    }
+
+    /// <summary>Wipe every transient connection — called on shutdown so nothing session-only survives.</summary>
+    public void ClearTransient() => _transient.Clear();
 
     /// <summary>
     /// Copy a saved connection (including its keychain secret) under a fresh id and the given name.
@@ -181,6 +232,12 @@ public sealed class ConnectionService
 
     private Dictionary<string, string?> WithSecrets(SavedConnection connection)
     {
+        // Transient connections hold their secrets in memory, never in the keychain.
+        if (_transient.TryGetValue(connection.Id, out var transient))
+        {
+            return new Dictionary<string, string?>(transient.Values);
+        }
+
         var values = new Dictionary<string, string?>(connection.Values);
         foreach (var field in _providers.Get(connection.ProviderId).ConnectionFields.Where(f => f.IsSecret))
         {

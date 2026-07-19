@@ -46,6 +46,12 @@ public sealed record SavedConnection
     /// hard-excluded. The single place both gates are combined, so every MCP code path checks the same rule.</summary>
     public bool IsMcpReachable => AiAccess != AiAccessMode.None && !ExcludeFromMcp;
 
+    /// <summary>True for an in-memory, session-only connection (SE-155): its values and secrets live only in
+    /// <see cref="ConnectionService"/>'s transient overlay — never written to the config file or keychain —
+    /// and are wiped on shutdown. Drives a "temporary" tree badge. Never serialised (the config DTO omits it),
+    /// so a persisted connection can never be transient.</summary>
+    public bool IsTransient { get; init; }
+
     public required IReadOnlyDictionary<string, string?> Values { get; init; }
 
     /// <summary>Manual sort index within this connection's folder scope; 0 for legacy/unsorted (falls back
