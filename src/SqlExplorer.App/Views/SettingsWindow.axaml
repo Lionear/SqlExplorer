@@ -62,7 +62,7 @@
           <ListBox.ItemTemplate>
             <DataTemplate>
               <StackPanel Orientation="Horizontal" Spacing="10">
-                <Path Width="16" Height="16" VerticalAlignment="Center" Data="{Binding Icon}"
+                <Path Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Data="{Binding Icon}"
                       Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.3"
                       StrokeJoin="Round" StrokeLineCap="Round" />
                 <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
@@ -581,7 +581,7 @@
                       <Image Width="16" Height="16" VerticalAlignment="Center"
                              RenderOptions.BitmapInterpolationMode="HighQuality"
                              Source="{Binding Icon}" IsVisible="{Binding HasImageIcon}" />
-                      <Path Width="16" Height="16" VerticalAlignment="Center" Data="{Binding FallbackIcon}"
+                      <Path Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Data="{Binding FallbackIcon}"
                             Stroke="{DynamicResource SETextSecondaryBrush}" StrokeThickness="1.3"
                             StrokeJoin="Round" StrokeLineCap="Round" IsVisible="{Binding !HasImageIcon}" />
                       <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />

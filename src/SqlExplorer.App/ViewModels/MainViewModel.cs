@@ -239,9 +239,9 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>Mount a plugin panel: a Bottom-docked tool-window (toggle in the status bar, hidden until the
     /// user opens it) plus its control. Called during App startup, before the view subscribes its windows.</summary>
-    public void AddSubsystemPanel(string id, string title, Control content)
+    public void AddSubsystemPanel(string id, string title, Control content, Geometry? icon = null)
     {
-        var window = new ToolWindow(id, ToolWindowEdge.Bottom, title, NodeIcons.Object, 200)
+        var window = new ToolWindow(id, ToolWindowEdge.Bottom, title, icon ?? NodeIcons.Object, 200)
         {
             IsVisible = false
         };

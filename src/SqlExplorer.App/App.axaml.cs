@@ -82,7 +82,7 @@ public partial class App : Application
                 services.GetRequiredService<Core.Connections.ConnectionService>(),
                 loc0)
         };
-        viewModel.AddSubsystemPanel("AiActivity", loc0["AiActivity"], aiActivity);
+        viewModel.AddSubsystemPanel("AiActivity", loc0["AiActivity"], aiActivity, ViewModels.NodeIcons.AiActivity);
 
         // Mount any Tools-menu contributions (SE-164 menu seam).
         foreach (var menuPlugin in subsystems.Menus)

@@ -40,6 +40,20 @@ OUTPUT = REPO / "THIRD-PARTY-NOTICES.md"
 # package declares an expression or embeds its licence text. Add entries only when a dependency forces it.
 LICENSE_URL_FALLBACK: dict[str, str] = {}
 
+# Bundled assets that ship in the app but are NOT NuGet packages, so they never appear in the dependency
+# closure. Their licence still travels with the distributed binary and must be reproduced here. Each entry
+# points at a vendored LICENSE file whose full text is embedded below.
+#   (display name, version, SPDX summary, project URL, path to the vendored licence text)
+BUNDLED_ASSETS = [
+    (
+        "Lucide",
+        "1.25.0",
+        "ISC (some icons MIT, derived from Feather)",
+        "https://lucide.dev",
+        REPO / "tools" / "lucide" / "LICENSE",
+    ),
+]
+
 
 def shipped_assets():
     """project.assets.json for every project that ships (src/), skipping build output."""
@@ -152,11 +166,31 @@ def main():
         label = f"[{name}]({url})" if url else name
         out.append(f"| {label} | {version} | {spdx} |")
 
+    bundled = []
+    for name, version, spdx, url, license_path in BUNDLED_ASSETS:
+        if not license_path.exists():
+            sys.exit(f"Bundled asset {name}: licence file not found at {license_path}")
+        bundled.append((name, version, spdx, url, license_path.read_text(encoding="utf-8").strip()))
+
+    if bundled:
+        out += ["", f"## Bundled assets ({len(bundled)})", "",
+                "Assets embedded in the app that are not NuGet packages (icon geometries, fonts, and the",
+                "like). Each remains under its own licence, reproduced in full below.", "",
+                "| Asset | Version | Licence |", "|---|---|---|"]
+        for name, version, spdx, url, _ in bundled:
+            label = f"[{name}]({url})" if url else name
+            out.append(f"| {label} | {version} | {spdx} |")
+
     if embedded:
         out += ["", "## Licence texts", "",
                 "Packages that ship their licence as a file rather than an SPDX expression:", ""]
         for name, version, text in embedded:
             out += [f"### {name} {version}", "", "```", text, "```", ""]
+
+    for name, version, _, _, text in bundled:
+        if not embedded and name == bundled[0][0]:
+            out += ["", "## Licence texts", ""]
+        out += [f"### {name} {version}", "", "```", text, "```", ""]
 
     rendered = "\n".join(out).rstrip() + "\n"
 
@@ -168,7 +202,8 @@ def main():
         return
 
     OUTPUT.write_text(rendered, encoding="utf-8")
-    print(f"Wrote {OUTPUT.relative_to(REPO)} — {len(rows)} packages, {len(embedded)} embedded licence texts.")
+    print(f"Wrote {OUTPUT.relative_to(REPO)} — {len(rows)} packages, {len(bundled)} bundled assets, "
+          f"{len(embedded)} embedded licence texts.")
 
 
 if __name__ == "__main__":
