@@ -35,7 +35,10 @@ internal static class ContainerLogsView
             HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             MinWidth = 680,
-            MinHeight = 400,
+            MinHeight = 200,
+            // Cap the height so the host's SizeToContent window doesn't grow to fit every log line — the pane
+            // stays a sensible size and the logs scroll inside it.
+            MaxHeight = 420,
             Content = view
         };
         var raw = "";
