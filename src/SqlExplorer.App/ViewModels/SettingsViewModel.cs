@@ -309,6 +309,10 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _closeToTray;
 
+    /// <summary>Show only one bottom-docked tool panel (Output/Containers/plugin panels) at a time (SE-165).</summary>
+    [ObservableProperty]
+    private bool _singleBottomPanel;
+
     // ── Query log ────────────────────────────────────────────────────────────────────────────────────
     [ObservableProperty]
     private bool _queryLogEnabled;
@@ -737,6 +741,7 @@ public partial class SettingsViewModel : ViewModelBase
         SelectedUpdateIntervalMinutes = settings.UpdateCheckIntervalMinutes;
         UpdateCheckStatus = null;
         ShowSystemDatabases = settings.ShowSystemDatabases;
+        SingleBottomPanel = settings.SingleBottomPanel;
         ConfirmOnExit = settings.ConfirmOnExit;
         CloseToTray = settings.CloseToTray;
         QueryLogEnabled = settings.QueryLogEnabled;
@@ -883,6 +888,7 @@ public partial class SettingsViewModel : ViewModelBase
         CheckForUpdatesOnStartup = defaults.CheckForUpdatesOnStartup;
         SelectedUpdateIntervalMinutes = defaults.UpdateCheckIntervalMinutes;
         ShowSystemDatabases = defaults.ShowSystemDatabases;
+        SingleBottomPanel = defaults.SingleBottomPanel;
         ConfirmOnExit = defaults.ConfirmOnExit;
         CloseToTray = defaults.CloseToTray;
         QueryLogEnabled = defaults.QueryLogEnabled;
@@ -943,6 +949,7 @@ public partial class SettingsViewModel : ViewModelBase
         settings.CheckForUpdatesOnStartup = CheckForUpdatesOnStartup;
         settings.UpdateCheckIntervalMinutes = SelectedUpdateIntervalMinutes;
         settings.ShowSystemDatabases = ShowSystemDatabases;
+        settings.SingleBottomPanel = SingleBottomPanel;
         settings.ConfirmOnExit = ConfirmOnExit;
         settings.CloseToTray = CloseToTray;
         settings.QueryLogEnabled = QueryLogEnabled;

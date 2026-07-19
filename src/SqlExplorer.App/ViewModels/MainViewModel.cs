@@ -319,6 +319,22 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
+        // Exclusive bottom panels (SE-165): opening a bottom-docked panel closes the other bottom panels, so
+        // only one is visible at a time — unless the user turned the setting off. Right-edge windows (History)
+        // are never affected. The view is subscribed to every ToolWindow's PropertyChanged, so hiding the
+        // others collapses their tracks live.
+        var opening = !window.IsVisible;
+        if (opening && window.Edge == ToolWindowEdge.Bottom && _settingsStore.Load().SingleBottomPanel)
+        {
+            foreach (var other in ToolWindows)
+            {
+                if (other.Edge == ToolWindowEdge.Bottom && !ReferenceEquals(other, window) && other.IsVisible)
+                {
+                    other.IsVisible = false;
+                }
+            }
+        }
+
         if (ReferenceEquals(window, HistoryWindow))
         {
             ToggleHistory();

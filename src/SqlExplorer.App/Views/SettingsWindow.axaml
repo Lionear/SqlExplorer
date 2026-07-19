@@ -213,6 +213,12 @@
                          IsChecked="{Binding Theme, Converter={x:Static c:EqualsConverter.Instance}, ConverterParameter={x:Static settings:AppTheme.Dark}, Mode=OneWay}"
                          Command="{Binding SetThemeCommand}" CommandParameter="{x:Static settings:AppTheme.Dark}" />
           </StackPanel>
+
+          <TextBlock Text="{Binding Loc[PanelsSectionTitle]}" FontWeight="SemiBold" Margin="0,10,0,0" />
+          <ToggleSwitch IsChecked="{Binding SingleBottomPanel}"
+                        OnContent="{Binding Loc[SingleBottomPanel]}" OffContent="{Binding Loc[SingleBottomPanel]}" />
+          <TextBlock Text="{Binding Loc[SingleBottomPanelHint]}" FontSize="11" TextWrapping="Wrap"
+                     Foreground="{DynamicResource SETextFaintBrush}" Margin="24,0,0,0" />
         </StackPanel>
 
         <!-- Editor -->

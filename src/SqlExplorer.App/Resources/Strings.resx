@@ -561,6 +561,15 @@
   <data name="ThemeDark" xml:space="preserve">
     <value>Dark</value>
   </data>
+  <data name="PanelsSectionTitle" xml:space="preserve">
+    <value>Panels</value>
+  </data>
+  <data name="SingleBottomPanel" xml:space="preserve">
+    <value>Show one bottom panel at a time</value>
+  </data>
+  <data name="SingleBottomPanelHint" xml:space="preserve">
+    <value>Opening a bottom panel (Output, Containers…) closes the others. Turn off to keep several open at once.</value>
+  </data>
   <data name="EditorFontSize" xml:space="preserve">
     <value>Font size</value>
   </data>
