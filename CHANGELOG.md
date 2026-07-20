@@ -27,6 +27,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **Panel plugins can supply a toggle icon** (plugin SDK) — `IPanelPlugin.Icon` lets an extension's docked
   panel show its own glyph on the bottom bar instead of the generic default. The Local Containers panel now
   uses a container icon.
+- **Provider-declared container recipes** (plugin SDK) — a database provider can declare how to spin up an
+  empty local container matching its engine (`IDbProvider.ContainerRecipe`: image, port, data path, and the
+  environment/command that carry credentials). The Local Containers plugin reads every installed provider's
+  recipe through a new read-only `providers` capability, so a third-party engine becomes containerisable with
+  no change to the host. The plugin keeps its built-in recipes as a fallback, and a provider's own recipe
+  wins over it.
 
 ### Changed
 

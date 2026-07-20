@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using SqlExplorer.Sdk;
+using SqlExplorer.Sdk.Provisioning;
 using Npgsql;
 
 namespace SqlExplorer.Providers.Postgres;
@@ -16,6 +17,24 @@ public sealed class PostgresProvider : IDbProvider
     public ProviderIcon? Icon { get; } = ProviderIconLoader.Load(typeof(PostgresProvider), "🐘");
 
     public ISqlDialect Dialect { get; } = new PostgresDialect();
+
+    // How to spin up an empty local Postgres container matching a connection (SE-166). Declared here rather
+    // than hardcoded in the Docker plugin so the recipe travels with the provider; the Docker plugin reads it
+    // via IProviderCatalog and prefers it over its own built-in fallback. The three POSTGRES_* env vars are the
+    // official image's init contract — user/password/first database.
+    public ContainerRecipe? ContainerRecipe { get; } = new(
+        Image: "postgres",
+        DefaultTag: "16",
+        ContainerPort: 5432,
+        DataPath: "/var/lib/postgresql/data",
+        DefaultUser: "postgres",
+        DefaultPassword: "changeme",
+        Environment: e =>
+        [
+            new("POSTGRES_DB", e.Database ?? "postgres"),
+            new("POSTGRES_USER", e.User),
+            new("POSTGRES_PASSWORD", e.Password)
+        ]);
 
     public IReadOnlyList<ConnectionField> ConnectionFields { get; } =
     [

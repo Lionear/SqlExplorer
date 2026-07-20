@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using SqlExplorer.Backends.Docker;
+using SqlExplorer.Sdk.Provisioning;
 
 namespace SqlExplorer.Backends.Docker.Tests;
 
@@ -43,6 +44,53 @@ public class DockerComposeBuilderTests
             "  sales-pg-local-data:\n";
 
         Assert.Equal(expected, Builder.Build(spec, SnippetFormat.Compose));
+    }
+
+    // ---- SE-166: provider-declared recipes read from the host --------------------------------------
+
+    [Fact] // A third-party engine that ships a recipe becomes containerisable with no change to the builder.
+    public void External_provider_recipe_makes_a_new_engine_containerisable()
+    {
+        var recipe = new ContainerRecipe("cooldb", "1", 9999, "/var/cool", "root", "changeme",
+            e => [new("COOL_PASS", e.Password)]);
+        var builder = new DockerComposeBuilder([new ProviderRecipe("cooldb", "CoolDB", recipe)]);
+
+        Assert.True(builder.Supports("cooldb"));
+        Assert.Contains("cooldb", builder.SupportedProviderIds);
+
+        var spec = new ContainerSpec("cooldb",
+            Values(("port", "9999"), ("password", "secret")), Tag: "1", ContainerName: "cool-local");
+
+        var expected =
+            "services:\n" +
+            "  db:\n" +
+            "    image: cooldb:1\n" +
+            "    container_name: cool-local\n" +
+            "    restart: unless-stopped\n" +
+            "    environment:\n" +
+            "      COOL_PASS: secret\n" +
+            "    ports:\n" +
+            "      - \"9999:9999\"\n" +
+            "    volumes:\n" +
+            "      - cool-local-data:/var/cool\n" +
+            "volumes:\n" +
+            "  cool-local-data:\n";
+
+        Assert.Equal(expected, builder.Build(spec, SnippetFormat.Compose));
+    }
+
+    [Fact] // A provider-declared recipe wins over the built-in fallback for the same id.
+    public void Provider_recipe_overrides_the_built_in_fallback()
+    {
+        var recipe = new ContainerRecipe("custompg", "99", 5432, "/var/lib/postgresql/data", "postgres", "changeme",
+            _ => []);
+        var builder = new DockerComposeBuilder([new ProviderRecipe("postgres", "PostgreSQL", recipe)]);
+
+        var spec = new ContainerSpec("postgres", Values(("password", "x")), ContainerName: "pg");
+        var result = builder.Build(spec, SnippetFormat.Compose);
+
+        Assert.Contains("image: custompg:99\n", result);
+        Assert.DoesNotContain("postgres:16", result);
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 using SqlExplorer.Backends.Docker;
 using SqlExplorer.Sdk.Extensibility;
 using SqlExplorer.Sdk.Localization;
+using SqlExplorer.Sdk.Provisioning;
 
 namespace SqlExplorer.Backends.Docker.Tests;
 
@@ -29,6 +30,7 @@ public class ServiceDogfoodTests
         public IPluginStorage? Storage => null;
         public IManagedConnections? Connections => null;
         public IServiceProvider? Services { get; } = services;
+        public IProviderCatalog? Providers => null;
         public IPluginLocalizer Localizer { get; } = new FakeLocalizer();
         public void Log(string message) { }
     }

@@ -10,6 +10,7 @@ using SqlExplorer.Sdk;
 using SqlExplorer.Sdk.Branding;
 using SqlExplorer.Sdk.Connections;
 using SqlExplorer.Sdk.Ddl;
+using SqlExplorer.Sdk.Provisioning;
 using SqlExplorer.Sdk.Query;
 using SqlExplorer.Sdk.Schema;
 
@@ -39,12 +40,13 @@ internal sealed class RecordingSecretStore : ISecretStore
 
 // A provider with a host (required), port (optional) and password (secret) field — enough to exercise the
 // required-field, secret-split and host-allowlist logic.
-internal sealed class FieldsProvider(string display = "Fake DB") : IDbProvider
+internal sealed class FieldsProvider(string display = "Fake DB", ContainerRecipe? recipe = null) : IDbProvider
 {
     public string DisplayName => display;
     public ProviderIcon? Icon => null;
     public ISqlDialect Dialect => throw new NotSupportedException();
     public bool IsSqlBased => true;
+    public ContainerRecipe? ContainerRecipe => recipe;
 
     public IReadOnlyList<ConnectionField> ConnectionFields =>
     [

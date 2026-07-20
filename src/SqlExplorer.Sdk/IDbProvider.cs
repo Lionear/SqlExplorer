@@ -3,6 +3,7 @@ using SqlExplorer.Sdk.Connections;
 using SqlExplorer.Sdk.Ddl;
 using SqlExplorer.Sdk.Editing;
 using SqlExplorer.Sdk.Formatting;
+using SqlExplorer.Sdk.Provisioning;
 using SqlExplorer.Sdk.Query;
 using SqlExplorer.Sdk.Routines;
 using SqlExplorer.Sdk.Schema;
@@ -30,6 +31,15 @@ public interface IDbProvider
     ProviderIcon? Icon { get; }
 
     ISqlDialect Dialect { get; }
+
+    /// <summary>
+    /// How to spin up an empty local container matching this engine — image, port, data path, and the env/
+    /// command carrying credentials. Non-null makes the engine containerisable by the Docker plugin (which
+    /// reads it via <see cref="Provisioning.IProviderCatalog"/>); a third-party engine becomes provisionable
+    /// with no host change. Returns <c>null</c> (the default) for engines with no server to run (e.g. file-based
+    /// SQLite) — the same "null = not supported" convention as <see cref="ParseConnectionString"/> (host API v26).
+    /// </summary>
+    ContainerRecipe? ContainerRecipe => null;
 
     /// <summary>
     /// This engine's own dialect-specialised SQL formatter, or null to use the host's generic formatter.

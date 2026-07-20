@@ -22,10 +22,18 @@ public static class ToolHostApi
     //                  resolver on IPluginRuntimeContext.Services (new member). Additive for existing plugins;
     //                  a plugin that *uses* the seam must declare v4 so an older host refuses it rather than
     //                  crashing on the missing member.
+    //   also in v4 (2026-07-20): the "providers" capability (SE-166) — a plugin that declares it gets a
+    //                  read-only IProviderCatalog on IPluginRuntimeContext.Providers (new member) listing
+    //                  installed providers that declared a container recipe (IDbProvider.ContainerRecipe). Lets
+    //                  the Docker plugin containerise third-party engines. Folded into the still-unreleased v4
+    //                  rather than opening v5: the whole 0.4.0 dev cycle accumulates additive subsystem surface
+    //                  under one version, bumped once at release. Additive — a plugin without the capability
+    //                  gets null and degrades to its built-in table.
     public const int Version = 4;
 
     /// <summary>Oldest plugin ABI this host still loads. Every bump has been additive (v2 tool defaults, v3
-    /// extensibility seams, v4 the services capability), so older tools keep loading on a newer host.</summary>
+    /// extensibility seams, v4 the services + providers capabilities), so older tools keep loading on a newer
+    /// host.</summary>
     public const int MinimumSupported = 1;
 
     public static bool IsCompatible(int pluginVersion) =>

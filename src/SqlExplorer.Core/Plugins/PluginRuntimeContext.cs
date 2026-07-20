@@ -1,5 +1,6 @@
 using SqlExplorer.Sdk.Extensibility;
 using SqlExplorer.Sdk.Localization;
+using SqlExplorer.Sdk.Provisioning;
 
 namespace SqlExplorer.Core.Plugins;
 
@@ -14,12 +15,13 @@ public sealed class PluginRuntimeContext : IPluginRuntimeContext
 
     public PluginRuntimeContext(
         string pluginId, IPluginStorage? storage, IManagedConnections? connections, IPluginLocalizer localizer,
-        Action<string>? log, IServiceProvider? services = null)
+        Action<string>? log, IServiceProvider? services = null, IProviderCatalog? providers = null)
     {
         PluginId = pluginId;
         Storage = storage;
         Connections = connections;
         Services = services;
+        Providers = providers;
         Localizer = localizer;
         _log = log;
     }
@@ -31,6 +33,8 @@ public sealed class PluginRuntimeContext : IPluginRuntimeContext
     public IManagedConnections? Connections { get; }
 
     public IServiceProvider? Services { get; }
+
+    public IProviderCatalog? Providers { get; }
 
     public IPluginLocalizer Localizer { get; }
 

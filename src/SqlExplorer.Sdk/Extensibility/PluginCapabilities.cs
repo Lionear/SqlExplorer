@@ -33,4 +33,11 @@ public static class PluginCapabilities
 
     /// <summary>Starts external processes (e.g. <c>docker</c>). Disclosure only — no host API to gate.</summary>
     public const string Process = "process";
+
+    /// <summary>
+    /// Reads host metadata about installed providers that can be containerised — their
+    /// <see cref="Provisioning.ContainerRecipe"/>, via <see cref="IPluginRuntimeContext.Providers"/>. Read-only:
+    /// the plugin learns what engines exist and how to provision them, but gains no control over them.
+    /// </summary>
+    public const string Providers = "providers";
 }

@@ -119,6 +119,15 @@ public static class ProviderHostApi
     //                   BasicSqlFormatter when null (SE-148). ISqlFormatter/SqlFormatOptions/KeywordCasing
     //                   moved into the SDK (SqlExplorer.Sdk.Formatting) so plugins can implement them.
     //                   Purely additive: v23–v25 plugins return null and keep loading unchanged.
+    //   also in v26 (2026-07-20): added IDbProvider.ContainerRecipe (ContainerRecipe?, default null) — a
+    //                   provider may declare how to spin up an empty local container matching its engine
+    //                   (image/port/data path + env/command carrying credentials), making containerisation
+    //                   open to third-party engines (SE-166). The Docker plugin reads all declared recipes via
+    //                   IProviderCatalog (the "providers" capability on the ToolHostApi/subsystem surface).
+    //                   Folded into the still-unreleased v26 rather than opening v27: the whole 0.4.0 dev cycle
+    //                   accumulates additive SDK surface under one version, bumped once at release (a plugin
+    //                   that does not override it returns null — not containerisable, e.g. SQLite — and the
+    //                   Docker plugin falls back to its built-in table, so nothing regresses).
     public const int Version = 26;
 
     /// <summary>Oldest plugin ABI this host still loads. Additive bumps (v11→v22 style) keep this fixed;
