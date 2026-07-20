@@ -42,6 +42,10 @@ jobs:
       - name: Test (Core)
         run: dotnet test tests/SqlExplorer.Core.Tests/SqlExplorer.Core.Tests.csproj -c Release
 
+      # App view-model tests: references the App class library (Avalonia), constructs view-models only.
+      - name: Test (App)
+        run: dotnet test tests/SqlExplorer.App.Tests/SqlExplorer.App.Tests.csproj -c Release
+
       # The Docker backend plugin's unit tests (SE-164 migration): its own assembly, compiled directly against
       # the plugin (which references Avalonia), so this step is heavier than the Core-only one above.
       - name: Test (Backends.Docker)

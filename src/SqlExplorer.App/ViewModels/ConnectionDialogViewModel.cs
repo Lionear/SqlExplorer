@@ -26,6 +26,12 @@ public partial class ConnectionDialogViewModel : ViewModelBase
     // "Managed" badge and break the owning plugin's origin-scoped remove).
     private string? _origin;
 
+    // The provider id whose Fields are currently built. Guards OnSelectedProviderChanged against rebuilding
+    // (and so resetting every field to the provider defaults) when the ComboBox re-fires SelectedProvider
+    // with the same provider — the transient null->value round-trip when the detail view re-attaches during
+    // an edit, which was silently discarding the loaded/entered values (SE-174).
+    private string? _fieldsProviderId;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanSave))]
     private string _name = "New connection";
@@ -195,12 +201,21 @@ public partial class ConnectionDialogViewModel : ViewModelBase
 
     partial void OnSelectedProviderChanged(ProviderOption? value)
     {
-        RebuildFields();
+        // Only rebuild when the provider actually changes. The ComboBox's two-way SelectedItem binding
+        // re-fires this with a transient null then the same provider when the detail view re-attaches during
+        // an edit; rebuilding then would reset every field to the provider defaults and silently discard the
+        // loaded/entered values (SE-174). Same id (or null) => leave the field list and its values alone.
+        if (value is not null && value.Id != _fieldsProviderId)
+        {
+            RebuildFields();
+        }
+
         OnPropertyChanged(nameof(CanSave));
     }
 
     private void RebuildFields()
     {
+        _fieldsProviderId = SelectedProvider?.Id;
         foreach (var field in Fields)
         {
             field.PropertyChanged -= OnFieldChanged;

@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- **Editing a connection no longer wipes its fields** — changing a connection's AI access, read-only or
+  other settings could reset host / port / database / username to the provider defaults and drop the saved
+  password. Editing now preserves the stored values, and setting AI access from the tree no longer
+  round-trips (and so can't clear) the password.
+
 ### Added
 
 - **Service auto-registration for plugins and the host** (plugin SDK) — classes can opt into dependency

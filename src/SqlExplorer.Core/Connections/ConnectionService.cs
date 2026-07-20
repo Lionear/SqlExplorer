@@ -61,8 +61,15 @@ public sealed class ConnectionService
 
         foreach (var field in fields.Where(f => f.IsSecret))
         {
+            // A secret the caller didn't mention is left untouched — only an explicitly-supplied empty value
+            // clears it. Guards against a partial value map (e.g. a metadata-only re-save) wiping the stored
+            // password (SE-174).
+            if (!values.TryGetValue(field.Key, out var value))
+            {
+                continue;
+            }
+
             var secretKey = SecretKey(id, field.Key);
-            var value = values.TryGetValue(field.Key, out var v) ? v : null;
             if (string.IsNullOrEmpty(value))
             {
                 _secrets.Delete(secretKey);
@@ -156,6 +163,20 @@ public sealed class ConnectionService
     {
         var updated = connection with { Folder = string.IsNullOrWhiteSpace(folder) ? null : folder.Trim() };
         _store.Save(updated);
+        return updated;
+    }
+
+    /// <summary>
+    /// Update only the AI-access metadata (the tree's "AI access" submenu, SE-158) without rewriting field
+    /// values or touching the keychain. The full <see cref="Save"/> path re-derives secrets from the passed
+    /// values and deletes any that come back empty — so toggling AI access through it could wipe the password
+    /// when the vault is locked (SE-174). This edits the stored record in place, like <see cref="SetFolder"/>.
+    /// </summary>
+    public SavedConnection SetAiAccess(SavedConnection connection, AiAccessMode aiAccess, bool excludeFromMcp)
+    {
+        var updated = connection with { AiAccess = aiAccess, ExcludeFromMcp = excludeFromMcp };
+        _store.Save(updated);
+        Saved?.Invoke(updated);
         return updated;
     }
 

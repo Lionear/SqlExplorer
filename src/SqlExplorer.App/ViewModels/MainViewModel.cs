@@ -1356,9 +1356,8 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        var values = _connections.GetEditableValues(c);
-        var saved = _connections.Save(
-            c.Id, c.Name, c.ProviderId, values, c.Color, c.ReadOnly, c.Folder, mode, c.ExcludeFromMcp, c.Origin);
+        // Metadata-only update: never round-trips the field values/secrets, so it can't wipe them (SE-174).
+        var saved = _connections.SetAiAccess(c, mode, c.ExcludeFromMcp);
 
         // A user connection (no Origin) isn't refreshed by OnConnectionSavedExternally, so rebuild its node
         // here; an Origin-tagged one refreshes off the Saved event.
@@ -1379,9 +1378,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         var c = node.Connection;
-        var values = _connections.GetEditableValues(c);
-        var saved = _connections.Save(
-            c.Id, c.Name, c.ProviderId, values, c.Color, c.ReadOnly, c.Folder, c.AiAccess, !c.ExcludeFromMcp, c.Origin);
+        var saved = _connections.SetAiAccess(c, c.AiAccess, !c.ExcludeFromMcp);
 
         if (saved.Origin is null)
         {
