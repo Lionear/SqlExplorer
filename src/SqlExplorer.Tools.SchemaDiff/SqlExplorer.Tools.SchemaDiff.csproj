@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlExplorer.Tools.SchemaDiff</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Contract only. No driver dependency: this tool reads both schemas and applies the migration purely
+         through the host's IDbProvider (ExecuteQueryAsync over information_schema, ExecuteDdlAsync to apply).
+         Route A (declared fields), so no Avalonia reference. Private=false keeps Sdk.dll out of the plugin
+         folder so the host's copy is used across the ALC boundary (single type identity). -->
+    <ProjectReference Include="..\SqlExplorer.Sdk\SqlExplorer.Sdk.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Localization embedded into the main DLL. WithCulture=false stops MSBuild routing the ".nl." file
+         to a satellite assembly; LogicalName fixes the resource name the host's PluginLocalizer expects. -->
+    <EmbeddedResource Include="Lang\strings.json" LogicalName="Lang/strings.json" WithCulture="false" />
+    <EmbeddedResource Include="Lang\strings.nl.json" LogicalName="Lang/strings.nl.json" WithCulture="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="SqlExplorer.Sdk" />
+    <Using Include="SqlExplorer.Sdk.Connections" />
+    <Using Include="SqlExplorer.Sdk.Schema" />
+    <Using Include="SqlExplorer.Sdk.Query" />
+    <Using Include="SqlExplorer.Sdk.Branding" />
+    <Using Include="SqlExplorer.Sdk.Localization" />
+    <Using Include="SqlExplorer.Sdk.Tools" />
+  </ItemGroup>
+
+</Project>

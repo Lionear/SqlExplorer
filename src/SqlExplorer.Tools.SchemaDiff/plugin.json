@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "schema-diff",
+  "type": "tool",
+  "name": "Schema Diff",
+  "version": "0.1.0",
+  "hostApiVersion": 4,
+  "entryAssembly": "SqlExplorer.Tools.SchemaDiff.dll",
+  "localization": "Lang/strings"
+}

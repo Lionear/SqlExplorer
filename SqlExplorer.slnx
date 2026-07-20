@@ -23,10 +23,12 @@
     <Project Path="src/SqlExplorer.Infrastructure/SqlExplorer.Infrastructure.csproj" />
     <Project Path="src/SqlExplorer.Screenshots/SqlExplorer.Screenshots.csproj" />
     <Project Path="src/SqlExplorer.Sdk/SqlExplorer.Sdk.csproj" />
+    <Project Path="src/SqlExplorer.Tools.SchemaDiff/SqlExplorer.Tools.SchemaDiff.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SqlExplorer.App.Tests/SqlExplorer.App.Tests.csproj" />
     <Project Path="tests/SqlExplorer.Backends.Docker.Tests/SqlExplorer.Backends.Docker.Tests.csproj" />
     <Project Path="tests/SqlExplorer.Core.Tests/SqlExplorer.Core.Tests.csproj" />
+    <Project Path="tests/SqlExplorer.Tools.SchemaDiff.Tests/SqlExplorer.Tools.SchemaDiff.Tests.csproj" />
   </Folder>
 </Solution>

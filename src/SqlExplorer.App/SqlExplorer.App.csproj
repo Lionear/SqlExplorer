@@ -34,6 +34,8 @@
          unconditionally staged like the MVP providers — always present in Debug AND Release, not an
          optional Store install (plan §3.2, Rick: "kern-feature, altijd aanwezig"). -->
     <ProjectReference Include="..\SqlExplorer.Tools.MsSqlAdmin\SqlExplorer.Tools.MsSqlAdmin.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <!-- First-party cross-connection schema-diff tool (SE-99): always present, loaded at runtime, not linked. -->
+    <ProjectReference Include="..\SqlExplorer.Tools.SchemaDiff\SqlExplorer.Tools.SchemaDiff.csproj" ReferenceOutputAssembly="false" Private="false" />
     <!-- First-party MCP tool plugin (type "mcp"): the four core tools served by the host-owned MCP server.
          Staged like the providers/admin tool — always present, loaded at runtime, not linked. -->
     <ProjectReference Include="..\SqlExplorer.Mcp.Server\SqlExplorer.Mcp.Server.csproj" ReferenceOutputAssembly="false" Private="false" />

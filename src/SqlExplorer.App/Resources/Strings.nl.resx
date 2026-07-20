@@ -1047,6 +1047,9 @@
   <data name="ToolRunning" xml:space="preserve">
     <value>Bezig</value>
   </data>
+  <data name="ToolTargetLabel" xml:space="preserve">
+    <value>Op:</value>
+  </data>
   <data name="ToolDestructiveConfirm" xml:space="preserve">
     <value>Deze actie wijzigt de database en kan niet ongedaan worden gemaakt. Doorgaan?</value>
   </data>

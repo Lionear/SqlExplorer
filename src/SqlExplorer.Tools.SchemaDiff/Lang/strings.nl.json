@@ -1,0 +1,20 @@
+{
+  "diff.title": "Schema-diff",
+  "diff.dialogTitle": "Schema-diff",
+  "diff.description": "Bouwt een migratie die de database hierboven gelijktrekt met de database die je hieronder kiest. Het opent als script in een nieuwe query-tab om te bekijken en te draaien — er verandert niets automatisch.",
+
+  "diff.field.compareTo": "Vergelijk met connectie",
+  "diff.field.database": "Database op die connectie",
+
+  "diff.error.unsupported": "Schema-diff ondersteunt de '{0}'-engine nog niet (leest via information_schema; alleen Postgres, MySQL en SQL Server).",
+  "diff.error.noTarget": "Kies een connectie en database om mee te vergelijken.",
+  "diff.error.openFailed": "Kon de geselecteerde connectie niet openen.",
+
+  "diff.progress.readingThis": "Schema van {0} inlezen…",
+  "diff.progress.readingOther": "Schema van {0} inlezen…",
+
+  "diff.result.identical": "Geen verschillen — dit schema komt al overeen met {0}.",
+  "diff.result.summary": "Migratie om {0} gelijk te trekken met {1}: {2} wijziging(en).",
+  "diff.script.header": "-- Deze statements draaien op {0}; ze voegen toe/passen aan wat daar ontbreekt of afwijkt t.o.v. {1}.",
+  "diff.result.opened": "Migratie geopend in een query-tab op {0} — bekijk 'm daar en draai wanneer je klaar bent."
+}

@@ -54,6 +54,10 @@
       <ProviderPluginFile Include="$(MSBuildThisFileDirectory)..\SqlExplorer.Tools.MsSqlAdmin\bin\$(Configuration)\$(TargetFramework)\**\*">
         <PluginId>mssql-admin</PluginId>
       </ProviderPluginFile>
+      <!-- Cross-connection schema-diff tool (SE-99), staged unconditionally like the admin tool. -->
+      <ProviderPluginFile Include="$(MSBuildThisFileDirectory)..\SqlExplorer.Tools.SchemaDiff\bin\$(Configuration)\$(TargetFramework)\**\*">
+        <PluginId>schema-diff</PluginId>
+      </ProviderPluginFile>
       <!-- First-party MCP tools plugin, staged unconditionally like the providers/admin tool. -->
       <ProviderPluginFile Include="$(MSBuildThisFileDirectory)..\SqlExplorer.Mcp.Server\bin\$(Configuration)\$(TargetFramework)\**\*">
         <PluginId>sql-explorer-mcp</PluginId>

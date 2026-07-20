@@ -950,7 +950,18 @@ public partial class MainViewModel : ViewModelBase
 
         var dialog = _toolDialogFactory();
         dialog.Configure(tool, profile, nodeRef, provider, connection.ProviderId);
+        // Let a tool hand generated SQL to a query tab on the launched connection/database (SchemaDiff).
+        dialog.OpenQueryRequested = sql => OpenQueryWithContent(connection, node.DatabaseName, sql);
         await ToolDialogRequested(dialog);
+    }
+
+    // Open a new query tab on a connection/database pre-filled with SQL (no file backing).
+    private void OpenQueryWithContent(SavedConnection connection, string? database, string sql)
+    {
+        var document = NewDocument();
+        document.InitQuery(connection, database);
+        document.LoadContent(sql, null);
+        AddDocument(document);
     }
 
     /// <summary>Set by the view so the VM can show the generic tool dialog.</summary>
