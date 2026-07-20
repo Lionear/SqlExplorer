@@ -18,6 +18,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- **Scope-aware SQL completion** — code completion now understands query structure instead of scanning for
+  `FROM`/`JOIN` with a regex. It resolves aliases through CTEs (`WITH x AS (…)`) and derived tables
+  (`(SELECT …) d`), suggests the columns of the sources actually in scope, offers CTE names alongside real
+  tables after `FROM`/`JOIN`, and never suggests from another statement in the editor. (Function-catalogue and
+  FK-driven JOIN hints follow in later phases.)
 - **Service auto-registration for plugins and the host** (plugin SDK) — classes can opt into dependency
   injection by implementing a lifetime marker (`ISingletonService` / `ITransientService` / `IScopedService`)
   instead of being wired up by hand. Extensions that declare the new `services` capability get their own

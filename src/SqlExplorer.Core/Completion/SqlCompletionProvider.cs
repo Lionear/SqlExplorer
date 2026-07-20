@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using SqlExplorer.Core.Schema;
 using SqlExplorer.Sdk;
 
@@ -12,7 +11,7 @@ public enum CompletionKind
 }
 
 /// <summary>One completion suggestion: the text to insert, its kind, and a short detail
-/// (column type, "table"/"view", or "keyword") shown alongside it.</summary>
+/// (column type, "table"/"view"/"cte", or "keyword") shown alongside it.</summary>
 public sealed record CompletionItem(string Text, CompletionKind Kind, string? Detail);
 
 /// <summary><see cref="SqlCompletionProvider.Suggest"/>'s result: where the replacement starts
@@ -20,36 +19,33 @@ public sealed record CompletionItem(string Text, CompletionKind Kind, string? De
 public sealed record CompletionResult(int ReplaceStart, IReadOnlyList<CompletionItem> Items);
 
 /// <summary>
-/// Light, parser-free SQL completion (1.3) driven by the 1.1 schema snapshot: "alias." suggests that
-/// alias's columns, right after FROM/JOIN suggests tables, everywhere else suggests a broad mix of
-/// tables + columns + dialect keywords. Ranking reuses <see cref="SchemaSearch"/> so results order the
-/// same way quick-open (1.2) does. No SQL parser — a regex over FROM/JOIN clauses is enough for MVP.
+/// Schema-aware SQL completion driven by the schema snapshot and a scope model (<see cref="SqlScopeAnalyzer"/>,
+/// SE-149): "alias." suggests that source's columns — resolved through CTEs and derived tables — a FROM/JOIN
+/// position suggests tables/views plus in-scope CTE names, and a SELECT/WHERE/ON/GROUP/ORDER position suggests
+/// the columns of the sources visible in that query scope (never leaking across statement boundaries), with a
+/// broad tables+columns+keywords mix as the fallback when nothing narrower resolves. Ranking reuses
+/// <see cref="SchemaSearch"/> so results order the same way quick-open does.
 /// </summary>
 public static class SqlCompletionProvider
 {
     private const int MaxItems = 200;
 
-    // An identifier is a plain word OR a "quoted one" — needed because PascalCase table names (like
-    // this app's own schema, "Accounts"/"Characters"/…) must be double-quoted in Postgres or the
-    // engine folds them to lowercase, so real-world queries against such a schema are full of them.
-    private const string IdentPattern = @"(?:""[^""]+""|[A-Za-z_]\w*)";
-
-    // Captures "FROM/JOIN <table>[.<table>] [[AS] <alias>]"; the alias group may also (harmlessly)
-    // capture a following keyword like WHERE when there is no real alias — filtered out via `keywords`.
-    private static readonly Regex TableRefPattern = new(
-        $@"(?:FROM|JOIN)\s+({IdentPattern}(?:\.{IdentPattern})?)(?:\s+(?:AS\s+)?({IdentPattern}))?",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
     public static CompletionResult Suggest(string sql, int caret, SchemaSnapshot snapshot, IReadOnlySet<string> keywords)
     {
         caret = Math.Clamp(caret, 0, sql.Length);
         var (start, fragment, alias) = SplitWord(sql, caret);
+        var scope = SqlScopeAnalyzer.Analyze(sql, caret);
 
         var items = alias is not null
-            ? ColumnsFor(alias, fragment, sql, snapshot, keywords)
-            : IsAfterFromOrJoin(sql, start)
-                ? Tables(fragment, snapshot)
-                : Broad(fragment, snapshot, keywords);
+            ? ColumnsForAlias(alias, fragment, scope, snapshot)
+            : scope.Clause switch
+            {
+                SqlClause.From => TablesAndCtes(fragment, snapshot, scope),
+                SqlClause.Select or SqlClause.Where or SqlClause.On
+                    or SqlClause.GroupBy or SqlClause.Having or SqlClause.OrderBy
+                    => ScopedColumns(fragment, scope, snapshot, keywords),
+                _ => Broad(fragment, snapshot, keywords)
+            };
 
         return new CompletionResult(start, items.Take(MaxItems).ToList());
     }
@@ -96,44 +92,87 @@ public static class SqlCompletionProvider
         return end > start ? sql[start..end] : null;
     }
 
-    private static bool IsAfterFromOrJoin(string sql, int wordStart)
+    // ---- clause behaviours ---------------------------------------------------------------------------
+
+    // FROM/JOIN position: the in-scope CTE names first (they're local and few), then the schema's tables/views.
+    private static IReadOnlyList<CompletionItem> TablesAndCtes(string fragment, SchemaSnapshot snapshot, SqlScope scope)
     {
-        var i = wordStart;
-        while (i > 0 && char.IsWhiteSpace(sql[i - 1]))
-        {
-            i--;
-        }
+        var ctes = RankBy(scope.CteNames, n => n, fragment)
+            .Select(n => new CompletionItem(n, CompletionKind.Table, "cte"));
 
-        var end = i;
-        while (i > 0 && IsWordChar(sql[i - 1]))
-        {
-            i--;
-        }
-
-        var token = sql[i..end];
-        return token.Equals("FROM", StringComparison.OrdinalIgnoreCase) || token.Equals("JOIN", StringComparison.OrdinalIgnoreCase);
+        return ctes.Concat(Tables(fragment, snapshot)).ToList();
     }
+
+    // SELECT-list / WHERE / ON / GROUP BY / ORDER BY / HAVING: the columns of every source visible in the scope
+    // (alias-qualified in the detail), plus keywords. Falls back to the broad mix when no source resolves — an
+    // incomplete query, or one whose tables aren't in the snapshot — so the box still offers something.
+    private static IReadOnlyList<CompletionItem> ScopedColumns(
+        string fragment, SqlScope scope, SchemaSnapshot snapshot, IReadOnlySet<string> keywords)
+    {
+        var columns = scope.Sources
+            .SelectMany(s => ResolveColumns(s, snapshot))
+            .ToList();
+
+        if (columns.Count == 0)
+        {
+            return Broad(fragment, snapshot, keywords);
+        }
+
+        var ranked = RankBy(columns, c => c.Text, fragment).Take(BroadCategoryCap);
+        var kw = RankBy(keywords, k => k, fragment)
+            .Select(k => new CompletionItem(k, CompletionKind.Keyword, "keyword"))
+            .Take(BroadCategoryCap);
+
+        return ranked.Concat(kw).ToList();
+    }
+
+    // Columns of the aliased source when the alias resolves in scope (a base table, or a CTE/derived table with
+    // known columns); otherwise (unknown alias, or a CTE/derived whose columns can't be inferred) fall back to
+    // every column so the box still offers something, distinguishing them by owning table in Detail.
+    private static IReadOnlyList<CompletionItem> ColumnsForAlias(
+        string alias, string fragment, SqlScope scope, SchemaSnapshot snapshot)
+    {
+        var source = scope.Sources.FirstOrDefault(s => s.Alias.Equals(alias, StringComparison.OrdinalIgnoreCase));
+
+        var candidates = source is not null
+            ? ResolveColumns(source, snapshot)
+            : [];
+
+        if (candidates.Count == 0)
+        {
+            candidates = AllColumns(snapshot);
+        }
+
+        return RankBy(candidates, c => c.Text, fragment).ToList();
+    }
+
+    // Resolve one scope source to its column completion items: a base table's columns from the snapshot (typed),
+    // or a CTE/derived table's inferred columns (detail = the source alias). Empty when it can't be resolved
+    // (base table absent from the snapshot, or inferred columns unknown) — the caller then decides the fallback.
+    private static IReadOnlyList<CompletionItem> ResolveColumns(SqlScopeSource source, SchemaSnapshot snapshot)
+    {
+        if (source.Table is { } table)
+        {
+            var obj = snapshot.Objects.FirstOrDefault(o => o.Name.Equals(table, StringComparison.OrdinalIgnoreCase));
+            return obj is null
+                ? []
+                : obj.Columns.Select(c => new CompletionItem(c.Name, CompletionKind.Column, c.Type ?? source.Alias)).ToList();
+        }
+
+        return source.Columns is { } cols
+            ? cols.Select(name => new CompletionItem(name, CompletionKind.Column, source.Alias)).ToList()
+            : [];
+    }
+
+    private static IReadOnlyList<CompletionItem> AllColumns(SchemaSnapshot snapshot) =>
+        snapshot.Objects
+            .SelectMany(o => o.Columns.Select(c => new CompletionItem(c.Name, CompletionKind.Column, c.Type ?? o.QualifiedName)))
+            .ToList();
 
     private static IReadOnlyList<CompletionItem> Tables(string fragment, SchemaSnapshot snapshot) =>
         RankBy(snapshot.Objects, o => o.QualifiedName, fragment)
             .Select(o => new CompletionItem(o.QualifiedName, CompletionKind.Table, o.Kind == DbNodeKind.View ? "view" : "table"))
             .ToList();
-
-    // Columns of the aliased table when the alias resolves against the FROM/JOIN clauses; otherwise
-    // (unknown alias, or mid-typing before FROM exists) fall back to every column so the box still
-    // offers something useful, distinguishing them by owning table in Detail.
-    private static IReadOnlyList<CompletionItem> ColumnsFor(
-        string alias, string fragment, string sql, SchemaSnapshot snapshot, IReadOnlySet<string> keywords)
-    {
-        var table = ResolveAlias(alias, sql, snapshot, keywords);
-        var candidates = table is not null
-            ? table.Columns.Select(c => (Column: c, Table: table))
-            : snapshot.Objects.SelectMany(o => o.Columns.Select(c => (Column: c, Table: o)));
-
-        return RankBy(candidates.ToList(), t => t.Column.Name, fragment)
-            .Select(t => new CompletionItem(t.Column.Name, CompletionKind.Column, t.Column.Type ?? t.Table.QualifiedName))
-            .ToList();
-    }
 
     // Each category is capped BEFORE concatenating, not after: a schema with hundreds of tables/columns
     // would otherwise fill Suggest's overall MaxItems on its own and starve keywords out of the list
@@ -146,12 +185,7 @@ public static class SqlCompletionProvider
             .Select(o => new CompletionItem(o.QualifiedName, CompletionKind.Table, o.Kind == DbNodeKind.View ? "view" : "table"))
             .Take(BroadCategoryCap);
 
-        var columns = RankBy(
-                snapshot.Objects.SelectMany(o => o.Columns.Select(c => (Column: c, Table: o))).ToList(),
-                t => t.Column.Name,
-                fragment)
-            .Select(t => new CompletionItem(t.Column.Name, CompletionKind.Column, t.Column.Type ?? t.Table.QualifiedName))
-            .Take(BroadCategoryCap);
+        var columns = RankBy(AllColumns(snapshot), c => c.Text, fragment).Take(BroadCategoryCap);
 
         var kw = RankBy(keywords, k => k, fragment)
             .Select(k => new CompletionItem(k, CompletionKind.Keyword, "keyword"))
@@ -160,43 +194,7 @@ public static class SqlCompletionProvider
         return tables.Concat(columns).Concat(kw).ToList();
     }
 
-    private static SchemaObject? ResolveAlias(string alias, string sql, SchemaSnapshot snapshot, IReadOnlySet<string> keywords)
-    {
-        var aliasMap = BuildAliasMap(sql, keywords);
-        return aliasMap.TryGetValue(alias, out var tableName)
-            ? snapshot.Objects.FirstOrDefault(o => o.Name.Equals(tableName, StringComparison.OrdinalIgnoreCase))
-            : null;
-    }
-
-    // Every FROM/JOIN target maps to itself (its unqualified name is always a valid "alias"), plus
-    // an explicit alias when one follows and isn't actually the next clause's keyword.
-    private static Dictionary<string, string> BuildAliasMap(string sql, IReadOnlySet<string> keywords)
-    {
-        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (Match m in TableRefPattern.Matches(sql))
-        {
-            var tableRef = m.Groups[1].Value;
-            var lastPart = tableRef.Contains('.') ? tableRef[(tableRef.LastIndexOf('.') + 1)..] : tableRef;
-            var tableName = Unquote(lastPart);
-            map[tableName] = tableName;
-
-            if (m.Groups[2].Success)
-            {
-                var aliasCandidate = Unquote(m.Groups[2].Value);
-                if (!keywords.Contains(aliasCandidate.ToUpperInvariant()))
-                {
-                    map[aliasCandidate] = tableName;
-                }
-            }
-        }
-
-        return map;
-    }
-
-    private static string Unquote(string identifier) =>
-        identifier is ['"', .., '"'] ? identifier[1..^1] : identifier;
-
-    // Fragment-ranked subset via the same TryRank order quick-open (1.2) uses; an empty fragment
+    // Fragment-ranked subset via the same TryRank order quick-open uses; an empty fragment
     // (Ctrl+Space with nothing typed yet) keeps every candidate, capped later by Suggest.
     private static IEnumerable<T> RankBy<T>(IEnumerable<T> items, Func<T, string> text, string fragment)
     {
