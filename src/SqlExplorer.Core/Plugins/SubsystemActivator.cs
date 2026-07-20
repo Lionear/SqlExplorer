@@ -1,4 +1,5 @@
 using SqlExplorer.Sdk.Extensibility;
+using SqlExplorer.Sdk.Provisioning;
 
 namespace SqlExplorer.Core.Plugins;
 
@@ -30,6 +31,7 @@ public sealed class SubsystemActivator
     private readonly Func<string, IManagedConnections> _connectionsProvider;
     private readonly IServiceProvider? _hostServices;
     private readonly IReadOnlyDictionary<string, IReadOnlySet<Type>> _pluginServiceTypes;
+    private readonly IProviderCatalog? _providerCatalog;
     private readonly Action<string>? _log;
 
     /// <param name="storageProvider">Builds the plugin-scoped storage for a plugin id; wired into the context
@@ -41,19 +43,23 @@ public sealed class SubsystemActivator
     /// to plugins that declared <see cref="PluginCapabilities.Services"/>.</param>
     /// <param name="pluginServiceTypes">Per-plugin set of service types it registered — the resolver's
     /// allow-list. A plugin absent here (or without the capability) gets no <c>Services</c>.</param>
+    /// <param name="providerCatalog">Read-only view of installed providers' container recipes, handed to a
+    /// plugin only when it declared <see cref="PluginCapabilities.Providers"/>.</param>
     public SubsystemActivator(
         IReadOnlyList<SubsystemActivation> activations,
         Func<string, IPluginStorage> storageProvider,
         Func<string, IManagedConnections> connectionsProvider,
         Action<string>? log = null,
         IServiceProvider? hostServices = null,
-        IReadOnlyDictionary<string, IReadOnlySet<Type>>? pluginServiceTypes = null)
+        IReadOnlyDictionary<string, IReadOnlySet<Type>>? pluginServiceTypes = null,
+        IProviderCatalog? providerCatalog = null)
     {
         _activations = activations;
         _storageProvider = storageProvider;
         _connectionsProvider = connectionsProvider;
         _hostServices = hostServices;
         _pluginServiceTypes = pluginServiceTypes ?? new Dictionary<string, IReadOnlySet<Type>>();
+        _providerCatalog = providerCatalog;
         _log = log;
     }
 
@@ -73,7 +79,8 @@ public sealed class SubsystemActivator
             {
                 var context = SubsystemPluginLoader.CreateContext(
                     activation.Id, activation.Capabilities, _storageProvider,
-                    activation.Localizer, _log, _connectionsProvider, PluginServicesFor(activation.Id));
+                    activation.Localizer, _log, _connectionsProvider, PluginServicesFor(activation.Id),
+                    _providerCatalog);
                 activation.Plugin.Initialize(context);
                 active.Add(activation.Plugin);
 

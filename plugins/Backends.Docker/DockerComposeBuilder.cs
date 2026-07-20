@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using SqlExplorer.Sdk.Provisioning;
 
 namespace SqlExplorer.Backends.Docker;
 
@@ -33,43 +34,68 @@ public sealed record ContainerSpec(
 /// <em>empty</em> local instance that matches the connection (engine, version, port, credentials) — schema
 /// and data stay out (that's Universal Backup's job). Pure and deterministic: no I/O, no Docker, no clock —
 /// so it's exhaustively unit-testable and the CLI/regie layers (<c>IDockerCli</c>, <c>ContainerService</c>)
-/// build on top of it. One <see cref="EngineSpec"/> per containerisable engine; SQLite and unknown ids are
-/// unsupported (no server to run).
+/// build on top of it. One <see cref="ContainerRecipe"/> per containerisable engine; SQLite and unknown ids
+/// are unsupported (no server to run).
+/// <para>
+/// The recipe table is a merge: a built-in fallback for the seven first-party engines, overlaid with any
+/// recipes a provider declared and the host handed in via <c>IProviderCatalog</c> (SE-166). A provider-declared
+/// recipe <em>wins</em> over the built-in fallback for the same id (so a provider owns its own provisioning),
+/// and a third-party engine that ships a recipe becomes containerisable with no change here.
+/// </para>
 /// </summary>
 public sealed class DockerComposeBuilder
 {
-    /// <summary>The engine ids that can be spun up as a container (everything except file-based SQLite) —
-    /// the choices the "New container" dialog offers.</summary>
-    public IReadOnlyList<string> SupportedProviderIds => Engines.Keys.ToList();
+    private readonly IReadOnlyDictionary<string, ContainerRecipe> _recipes;
 
-    /// <summary>True when this engine can be spun up as a container (everything except file-based SQLite).</summary>
-    public bool Supports(string providerId) => Engines.ContainsKey(providerId);
+    /// <param name="external">Provider-declared recipes read from the host (via <c>IProviderCatalog</c>); each
+    /// overrides the built-in fallback for its id. Null/empty = built-in table only (the capability wasn't
+    /// granted, or nothing declared a recipe) — every first-party engine still works.</param>
+    public DockerComposeBuilder(IEnumerable<ProviderRecipe>? external = null)
+    {
+        var merged = new Dictionary<string, ContainerRecipe>(BuiltIn, StringComparer.Ordinal);
+        if (external is not null)
+        {
+            foreach (var pr in external)
+            {
+                merged[pr.ProviderId] = pr.Recipe;
+            }
+        }
+
+        _recipes = merged;
+    }
+
+    /// <summary>The engine ids that can be spun up as a container (every engine with a recipe) — the choices
+    /// the "New container" dialog offers.</summary>
+    public IReadOnlyList<string> SupportedProviderIds => _recipes.Keys.ToList();
+
+    /// <summary>True when this engine can be spun up as a container.</summary>
+    public bool Supports(string providerId) => _recipes.ContainsKey(providerId);
 
     /// <summary>The base image for an engine (e.g. <c>postgres</c>), or null if unsupported.</summary>
-    public string? ImageName(string providerId) => Engines.TryGetValue(providerId, out var e) ? e.Image : null;
+    public string? ImageName(string providerId) => _recipes.TryGetValue(providerId, out var e) ? e.Image : null;
 
     /// <summary>The default image tag for an engine (e.g. <c>16</c>), or null if unsupported.</summary>
-    public string? DefaultTag(string providerId) => Engines.TryGetValue(providerId, out var e) ? e.DefaultTag : null;
+    public string? DefaultTag(string providerId) => _recipes.TryGetValue(providerId, out var e) ? e.DefaultTag : null;
 
     /// <summary>The in-container port an engine listens on (e.g. 5432), or null if unsupported.</summary>
-    public int? ContainerPort(string providerId) => Engines.TryGetValue(providerId, out var e) ? e.ContainerPort : null;
+    public int? ContainerPort(string providerId) => _recipes.TryGetValue(providerId, out var e) ? e.ContainerPort : null;
 
     /// <summary>The engine's default admin user (e.g. <c>postgres</c>), or null if unsupported / not applicable.</summary>
     public string? DefaultUser(string providerId) =>
-        Engines.TryGetValue(providerId, out var e) && e.DefaultUser.Length > 0 ? e.DefaultUser : null;
+        _recipes.TryGetValue(providerId, out var e) && e.DefaultUser.Length > 0 ? e.DefaultUser : null;
 
     /// <summary>The engine's default admin password prefill (e.g. <c>changeme</c>), or null if unsupported.</summary>
     public string? DefaultPassword(string providerId) =>
-        Engines.TryGetValue(providerId, out var e) && e.DefaultPassword.Length > 0 ? e.DefaultPassword : null;
+        _recipes.TryGetValue(providerId, out var e) && e.DefaultPassword.Length > 0 ? e.DefaultPassword : null;
 
     /// <summary>The host port this connection would publish (the connection's own port, or Elasticsearch's
     /// URL port), falling back to the engine default — the pre-fill for the create dialog's port field.</summary>
     public int? DefaultHostPort(string providerId, IReadOnlyDictionary<string, string?> values) =>
-        Engines.TryGetValue(providerId, out var e) ? ResolvePort(providerId, values, e.ContainerPort) : null;
+        _recipes.TryGetValue(providerId, out var e) ? ResolvePort(e, values) : null;
 
     public string Build(ContainerSpec spec, SnippetFormat format)
     {
-        if (!Engines.TryGetValue(spec.ProviderId, out var engine))
+        if (!_recipes.TryGetValue(spec.ProviderId, out var engine))
         {
             throw new NotSupportedException($"No container recipe for provider '{spec.ProviderId}'.");
         }
@@ -77,14 +103,14 @@ public sealed class DockerComposeBuilder
         var values = spec.Values;
         var tag = Blank(spec.Tag) ? engine.DefaultTag : spec.Tag!.Trim();
         var name = Blank(spec.ContainerName) ? $"{spec.ProviderId}-local" : spec.ContainerName!.Trim();
-        var hostPort = spec.HostPort ?? ResolvePort(spec.ProviderId, values, engine.ContainerPort);
+        var hostPort = spec.HostPort ?? ResolvePort(engine, values);
 
-        // Redis/Dragonfly "database" is a numeric index, not a named database → never a MYSQL_DATABASE-style env.
-        var namedDb = spec.ProviderId is "redis" or "dragonflydb"
-            ? null
-            : Blank(spec.Database) ? NullIfBlank(Get(values, "database")) : spec.Database!.Trim();
+        // A numeric-index "database" (Redis/Dragonfly, NamedDatabase == false) is never a create-on-boot database.
+        var namedDb = engine.NamedDatabase
+            ? Blank(spec.Database) ? NullIfBlank(Get(values, "database")) : spec.Database!.Trim()
+            : null;
 
-        var ctx = new EnvInput(
+        var ctx = new ContainerEnvInput(
             values,
             namedDb,
             Value(values, "username", engine.DefaultUser),
@@ -99,26 +125,24 @@ public sealed class DockerComposeBuilder
             : RenderRun(engine, name, image, hostPort, env, command);
     }
 
-    /// <summary>The host port to publish: the connection's own port, or (Elasticsearch) the port inside its
-    /// <c>url</c>, falling back to the engine's default container port.</summary>
-    internal static int ResolvePort(string providerId, IReadOnlyDictionary<string, string?> values, int fallback)
+    /// <summary>The host port to publish: the recipe's own override (e.g. Elasticsearch's URL port) if any,
+    /// else the connection's <c>port</c> value, falling back to the engine's default container port.</summary>
+    internal static int ResolvePort(ContainerRecipe recipe, IReadOnlyDictionary<string, string?> values)
     {
-        if (providerId == "elasticsearch")
+        if (recipe.HostPortOverride?.Invoke(values) is { } overridden && overridden > 0)
         {
-            return Uri.TryCreate(Get(values, "url"), UriKind.Absolute, out var uri) && !uri.IsDefaultPort
-                ? uri.Port
-                : fallback;
+            return overridden;
         }
 
         return int.TryParse(Get(values, "port"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var port) && port > 0
             ? port
-            : fallback;
+            : recipe.ContainerPort;
     }
 
     // ---- rendering --------------------------------------------------------------------------------
 
     private static string RenderCompose(
-        EngineSpec engine, string name, string image, int hostPort,
+        ContainerRecipe engine, string name, string image, int hostPort,
         IReadOnlyList<KeyValuePair<string, string>> env, IReadOnlyList<string> command)
     {
         var sb = new StringBuilder();
@@ -156,7 +180,7 @@ public sealed class DockerComposeBuilder
     }
 
     private static string RenderRun(
-        EngineSpec engine, string name, string image, int hostPort,
+        ContainerRecipe engine, string name, string image, int hostPort,
         IReadOnlyList<KeyValuePair<string, string>> env, IReadOnlyList<string> command)
     {
         var sb = new StringBuilder();
@@ -179,27 +203,13 @@ public sealed class DockerComposeBuilder
         return sb.ToString();
     }
 
-    // ---- engine table -----------------------------------------------------------------------------
+    // ---- built-in fallback recipe table -----------------------------------------------------------
 
-    private readonly record struct EnvInput(
-        IReadOnlyDictionary<string, string?> Values,
-        string? Database,
-        string User,
-        string Password);
-
-    private sealed record EngineSpec(
-        string Image,
-        string DefaultTag,
-        int ContainerPort,
-        string DataPath,
-        string DefaultUser,
-        string DefaultPassword,
-        Func<EnvInput, IReadOnlyList<KeyValuePair<string, string>>> Environment,
-        Func<EnvInput, IReadOnlyList<string>>? Command = null,
-        bool Memlock = false,
-        bool DatabaseAfterStart = false);
-
-    private static readonly IReadOnlyDictionary<string, EngineSpec> Engines = new Dictionary<string, EngineSpec>(StringComparer.Ordinal)
+    // The first-party engines. Kept as a fallback (SE-166): a provider that declares its own ContainerRecipe
+    // overrides its entry here, and this table covers every engine whose provider does not (or when the
+    // "providers" capability isn't granted). Postgres is dogfooded from the Postgres provider, so its entry
+    // here is only reached when that recipe is absent — it stays for backwards-compatibility.
+    private static readonly IReadOnlyDictionary<string, ContainerRecipe> BuiltIn = new Dictionary<string, ContainerRecipe>(StringComparer.Ordinal)
     {
         ["postgres"] = new("postgres", "16", 5432, "/var/lib/postgresql/data", "postgres", "changeme",
             e => Env(
@@ -221,24 +231,30 @@ public sealed class DockerComposeBuilder
         ["mongodb"] = new("mongo", "7", 27017, "/data/db", "root", "changeme", MongoEnv),
 
         // Redis auth is a server flag, not an env var — omitted entirely when the connection has no password.
+        // Its "database" is a numeric index, not a named database (NamedDatabase: false).
         ["redis"] = new("redis", "7", 6379, "/data", "", "",
-            _ => [], Command: e => Blank(e.Password) ? [] : ["redis-server", "--requirepass", e.Password]),
+            _ => [], Command: e => Blank(e.Password) ? [] : ["redis-server", "--requirepass", e.Password],
+            NamedDatabase: false),
 
         // Dragonfly is Redis-wire-compatible; its entrypoint is the daemon, so command args are bare flags,
-        // and it wants an unlimited memlock ulimit.
+        // it wants an unlimited memlock ulimit, and its "database" is likewise a numeric index.
         ["dragonflydb"] = new("docker.dragonflydb.io/dragonflydb/dragonfly", "latest", 6379, "/data", "", "",
-            _ => [], Command: e => Blank(e.Password) ? [] : ["--requirepass", e.Password], Memlock: true),
+            _ => [], Command: e => Blank(e.Password) ? [] : ["--requirepass", e.Password],
+            Memlock: true, NamedDatabase: false),
 
+        // Elasticsearch keeps its port inside the connection's `url`, not a plain `port` field (HostPortOverride).
         ["elasticsearch"] = new("docker.elastic.co/elasticsearch/elasticsearch", "8.13.0", 9200, "/usr/share/elasticsearch/data", "elastic", "changeme",
             e => Env(
                 ("discovery.type", "single-node"),
                 ("xpack.security.enabled", "true"),
-                ("ELASTIC_PASSWORD", e.Password))),
+                ("ELASTIC_PASSWORD", e.Password)),
+            HostPortOverride: values =>
+                Uri.TryCreate(Get(values, "url"), UriKind.Absolute, out var uri) && !uri.IsDefaultPort ? uri.Port : null),
     };
 
     // MySQL's image always needs a root password; a non-root connection user gets MYSQL_USER/MYSQL_PASSWORD
     // on top (the image creates that user and grants it the initial database).
-    private static IReadOnlyList<KeyValuePair<string, string>> MySqlEnv(EnvInput e)
+    private static IReadOnlyList<KeyValuePair<string, string>> MySqlEnv(ContainerEnvInput e)
     {
         var list = new List<KeyValuePair<string, string>> { new("MYSQL_ROOT_PASSWORD", e.Password) };
         if (e.Database is { Length: > 0 })
@@ -257,7 +273,7 @@ public sealed class DockerComposeBuilder
 
     // Mongo only enables auth when the connection actually carries a username; otherwise the container runs
     // open (matching a no-auth local connection).
-    private static IReadOnlyList<KeyValuePair<string, string>> MongoEnv(EnvInput e)
+    private static IReadOnlyList<KeyValuePair<string, string>> MongoEnv(ContainerEnvInput e)
     {
         var list = new List<KeyValuePair<string, string>>();
         if (!Blank(Get(e.Values, "username")))

@@ -1,5 +1,6 @@
 using SqlExplorer.Core.Plugins;
 using SqlExplorer.Sdk.Extensibility;
+using SqlExplorer.Sdk.Provisioning;
 
 namespace SqlExplorer.Core.Tests.Extensibility;
 
@@ -61,5 +62,29 @@ public class SubsystemPluginLoaderTests
             "x", [PluginCapabilities.Services], _ => new FakeStorage(), localizer: null, log: null, services: resolver);
 
         Assert.Same(resolver, ctx.Services);
+    }
+
+    private sealed class FakeCatalog : IProviderCatalog
+    {
+        public IReadOnlyList<ProviderRecipe> ContainerRecipes() => [];
+    }
+
+    [Fact] // No "providers" capability → context.Providers is null even when a catalog was supplied.
+    public void Providers_is_gated_off_without_the_capability()
+    {
+        var ctx = SubsystemPluginLoader.CreateContext(
+            "x", [], _ => new FakeStorage(), localizer: null, log: null, providers: new FakeCatalog());
+
+        Assert.Null(ctx.Providers);
+    }
+
+    [Fact]
+    public void Providers_is_present_with_the_capability()
+    {
+        var catalog = new FakeCatalog();
+        var ctx = SubsystemPluginLoader.CreateContext(
+            "x", [PluginCapabilities.Providers], _ => new FakeStorage(), localizer: null, log: null, providers: catalog);
+
+        Assert.Same(catalog, ctx.Providers);
     }
 }

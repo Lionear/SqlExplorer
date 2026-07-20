@@ -1,6 +1,7 @@
 using SqlExplorer.Core.Localization;
 using SqlExplorer.Sdk.Extensibility;
 using SqlExplorer.Sdk.Localization;
+using SqlExplorer.Sdk.Provisioning;
 using SqlExplorer.Sdk.Tools;
 
 namespace SqlExplorer.Core.Plugins;
@@ -117,12 +118,14 @@ public sealed class SubsystemPluginLoader
         IPluginLocalizer? localizer,
         Action<string>? log,
         Func<string, IManagedConnections>? connectionsProvider = null,
-        IServiceProvider? services = null) =>
+        IServiceProvider? services = null,
+        IProviderCatalog? providers = null) =>
         new PluginRuntimeContext(
             pluginId,
             capabilities.Contains(PluginCapabilities.Storage) ? storageProvider(pluginId) : null,
             capabilities.Contains(PluginCapabilities.Connections) ? connectionsProvider?.Invoke(pluginId) : null,
             localizer ?? NullPluginLocalizer.Instance,
             log,
-            capabilities.Contains(PluginCapabilities.Services) ? services : null);
+            capabilities.Contains(PluginCapabilities.Services) ? services : null,
+            capabilities.Contains(PluginCapabilities.Providers) ? providers : null);
 }

@@ -172,7 +172,8 @@ public static class AppServices
             id => new ManagedConnections(id, sp.GetRequiredService<ConnectionService>()),
             msg => Console.Error.WriteLine($"[subsystem] {msg}"),
             hostServices: sp,
-            pluginServiceTypes: pluginServiceTypes));
+            pluginServiceTypes: pluginServiceTypes,
+            providerCatalog: new HostProviderCatalog(sp.GetRequiredService<IDbProviderRegistry>())));
 
         // Host-side view of everything installed (loaded or not, enabled or not) for the Plugin Store's
         // Installed tab. Enable/disable/uninstall stage a change here, applied on next startup.
