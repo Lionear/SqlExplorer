@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using SqlExplorer.Core.Completion;
 using SqlExplorer.Core.Schema;
+using SqlExplorer.Sdk;
 using SqlExplorer.Sdk.Schema;
 
 namespace SqlExplorer.Core.Tests.Completion;
@@ -25,11 +26,18 @@ public class SqlCompletionProviderTests
     private static readonly IReadOnlySet<string> Keywords =
         new HashSet<string>(System.StringComparer.OrdinalIgnoreCase) { "SELECT", "FROM", "WHERE", "JOIN", "GROUP", "ORDER" };
 
+    private static readonly IReadOnlyList<SqlFunction> Funcs =
+    [
+        new("coalesce", "coalesce(value [, ...])"),
+        new("now", "now()"),
+        new("count", "count(* | expression)")
+    ];
+
     private static CompletionResult At(string queryWithCaret)
     {
         var caret = queryWithCaret.IndexOf('|');
         var sql = queryWithCaret.Remove(caret, 1);
-        return SqlCompletionProvider.Suggest(sql, caret, Schema, Keywords);
+        return SqlCompletionProvider.Suggest(sql, caret, Schema, Keywords, Funcs);
     }
 
     private static IReadOnlyList<string> Texts(CompletionResult r) => r.Items.Select(i => i.Text).ToList();
@@ -109,6 +117,37 @@ public class SqlCompletionProviderTests
         var result = At("SELECT * FROM users u; SELECT o.| FROM orders o");
 
         Assert.Equal(["id", "total", "user_id"], Texts(result).OrderBy(x => x));
+    }
+
+    [Fact] // SE-149 phase 2: functions appear in expression positions, tagged Function with their signature.
+    public void Select_list_offers_functions_with_their_signature()
+    {
+        var result = At("SELECT coa| FROM users u");
+
+        var fn = Assert.Single(result.Items, i => i.Kind == CompletionKind.Function);
+        Assert.Equal("coalesce", fn.Text);
+        Assert.Equal("coalesce(value [, ...])", fn.Detail);
+    }
+
+    [Fact]
+    public void Where_clause_offers_functions()
+    {
+        var result = At("SELECT * FROM users u WHERE no|");
+        Assert.Contains(result.Items, i => i is { Kind: CompletionKind.Function, Text: "now" });
+    }
+
+    [Fact] // A FROM position is for relations only — functions must not appear there.
+    public void From_position_offers_no_functions()
+    {
+        var result = At("SELECT * FROM |");
+        Assert.DoesNotContain(result.Items, i => i.Kind == CompletionKind.Function);
+    }
+
+    [Fact] // After "alias." only that source's columns are offered, never functions.
+    public void Alias_dot_offers_no_functions()
+    {
+        var result = At("SELECT u.| FROM users u");
+        Assert.DoesNotContain(result.Items, i => i.Kind == CompletionKind.Function);
     }
 
     [Fact]

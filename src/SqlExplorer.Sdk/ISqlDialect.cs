@@ -9,6 +9,11 @@ public interface ISqlDialect
 {
     IReadOnlySet<string> Keywords { get; }
 
+    /// <summary>The dialect's built-in functions, offered by completion in expression positions with their
+    /// signature (SE-149 phase 2). Default empty — a dialect that declares none, or a plugin built against an
+    /// older host, simply contributes no function suggestions.</summary>
+    IReadOnlyList<SqlFunction> Functions => [];
+
     string QuoteIdentifier(string identifier);
 
     /// <summary>

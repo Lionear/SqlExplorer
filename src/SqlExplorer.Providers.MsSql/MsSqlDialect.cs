@@ -14,6 +14,41 @@ public sealed class MsSqlDialect : ISqlDialect
         "ASC", "DESC", "COUNT", "SUM", "AVG", "MIN", "MAX"
     };
 
+    // A representative built-in catalogue offered by completion (SE-149 phase 2) — not exhaustive.
+    public IReadOnlyList<SqlFunction> Functions { get; } =
+    [
+        new("count", "COUNT(* | expression)", "Number of rows / non-null values."),
+        new("sum", "SUM(expression)", "Total of the values."),
+        new("avg", "AVG(expression)", "Arithmetic mean."),
+        new("min", "MIN(expression)", "Smallest value."),
+        new("max", "MAX(expression)", "Largest value."),
+        new("string_agg", "STRING_AGG(expression, separator)", "Concatenate values with a separator."),
+        new("coalesce", "COALESCE(value [, ...])", "First non-null argument."),
+        new("isnull", "ISNULL(value, fallback)", "Fallback when the value is NULL."),
+        new("nullif", "NULLIF(value1, value2)", "NULL when the two are equal, else value1."),
+        new("iif", "IIF(condition, true_value, false_value)", "Inline conditional."),
+        new("lower", "LOWER(string)", "Lower-case the string."),
+        new("upper", "UPPER(string)", "Upper-case the string."),
+        new("len", "LEN(string)", "Length excluding trailing spaces."),
+        new("trim", "TRIM(string)", "Strip leading/trailing spaces."),
+        new("substring", "SUBSTRING(string, start, length)", "Extract a substring."),
+        new("replace", "REPLACE(string, from, to)", "Replace all occurrences."),
+        new("concat", "CONCAT(value [, ...])", "Concatenate the arguments."),
+        new("charindex", "CHARINDEX(substr, string)", "Position of a substring (1-based)."),
+        new("left", "LEFT(string, n)", "Leftmost n characters."),
+        new("right", "RIGHT(string, n)", "Rightmost n characters."),
+        new("abs", "ABS(number)", "Absolute value."),
+        new("round", "ROUND(number, decimals)", "Round to the given precision."),
+        new("ceiling", "CEILING(number)", "Round up."),
+        new("floor", "FLOOR(number)", "Round down."),
+        new("getdate", "GETDATE()", "Current date and time."),
+        new("dateadd", "DATEADD(part, number, date)", "Add an interval to a date."),
+        new("datediff", "DATEDIFF(part, start, end)", "Difference between two dates."),
+        new("datepart", "DATEPART(part, date)", "Get a subfield of a date."),
+        new("format", "FORMAT(value, format)", "Format a value as text."),
+        new("cast", "CAST(expression AS type)", "Convert to another type.")
+    ];
+
     // SQL Server quotes identifiers with brackets; escape an embedded ] by doubling it.
     public string QuoteIdentifier(string identifier) =>
         $"[{identifier.Replace("]", "]]")}]";

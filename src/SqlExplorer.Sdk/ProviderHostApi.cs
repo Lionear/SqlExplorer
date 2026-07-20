@@ -128,6 +128,11 @@ public static class ProviderHostApi
     //                   accumulates additive SDK surface under one version, bumped once at release (a plugin
     //                   that does not override it returns null — not containerisable, e.g. SQLite — and the
     //                   Docker plugin falls back to its built-in table, so nothing regresses).
+    //   also in v26 (2026-07-20): added ISqlDialect.Functions (IReadOnlyList<SqlFunction>, default empty via a
+    //                   default-interface member) — a dialect's built-in function catalogue, offered by
+    //                   scope-aware completion in expression positions with its signature (SE-149 phase 2).
+    //                   Purely additive and folded into the unreleased v26: a dialect (or older plugin) that
+    //                   does not override it contributes no functions, so nothing regresses.
     public const int Version = 26;
 
     /// <summary>Oldest plugin ABI this host still loads. Additive bumps (v11→v22 style) keep this fixed;

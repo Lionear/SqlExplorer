@@ -372,7 +372,7 @@ public partial class DocumentViewModel : ViewModelBase
     {
         var dialect = _providers.Get(Connection.ProviderId).Dialect;
         var snapshot = _schemaCache.Get(Connection.Id) ?? SchemaSnapshot.Empty;
-        return SqlCompletionProvider.Suggest(sql, caret, snapshot, dialect.Keywords);
+        return SqlCompletionProvider.Suggest(sql, caret, snapshot, dialect.Keywords, dialect.Functions);
     }
 
     public ILocalizer Loc { get; }

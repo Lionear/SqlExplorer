@@ -7,6 +7,7 @@ public enum CompletionKind
 {
     Table,
     Column,
+    Function,
     Keyword
 }
 
@@ -30,11 +31,14 @@ public static class SqlCompletionProvider
 {
     private const int MaxItems = 200;
 
-    public static CompletionResult Suggest(string sql, int caret, SchemaSnapshot snapshot, IReadOnlySet<string> keywords)
+    public static CompletionResult Suggest(
+        string sql, int caret, SchemaSnapshot snapshot, IReadOnlySet<string> keywords,
+        IReadOnlyList<SqlFunction>? functions = null)
     {
         caret = Math.Clamp(caret, 0, sql.Length);
         var (start, fragment, alias) = SplitWord(sql, caret);
         var scope = SqlScopeAnalyzer.Analyze(sql, caret);
+        functions ??= [];
 
         var items = alias is not null
             ? ColumnsForAlias(alias, fragment, scope, snapshot)
@@ -43,8 +47,8 @@ public static class SqlCompletionProvider
                 SqlClause.From => TablesAndCtes(fragment, snapshot, scope),
                 SqlClause.Select or SqlClause.Where or SqlClause.On
                     or SqlClause.GroupBy or SqlClause.Having or SqlClause.OrderBy
-                    => ScopedColumns(fragment, scope, snapshot, keywords),
-                _ => Broad(fragment, snapshot, keywords)
+                    => ScopedColumns(fragment, scope, snapshot, keywords, functions),
+                _ => Broad(fragment, snapshot, keywords, functions)
             };
 
         return new CompletionResult(start, items.Take(MaxItems).ToList());
@@ -107,7 +111,8 @@ public static class SqlCompletionProvider
     // (alias-qualified in the detail), plus keywords. Falls back to the broad mix when no source resolves — an
     // incomplete query, or one whose tables aren't in the snapshot — so the box still offers something.
     private static IReadOnlyList<CompletionItem> ScopedColumns(
-        string fragment, SqlScope scope, SchemaSnapshot snapshot, IReadOnlySet<string> keywords)
+        string fragment, SqlScope scope, SchemaSnapshot snapshot,
+        IReadOnlySet<string> keywords, IReadOnlyList<SqlFunction> functions)
     {
         var columns = scope.Sources
             .SelectMany(s => ResolveColumns(s, snapshot))
@@ -115,7 +120,7 @@ public static class SqlCompletionProvider
 
         if (columns.Count == 0)
         {
-            return Broad(fragment, snapshot, keywords);
+            return Broad(fragment, snapshot, keywords, functions);
         }
 
         var ranked = RankBy(columns, c => c.Text, fragment).Take(BroadCategoryCap);
@@ -123,7 +128,7 @@ public static class SqlCompletionProvider
             .Select(k => new CompletionItem(k, CompletionKind.Keyword, "keyword"))
             .Take(BroadCategoryCap);
 
-        return ranked.Concat(kw).ToList();
+        return ranked.Concat(Functions(fragment, functions)).Concat(kw).ToList();
     }
 
     // Columns of the aliased source when the alias resolves in scope (a base table, or a CTE/derived table with
@@ -179,7 +184,8 @@ public static class SqlCompletionProvider
     // entirely (they're always small in number, so this cap essentially never trims them).
     private const int BroadCategoryCap = 60;
 
-    private static IReadOnlyList<CompletionItem> Broad(string fragment, SchemaSnapshot snapshot, IReadOnlySet<string> keywords)
+    private static IReadOnlyList<CompletionItem> Broad(
+        string fragment, SchemaSnapshot snapshot, IReadOnlySet<string> keywords, IReadOnlyList<SqlFunction> functions)
     {
         var tables = RankBy(snapshot.Objects, o => o.QualifiedName, fragment)
             .Select(o => new CompletionItem(o.QualifiedName, CompletionKind.Table, o.Kind == DbNodeKind.View ? "view" : "table"))
@@ -191,8 +197,14 @@ public static class SqlCompletionProvider
             .Select(k => new CompletionItem(k, CompletionKind.Keyword, "keyword"))
             .Take(BroadCategoryCap);
 
-        return tables.Concat(columns).Concat(kw).ToList();
+        return tables.Concat(columns).Concat(Functions(fragment, functions)).Concat(kw).ToList();
     }
+
+    // Function catalogue entries for an expression position: name inserted, signature shown as the detail.
+    private static IEnumerable<CompletionItem> Functions(string fragment, IReadOnlyList<SqlFunction> functions) =>
+        RankBy(functions, f => f.Name, fragment)
+            .Select(f => new CompletionItem(f.Name, CompletionKind.Function, f.Signature))
+            .Take(BroadCategoryCap);
 
     // Fragment-ranked subset via the same TryRank order quick-open uses; an empty fragment
     // (Ctrl+Space with nothing typed yet) keeps every candidate, capped later by Suggest.

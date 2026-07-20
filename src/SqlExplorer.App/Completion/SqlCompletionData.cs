@@ -17,12 +17,13 @@ public sealed class SqlCompletionData(CompletionItem item) : ICompletionData
 
     public object Description => item.Detail ?? item.Kind.ToString();
 
-    // Columns are the most common pick, then tables, then keywords last — matches how often each
-    // kind is actually what you were reaching for while typing a query.
+    // Columns are the most common pick, then tables and functions, then keywords last — matches how often
+    // each kind is actually what you were reaching for while typing a query.
     public double Priority => item.Kind switch
     {
         CompletionKind.Column => 2,
         CompletionKind.Table => 1,
+        CompletionKind.Function => 1,
         _ => 0
     };
 
