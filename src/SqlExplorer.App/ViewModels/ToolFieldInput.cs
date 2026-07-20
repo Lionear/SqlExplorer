@@ -11,10 +11,16 @@ public partial class ToolFieldInput : ObservableObject
     private readonly IPluginLocalizer _localizer;
 
     public ToolFieldInput(ToolField field, IPluginLocalizer localizer)
+        : this(field, localizer, [])
+    {
+    }
+
+    public ToolFieldInput(ToolField field, IPluginLocalizer localizer, IReadOnlyList<ToolConnectionOption> connections)
     {
         Field = field;
         _localizer = localizer;
         _value = field.Default;
+        ConnectionOptions = connections;
     }
 
     public ToolField Field { get; }
@@ -35,11 +41,24 @@ public partial class ToolFieldInput : ObservableObject
     public bool IsBool => Field.Type == ToolFieldType.Bool;
     public bool IsChoice => Field.Type == ToolFieldType.Choice;
     public bool IsPassword => Field.Type == ToolFieldType.Password;
+    public bool IsConnectionPicker => Field.Type == ToolFieldType.ConnectionPicker;
 
     /// <summary>Text/Password/File all show the free-text box (File adds a Browse button beside it).</summary>
     public bool IsText => Field.Type is ToolFieldType.Text or ToolFieldType.Password or ToolFieldType.File;
 
     public IReadOnlyList<string> Choices => Field.Choices ?? [];
+
+    /// <summary>Candidate connections for a <see cref="ToolFieldType.ConnectionPicker"/> field, supplied by
+    /// the host (empty for every other field type).</summary>
+    public IReadOnlyList<ToolConnectionOption> ConnectionOptions { get; }
+
+    /// <summary>The picked connection; its id is stored in <see cref="Value"/> so it flows through the same
+    /// inputs dictionary as every other field.</summary>
+    public ToolConnectionOption? SelectedConnection
+    {
+        get => ConnectionOptions.FirstOrDefault(c => c.Id == Value);
+        set => Value = value?.Id;
+    }
 
     // Masked bullet for a password unless revealed; (char)0 shows plaintext.
     public char PasswordChar => IsPassword && !RevealPassword ? '•' : '\0';

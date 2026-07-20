@@ -2,7 +2,9 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Threading;
+using SqlExplorer.Core.Connections;
 using SqlExplorer.Core.Localization;
+using SqlExplorer.Core.Providers;
 using SqlExplorer.Core.Settings;
 using SqlExplorer.Sdk;
 using SqlExplorer.Sdk.Connections;
@@ -29,6 +31,8 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
 
     private readonly IPluginSettingsStore _pluginStore;
     private readonly IToolRegistry _tools;
+    private readonly ConnectionService _connections;
+    private readonly IDbProviderRegistry _providers;
 
     private IToolPlugin _tool = null!;
     private IPluginLocalizer _pluginLoc = EmptyPluginLocalizer.Instance;
@@ -38,11 +42,18 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
     private string _providerId = string.Empty;
     private CancellationTokenSource? _cts;
 
-    public ToolDialogViewModel(ILocalizer localizer, IPluginSettingsStore pluginStore, IToolRegistry tools)
+    public ToolDialogViewModel(
+        ILocalizer localizer,
+        IPluginSettingsStore pluginStore,
+        IToolRegistry tools,
+        ConnectionService connections,
+        IDbProviderRegistry providers)
     {
         Loc = localizer;
         _pluginStore = pluginStore;
         _tools = tools;
+        _connections = connections;
+        _providers = providers;
         Log.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasLogArea));
     }
 
@@ -67,6 +78,29 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
 
     string? IToolHost.GetPluginSetting(string key) =>
         _pluginStore.Get(_tool.Id).TryGetValue(key, out var value) ? value : null;
+
+    IReadOnlyList<ToolConnectionInfo> IToolHost.ListConnections() => PickableConnections();
+
+    ToolConnection? IToolHost.OpenConnection(string connectionId)
+    {
+        var saved = _connections.List().FirstOrDefault(c => c.Id == connectionId);
+        if (saved is null || !_providers.TryGet(saved.ProviderId, out var provider))
+        {
+            return null;
+        }
+
+        return new ToolConnection(_connections.Resolve(saved), provider, saved.ProviderId);
+    }
+
+    // The picker offers same-provider connections only (a cross-provider schema diff would need type-mapping
+    // we don't do yet) and never the launched connection itself (comparing it to itself is a no-op). The
+    // primary connection isn't a SavedConnection here — we only hold its ConnectionProfile — so it's matched
+    // out by name, which is unique enough for this UX.
+    private IReadOnlyList<ToolConnectionInfo> PickableConnections() =>
+        _connections.List()
+            .Where(c => c.ProviderId == _providerId && c.Name != _profile.Name)
+            .Select(c => new ToolConnectionInfo(c.Id, c.Name, c.ProviderId))
+            .ToList();
 
     /// <summary>Set by the view so the VM can ask a yes/no question (destructive confirm).</summary>
     public Func<string, string, Task<bool>>? ConfirmRequested { get; set; }
@@ -171,9 +205,16 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
         }
         else
         {
+            // Resolve the connection dropdown once per open, not per field, so every ConnectionPicker on a
+            // tool shares one list.
+            IReadOnlyList<ToolConnectionOption> connectionOptions =
+                tool.Fields.Any(f => f.Type == ToolFieldType.ConnectionPicker)
+                    ? PickableConnections().Select(c => new ToolConnectionOption(c.Id, c.Name)).ToList()
+                    : [];
+
             foreach (var field in tool.Fields)
             {
-                var input = new ToolFieldInput(field, _pluginLoc);
+                var input = new ToolFieldInput(field, _pluginLoc, connectionOptions);
                 input.PropertyChanged += OnFieldChanged;
                 Fields.Add(input);
             }

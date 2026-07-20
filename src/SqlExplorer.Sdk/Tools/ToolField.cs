@@ -11,7 +11,14 @@ public enum ToolFieldType
     /// <summary>A filesystem path; the host shows a Browse button that opens a save/open picker via
     /// <see cref="IToolHost"/>.</summary>
     File,
-    Bool
+    Bool,
+
+    /// <summary>A second saved connection, chosen from a host-rendered dropdown of the user's connections
+    /// (filtered to the launched connection's provider). The collected value is the chosen connection's id;
+    /// the tool turns it into a runnable connection via <see cref="IToolHost.OpenConnection"/>. The picker's
+    /// options are host state, not knowable by the plugin, so <see cref="ToolField.Choices"/> is ignored here.
+    /// </summary>
+    ConnectionPicker
 }
 
 /// <summary>

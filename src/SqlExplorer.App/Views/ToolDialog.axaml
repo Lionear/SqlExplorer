@@ -17,6 +17,14 @@
           <CheckBox Grid.Column="0" IsChecked="{Binding BoolValue}" IsVisible="{Binding IsBool}" />
           <ComboBox Grid.Column="0" HorizontalAlignment="Stretch" ItemsSource="{Binding Choices}"
                     SelectedItem="{Binding Value}" IsVisible="{Binding IsChoice}" />
+          <ComboBox Grid.Column="0" HorizontalAlignment="Stretch" ItemsSource="{Binding ConnectionOptions}"
+                    SelectedItem="{Binding SelectedConnection}" IsVisible="{Binding IsConnectionPicker}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
           <!-- Password reveal toggle (eye). Vector Path, not an emoji glyph: Linux/Avalonia 12 has no
                colour-emoji fallback, so "👁" renders as a blank box. -->
           <ToggleButton Grid.Column="1" Margin="6,0,0,0" Padding="7,4"

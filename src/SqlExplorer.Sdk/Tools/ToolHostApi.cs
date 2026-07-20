@@ -29,6 +29,11 @@ public static class ToolHostApi
     //                  rather than opening v5: the whole 0.4.0 dev cycle accumulates additive subsystem surface
     //                  under one version, bumped once at release. Additive — a plugin without the capability
     //                  gets null and degrades to its built-in table.
+    //   also in v4 (2026-07-20): the connection-picker seam (SE-99) — a new ToolFieldType.ConnectionPicker
+    //                  lets a tool take a *second* saved connection, and IToolHost gains ListConnections() +
+    //                  OpenConnection(id) (returning a runnable ToolConnection) so a cross-connection tool
+    //                  (SchemaDiff, CopyTable) can open it. Default interface impls (empty/null) keep older
+    //                  hosts and non-dialog IToolHost implementors compiling; folded into the unreleased v4.
     public const int Version = 4;
 
     /// <summary>Oldest plugin ABI this host still loads. Every bump has been additive (v2 tool defaults, v3
