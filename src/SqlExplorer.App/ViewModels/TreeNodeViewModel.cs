@@ -323,6 +323,18 @@ public partial class TreeNodeViewModel : ViewModelBase
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(ConnectionColorBrush));
         OnPropertyChanged(nameof(HasConnectionColor));
+
+        // Refresh every connection-derived display flag so a settings change (AI access, exclude, managed…)
+        // shows on the existing node without rebuilding it — which would move it and drop its live state.
+        OnPropertyChanged(nameof(IsManagedConnection));
+        OnPropertyChanged(nameof(IsTransientConnection));
+        OnPropertyChanged(nameof(IsAiReachable));
+        OnPropertyChanged(nameof(AiAccessLabel));
+        OnPropertyChanged(nameof(CanSetAiAccess));
+        OnPropertyChanged(nameof(IsExcludedFromMcp));
+        OnPropertyChanged(nameof(IsAiAccessNone));
+        OnPropertyChanged(nameof(IsAiAccessReadOnly));
+        OnPropertyChanged(nameof(IsAiAccessReadWrite));
     }
 
     /// <summary>Collapse this node and every already-loaded descendant. Doesn't force any lazy loads
