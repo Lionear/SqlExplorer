@@ -28,6 +28,8 @@
 
   <ItemGroup>
     <Using Include="SqlExplorer.Sdk.Extensibility" />
+    <!-- Shared Lucide icon set (SE-172): the panel/action glyphs come from the SDK, not a local copy. -->
+    <Using Include="SqlExplorer.Sdk.Ui" />
   </ItemGroup>
 
 </Project>

@@ -8,62 +8,30 @@ using Path = Avalonia.Controls.Shapes.Path;
 namespace SqlExplorer.Backends.Docker;
 
 /// <summary>
-/// Small stroked vector glyphs for the Docker panel/dialogs, built in code. The host draws its own icons as
-/// Paths for a reason: Linux/Avalonia has no colour-emoji fallback, so symbol characters (↻, ⚠, …) render as
-/// tofu boxes. This gives the plugin the same crisp, theme-aware icons without reaching into host resources.
-/// The panel/action glyphs are [Lucide](https://lucide.dev) icons (ISC, already bundled/attributed via the
-/// host's Lucide assets) in a 24×24 box; the older step glyphs sit in 16×16. Both are drawn Stretch="Uniform".
+/// Stroked vector glyphs for the Docker panel/dialogs, built in code. The host draws its own icons as Paths
+/// for a reason: Linux/Avalonia has no colour-emoji fallback, so symbol characters (↻, ⚠, …) render as tofu
+/// boxes. The shared panel/action glyphs (refresh, play, stop, logs, trash, plus, container) now come from
+/// the SDK's <see cref="SqlExplorer.Sdk.Ui.Icons"/> set — one source of truth for host and plugins (SE-172),
+/// no more copy-drift. Only the plugin-specific step glyphs below (warning/check/cross, 16×16) live here.
+/// All are drawn Stretch="Uniform".
 /// </summary>
 internal static class DockerIcons
 {
-    // Lucide "refresh-cw" → refresh.
-    public const string Refresh =
-        "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8 M21 3v5h-5 M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16 M8 16H3v5";
-
-    // Lucide "play" → start a container.
-    public const string Play = "M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z";
-
-    // Lucide "square" → stop a container.
-    public const string Stop = "M 5 3 h 14 a 2 2 0 0 1 2 2 v 14 a 2 2 0 0 1 -2 2 h -14 a 2 2 0 0 1 -2 -2 v -14 a 2 2 0 0 1 2 -2 Z";
-
-    // Lucide "scroll-text" → view logs.
-    public const string Logs =
-        "M15 12h-5 M15 8h-5 M19 17V5a2 2 0 0 0-2-2H4 M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3";
-
-    // Lucide "trash-2" → remove a container.
-    public const string Trash =
-        "M10 11v6 M14 11v6 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6 M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2";
-
-    // Lucide "plus" → new container.
-    public const string Plus = "M5 12h14 M12 5v14";
-
     // Triangle with an exclamation → warning (the dot is a tiny round-capped segment).
-    public const string Warning = "M8,2.5 L14.5,13.5 H1.5 Z M8,6 V9.7 M8,11.6 V11.8";
+    public static readonly Geometry Warning = Geometry.Parse("M8,2.5 L14.5,13.5 H1.5 Z M8,6 V9.7 M8,11.6 V11.8");
 
     // Tick → a completed step.
-    public const string Check = "M4,8.5 L7,11.5 L12,5";
+    public static readonly Geometry Check = Geometry.Parse("M4,8.5 L7,11.5 L12,5");
 
     // Cross → a failed step.
-    public const string Cross = "M5,5 L11,11 M11,5 L5,11";
-
-    // Lucide "container" (https://lucide.dev/icons/container, ISC — already bundled/attributed via the host's
-    // Lucide assets) for the Containers panel toggle. Its five sub-paths sit in a 24×24 box; the panel toggle
-    // draws them Stretch="Uniform". The third sub-path's leading relative moveto ("m10 14") is absolutised to
-    // "M10 14" so the concatenated string is self-anchored (a standalone path starts at 0,0, so it's exact);
-    // the following lineto stays relative ("l").
-    public const string Container =
-        "M22 7.7c0-.6-.4-1.2-.8-1.5l-6.3-3.9a1.72 1.72 0 0 0-1.7 0l-10.3 6c-.5.2-.9.8-.9 1.4v6.6c0 .5.4 1.2.8 1.5l6.3 3.9a1.72 1.72 0 0 0 1.7 0l10.3-6c.5-.3.9-1 .9-1.5Z "
-        + "M10 21.9V14L2.1 9.1 "
-        + "M10 14 l11.9 -6.9 "
-        + "M14 19.8v-8.1 "
-        + "M18 17.5V9.4";
+    public static readonly Geometry Cross = Geometry.Parse("M5,5 L11,11 M11,5 L5,11");
 
     /// <summary>A stroked icon painted with an explicit brush (e.g. a status colour), for use outside a button.</summary>
-    public static Path Icon(string geometry, double size, IBrush stroke) => new()
+    public static Path Icon(Geometry geometry, double size, IBrush stroke) => new()
     {
         Width = size,
         Height = size,
-        Data = Geometry.Parse(geometry),
+        Data = geometry,
         Stretch = Stretch.Uniform,
         Stroke = stroke,
         StrokeThickness = 1.4,
@@ -74,13 +42,13 @@ internal static class DockerIcons
 
     /// <summary>A button label of icon + text; the icon's stroke follows the host theme by binding to the
     /// ancestor button's Foreground (the plugin can't reach the host's brush resources from code).</summary>
-    public static Control Label(string geometry, string text)
+    public static Control Label(Geometry geometry, string text)
     {
         var icon = new Path
         {
             Width = 12,
             Height = 12,
-            Data = Geometry.Parse(geometry),
+            Data = geometry,
             Stretch = Stretch.Uniform,
             StrokeThickness = 1.4,
             StrokeJoin = PenLineJoin.Round,

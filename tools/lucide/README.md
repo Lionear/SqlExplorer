@@ -3,8 +3,9 @@
 These `.svg` files are a curated subset of [Lucide](https://lucide.dev) (from the `lucide-static`
 npm package, v1.25.0), licensed ISC — see [LICENSE](LICENSE). They are the source for the app's
 vector-icon library: `tools/generate-icons.py` flattens each one into a single `StreamGeometry` path
-and emits `src/SqlExplorer.App/ViewModels/Icons.g.cs`. The app renders those geometries as stroked
-`Path`s, so no SVG-rendering runtime dependency is pulled in and icons still tint with the theme.
+and emits `src/SqlExplorer.Sdk/Ui/Icons.g.cs` (namespace `SqlExplorer.Sdk.Ui`), so the host and
+plugins share one icon set (SE-172). The app renders those geometries as stroked `Path`s, so no
+SVG-rendering runtime dependency is pulled in and icons still tint with the theme.
 
 ## Adding or removing an icon
 

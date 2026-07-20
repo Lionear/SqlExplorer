@@ -1,5 +1,6 @@
 using Avalonia.Media;
 using SqlExplorer.Sdk;
+using SqlExplorer.Sdk.Ui;
 
 namespace SqlExplorer.App.ViewModels;
 

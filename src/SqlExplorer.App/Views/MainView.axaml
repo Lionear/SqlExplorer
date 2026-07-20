@@ -3,6 +3,7 @@
              xmlns:conv="using:Avalonia.Data.Converters"
              xmlns:cvt="using:SqlExplorer.App.Converters"
              xmlns:vm="using:SqlExplorer.App.ViewModels"
+             xmlns:sdk="using:SqlExplorer.Sdk.Ui"
              xmlns:views="using:SqlExplorer.App.Views"
              xmlns:conn="using:SqlExplorer.Core.Connections"
              x:Class="SqlExplorer.App.Views.MainView">
@@ -302,7 +303,7 @@
                     <MenuItem.Icon>
                       <Path Width="12" Height="12" Stretch="Uniform" StrokeThickness="1.6"
                                 StrokeJoin="Round" StrokeLineCap="Round"
-                                Stroke="{Binding $parent[MenuItem].Foreground}" Data="{x:Static vm:Icons.Check}"
+                                Stroke="{Binding $parent[MenuItem].Foreground}" Data="{x:Static sdk:Icons.Check}"
                                 IsVisible="{Binding SelectedNode.IsAiAccessNone, FallbackValue=False}" />
                     </MenuItem.Icon>
                   </MenuItem>
@@ -311,7 +312,7 @@
                     <MenuItem.Icon>
                       <Path Width="12" Height="12" Stretch="Uniform" StrokeThickness="1.6"
                                 StrokeJoin="Round" StrokeLineCap="Round"
-                                Stroke="{Binding $parent[MenuItem].Foreground}" Data="{x:Static vm:Icons.Check}"
+                                Stroke="{Binding $parent[MenuItem].Foreground}" Data="{x:Static sdk:Icons.Check}"
                                 IsVisible="{Binding SelectedNode.IsAiAccessReadOnly, FallbackValue=False}" />
                     </MenuItem.Icon>
                   </MenuItem>
@@ -320,7 +321,7 @@
                     <MenuItem.Icon>
                       <Path Width="12" Height="12" Stretch="Uniform" StrokeThickness="1.6"
                                 StrokeJoin="Round" StrokeLineCap="Round"
-                                Stroke="{Binding $parent[MenuItem].Foreground}" Data="{x:Static vm:Icons.Check}"
+                                Stroke="{Binding $parent[MenuItem].Foreground}" Data="{x:Static sdk:Icons.Check}"
                                 IsVisible="{Binding SelectedNode.IsAiAccessReadWrite, FallbackValue=False}" />
                     </MenuItem.Icon>
                   </MenuItem>
@@ -329,7 +330,7 @@
                     <MenuItem.Icon>
                       <Path Width="12" Height="12" Stretch="Uniform" StrokeThickness="1.6"
                                 StrokeJoin="Round" StrokeLineCap="Round"
-                                Stroke="{Binding $parent[MenuItem].Foreground}" Data="{x:Static vm:Icons.Check}"
+                                Stroke="{Binding $parent[MenuItem].Foreground}" Data="{x:Static sdk:Icons.Check}"
                                 IsVisible="{Binding SelectedNode.IsExcludedFromMcp, FallbackValue=False}" />
                     </MenuItem.Icon>
                   </MenuItem>

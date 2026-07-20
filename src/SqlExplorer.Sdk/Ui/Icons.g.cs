@@ -6,12 +6,13 @@
 
 using Avalonia.Media;
 
-namespace SqlExplorer.App.ViewModels;
+namespace SqlExplorer.Sdk.Ui;
 
 /// <summary>
-/// Line-icon geometries flattened from Lucide SVGs, drawn as stroked Paths — the same idiom as
-/// the hand-drawn <see cref="NodeIcons"/>. NodeIcons maps app concepts (a schema-tree node kind,
-/// a toolbar action) onto these raw icons; render with a themed Stroke brush, Stretch="Uniform".
+/// Line-icon geometries flattened from Lucide SVGs, drawn as stroked Paths. Shared by the host and
+/// by plugins so both draw from one source of truth: the host's <c>NodeIcons</c> maps app concepts
+/// (a schema-tree node kind, a toolbar action) onto these raw icons, and plugins reference them
+/// directly. Render with a themed Stroke brush and Stretch="Uniform".
 /// </summary>
 public static class Icons
 {
@@ -35,6 +36,9 @@ public static class Icons
 
     /// <summary>Lucide <c>clock</c>.</summary>
     public static readonly Geometry Clock = Parse("M 2 12 a 10 10 0 1 0 20 0 a 10 10 0 1 0 -20 0 Z M12 6v6l4 2");
+
+    /// <summary>Lucide <c>container</c>.</summary>
+    public static readonly Geometry Container = Parse("M22 7.7c0-.6-.4-1.2-.8-1.5l-6.3-3.9a1.72 1.72 0 0 0-1.7 0l-10.3 6c-.5.2-.9.8-.9 1.4v6.6c0 .5.4 1.2.8 1.5l6.3 3.9a1.72 1.72 0 0 0 1.7 0l10.3-6c.5-.3.9-1 .9-1.5Z M10 21.9V14L2.1 9.1 M10 14 l 11.9 -6.9 M14 19.8v-8.1 M18 17.5V9.4");
 
     /// <summary>Lucide <c>copy</c>.</summary>
     public static readonly Geometry Copy = Parse("M 10 8 h 10 a 2 2 0 0 1 2 2 v 10 a 2 2 0 0 1 -2 2 h -10 a 2 2 0 0 1 -2 -2 v -10 a 2 2 0 0 1 2 -2 Z M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2");
@@ -102,6 +106,9 @@ public static class Icons
     /// <summary>Lucide <c>refresh-cw</c>.</summary>
     public static readonly Geometry RefreshCw = Parse("M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8 M21 3v5h-5 M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16 M8 16H3v5");
 
+    /// <summary>Lucide <c>scroll-text</c>.</summary>
+    public static readonly Geometry ScrollText = Parse("M15 12h-5 M15 8h-5 M19 17V5a2 2 0 0 0-2-2H4 M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3");
+
     /// <summary>Lucide <c>search</c>.</summary>
     public static readonly Geometry Search = Parse("M21 21 l -4.34 -4.34 M 3 11 a 8 8 0 1 0 16 0 a 8 8 0 1 0 -16 0 Z");
 
@@ -110,6 +117,9 @@ public static class Icons
 
     /// <summary>Lucide <c>sliders-horizontal</c>.</summary>
     public static readonly Geometry SlidersHorizontal = Parse("M10 5H3 M12 19H3 M14 3v4 M16 17v4 M21 12h-9 M21 19h-5 M21 5h-7 M8 10v4 M8 12H3");
+
+    /// <summary>Lucide <c>square</c>.</summary>
+    public static readonly Geometry Square = Parse("M 5 3 h 14 a 2 2 0 0 1 2 2 v 14 a 2 2 0 0 1 -2 2 h -14 a 2 2 0 0 1 -2 -2 v -14 a 2 2 0 0 1 2 -2 Z");
 
     /// <summary>Lucide <c>square-function</c>.</summary>
     public static readonly Geometry SquareFunction = Parse("M 5 3 h 14 a 2 2 0 0 1 2 2 v 14 a 2 2 0 0 1 -2 2 h -14 a 2 2 0 0 1 -2 -2 v -14 a 2 2 0 0 1 2 -2 Z M9 17c2 0 2.8-1 2.8-2.8V10c0-2 1-3.3 3.2-3 M9 11.2h5.7");

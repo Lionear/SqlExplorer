@@ -44,7 +44,7 @@ internal static class ContainerLogsView
         var raw = "";
 
         var copyButton = new Button { Content = "Copy", Margin = new Thickness(0, 0, 6, 0) };
-        var refreshButton = new Button { Content = DockerIcons.Label(DockerIcons.Refresh, "Refresh") };
+        var refreshButton = new Button { Content = DockerIcons.Label(Icons.RefreshCw, "Refresh") };
         var title = new TextBlock { Text = containerName, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
 
         var headerInner = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), Margin = new Thickness(12, 8, 10, 8) };

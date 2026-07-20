@@ -29,7 +29,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SVG_DIR = ROOT / "tools" / "lucide"
-OUT = ROOT / "src" / "SqlExplorer.App" / "ViewModels" / "Icons.g.cs"
+OUT = ROOT / "src" / "SqlExplorer.Sdk" / "Ui" / "Icons.g.cs"
 
 # Match a self-closing SVG primitive element and capture its tag + raw attribute blob.
 ELEMENT_RE = re.compile(
@@ -196,12 +196,13 @@ def main() -> int:
         "",
         "using Avalonia.Media;",
         "",
-        "namespace SqlExplorer.App.ViewModels;",
+        "namespace SqlExplorer.Sdk.Ui;",
         "",
         "/// <summary>",
-        "/// Line-icon geometries flattened from Lucide SVGs, drawn as stroked Paths — the same idiom as",
-        "/// the hand-drawn <see cref=\"NodeIcons\"/>. NodeIcons maps app concepts (a schema-tree node kind,",
-        "/// a toolbar action) onto these raw icons; render with a themed Stroke brush, Stretch=\"Uniform\".",
+        "/// Line-icon geometries flattened from Lucide SVGs, drawn as stroked Paths. Shared by the host and",
+        "/// by plugins so both draw from one source of truth: the host's <c>NodeIcons</c> maps app concepts",
+        "/// (a schema-tree node kind, a toolbar action) onto these raw icons, and plugins reference them",
+        "/// directly. Render with a themed Stroke brush and Stretch=\"Uniform\".",
         "/// </summary>",
         "public static class Icons",
         "{",

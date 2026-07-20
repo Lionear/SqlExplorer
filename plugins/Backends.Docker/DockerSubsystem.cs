@@ -253,7 +253,7 @@ public sealed class DockerSubsystem : ISubsystemPlugin, IPanelPlugin, IMenuPlugi
     public string Title => "Containers";
 
     /// <summary>The Lucide "container" glyph for the panel's bottom-bar toggle (drawn Stretch="Uniform").</summary>
-    public Geometry Icon => Geometry.Parse(DockerIcons.Container);
+    public Geometry Icon => Icons.Container;
 
     /// <summary>Build the Containers panel: a live table of the managed containers with their run-state and
     /// lifecycle actions. Rebuilds on registry changes and on the background poll's status pushes (see
