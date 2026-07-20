@@ -27,6 +27,18 @@ internal static class DockerIcons
     // Cross → a failed step.
     public const string Cross = "M5,5 L11,11 M11,5 L5,11";
 
+    // Lucide "container" (https://lucide.dev/icons/container, ISC — already bundled/attributed via the host's
+    // Lucide assets) for the Containers panel toggle. Its five sub-paths sit in a 24×24 box; the panel toggle
+    // draws them Stretch="Uniform". The third sub-path's leading relative moveto ("m10 14") is absolutised to
+    // "M10 14" so the concatenated string is self-anchored (a standalone path starts at 0,0, so it's exact);
+    // the following lineto stays relative ("l").
+    public const string Container =
+        "M22 7.7c0-.6-.4-1.2-.8-1.5l-6.3-3.9a1.72 1.72 0 0 0-1.7 0l-10.3 6c-.5.2-.9.8-.9 1.4v6.6c0 .5.4 1.2.8 1.5l6.3 3.9a1.72 1.72 0 0 0 1.7 0l10.3-6c.5-.3.9-1 .9-1.5Z "
+        + "M10 21.9V14L2.1 9.1 "
+        + "M10 14 l11.9 -6.9 "
+        + "M14 19.8v-8.1 "
+        + "M18 17.5V9.4";
+
     /// <summary>A stroked icon painted with an explicit brush (e.g. a status colour), for use outside a button.</summary>
     public static Path Icon(string geometry, double size, IBrush stroke) => new()
     {

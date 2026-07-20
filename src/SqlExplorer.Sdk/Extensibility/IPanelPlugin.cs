@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Media;
 
 namespace SqlExplorer.Sdk.Extensibility;
 
@@ -31,4 +32,11 @@ public interface IPanelPlugin
     /// <see cref="ISubsystemPlugin.Initialize"/> has run, so the plugin already holds its runtime context.
     /// <paramref name="hostUi"/> lets the panel open modal dialogs (e.g. a container's logs).</summary>
     Control CreatePanel(IHostUi hostUi);
+
+    /// <summary>Optional stroked glyph for the panel's bottom-bar toggle. The host draws it as a
+    /// <c>Stretch="Uniform"</c> Path (any coordinate box works) tinted with the theme, the same way its own
+    /// tool-window icons render; the plugin owns the geometry since it can't reach host icon resources across
+    /// the ALC boundary. <c>null</c> (the default) falls back to the host's generic panel icon. Additive
+    /// default member — existing plugins need no change.</summary>
+    Geometry? Icon => null;
 }

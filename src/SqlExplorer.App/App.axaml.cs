@@ -69,7 +69,7 @@ public partial class App : Application
         // (below), so MainView subscribes these panels' windows along with Output/History in one pass.
         foreach (var panel in subsystems.Panels)
         {
-            viewModel.AddSubsystemPanel(panel.PanelId, panel.Title, panel.CreatePanel(hostUi));
+            viewModel.AddSubsystemPanel(panel.PanelId, panel.Title, panel.CreatePanel(hostUi), panel.Icon);
         }
 
         // First-party "AI activity" panel (SE-159): a bottom tool-window fed by the MCP audit ring, mounted
