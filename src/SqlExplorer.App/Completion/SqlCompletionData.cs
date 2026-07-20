@@ -9,7 +9,7 @@ namespace SqlExplorer.App.Completion;
 /// <summary>Adapts a <see cref="CompletionItem"/> (1.3) to AvaloniaEdit's <see cref="ICompletionData"/>.</summary>
 public sealed class SqlCompletionData(CompletionItem item) : ICompletionData
 {
-    public IImage? Image => null;
+    public IImage? Image => CompletionIcons.For(item.Kind);
 
     public string Text { get; } = item.Text;
 

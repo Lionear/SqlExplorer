@@ -23,6 +23,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- **Icons in SQL completion** — each suggestion in the code-completion popup now carries an icon for its kind
+  (table, column, function, foreign-key join condition, keyword), reusing the shared Lucide glyphs from the
+  schema tree so a table reads the same in both places. The type / signature / join-condition detail alongside
+  each item is unchanged.
 - **Containers are tagged for Kontena** — containers created by the Local Containers plugin now carry
   `kontena.managed=true` / `kontena.source=sqlexplorer` labels (in both the compose file and the `docker run`
   snippet), so the Kontena desktop app can recognise them as SQL-Explorer-managed and leave them alone.
