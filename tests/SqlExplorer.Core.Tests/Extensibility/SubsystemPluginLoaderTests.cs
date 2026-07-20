@@ -38,4 +38,28 @@ public class SubsystemPluginLoaderTests
         Assert.Equal("some.key", ctx.Localizer["some.key"]);
         Assert.False(ctx.Localizer.Contains("some.key"));
     }
+
+    private sealed class FakeServices : IServiceProvider
+    {
+        public object? GetService(Type serviceType) => null;
+    }
+
+    [Fact] // No "services" capability → context.Services is null even when a resolver was supplied.
+    public void Services_is_gated_off_without_the_capability()
+    {
+        var ctx = SubsystemPluginLoader.CreateContext(
+            "x", [], _ => new FakeStorage(), localizer: null, log: null, services: new FakeServices());
+
+        Assert.Null(ctx.Services);
+    }
+
+    [Fact]
+    public void Services_is_present_with_the_capability()
+    {
+        var resolver = new FakeServices();
+        var ctx = SubsystemPluginLoader.CreateContext(
+            "x", [PluginCapabilities.Services], _ => new FakeStorage(), localizer: null, log: null, services: resolver);
+
+        Assert.Same(resolver, ctx.Services);
+    }
 }

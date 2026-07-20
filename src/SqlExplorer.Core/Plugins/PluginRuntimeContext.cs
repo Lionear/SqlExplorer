@@ -13,11 +13,13 @@ public sealed class PluginRuntimeContext : IPluginRuntimeContext
     private readonly Action<string>? _log;
 
     public PluginRuntimeContext(
-        string pluginId, IPluginStorage? storage, IManagedConnections? connections, IPluginLocalizer localizer, Action<string>? log)
+        string pluginId, IPluginStorage? storage, IManagedConnections? connections, IPluginLocalizer localizer,
+        Action<string>? log, IServiceProvider? services = null)
     {
         PluginId = pluginId;
         Storage = storage;
         Connections = connections;
+        Services = services;
         Localizer = localizer;
         _log = log;
     }
@@ -27,6 +29,8 @@ public sealed class PluginRuntimeContext : IPluginRuntimeContext
     public IPluginStorage? Storage { get; }
 
     public IManagedConnections? Connections { get; }
+
+    public IServiceProvider? Services { get; }
 
     public IPluginLocalizer Localizer { get; }
 

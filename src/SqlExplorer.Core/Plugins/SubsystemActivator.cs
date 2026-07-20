@@ -28,6 +28,8 @@ public sealed class SubsystemActivator
     private readonly IReadOnlyList<SubsystemActivation> _activations;
     private readonly Func<string, IPluginStorage> _storageProvider;
     private readonly Func<string, IManagedConnections> _connectionsProvider;
+    private readonly IServiceProvider? _hostServices;
+    private readonly IReadOnlyDictionary<string, IReadOnlySet<Type>> _pluginServiceTypes;
     private readonly Action<string>? _log;
 
     /// <param name="storageProvider">Builds the plugin-scoped storage for a plugin id; wired into the context
@@ -35,15 +37,23 @@ public sealed class SubsystemActivator
     /// <param name="connectionsProvider">Builds the origin-scoped managed-connections facade for a plugin id
     /// (over the live <c>ConnectionService</c>); wired in only when the plugin declared
     /// <see cref="PluginCapabilities.Connections"/>.</param>
+    /// <param name="hostServices">The built host container, used to hand a <see cref="PluginServiceProvider"/>
+    /// to plugins that declared <see cref="PluginCapabilities.Services"/>.</param>
+    /// <param name="pluginServiceTypes">Per-plugin set of service types it registered — the resolver's
+    /// allow-list. A plugin absent here (or without the capability) gets no <c>Services</c>.</param>
     public SubsystemActivator(
         IReadOnlyList<SubsystemActivation> activations,
         Func<string, IPluginStorage> storageProvider,
         Func<string, IManagedConnections> connectionsProvider,
-        Action<string>? log = null)
+        Action<string>? log = null,
+        IServiceProvider? hostServices = null,
+        IReadOnlyDictionary<string, IReadOnlySet<Type>>? pluginServiceTypes = null)
     {
         _activations = activations;
         _storageProvider = storageProvider;
         _connectionsProvider = connectionsProvider;
+        _hostServices = hostServices;
+        _pluginServiceTypes = pluginServiceTypes ?? new Dictionary<string, IReadOnlySet<Type>>();
         _log = log;
     }
 
@@ -63,7 +73,7 @@ public sealed class SubsystemActivator
             {
                 var context = SubsystemPluginLoader.CreateContext(
                     activation.Id, activation.Capabilities, _storageProvider,
-                    activation.Localizer, _log, _connectionsProvider);
+                    activation.Localizer, _log, _connectionsProvider, PluginServicesFor(activation.Id));
                 activation.Plugin.Initialize(context);
                 active.Add(activation.Plugin);
 
@@ -102,4 +112,11 @@ public sealed class SubsystemActivator
         return new SubsystemActivationResult(
             new SubsystemRegistry(active), panels, menus, background, connectionMenus);
     }
+
+    // The plugin's own-service resolver, or null when it has no host container / registered no services.
+    // CreateContext still gates it on the capability, so this only builds the scoped view.
+    private IServiceProvider? PluginServicesFor(string pluginId) =>
+        _hostServices is not null && _pluginServiceTypes.TryGetValue(pluginId, out var allowed)
+            ? new PluginServiceProvider(_hostServices, allowed)
+            : null;
 }

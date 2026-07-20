@@ -13,7 +13,7 @@ public static class CapabilityCatalog
 {
     private static readonly HashSet<string> Known = new(System.StringComparer.OrdinalIgnoreCase)
     {
-        "storage", "connections", "panel", "menu", "background", "process"
+        "storage", "connections", "panel", "menu", "background", "process", "services"
     };
 
     public static CapabilityInfo Describe(string key, ILocalizer loc) =>

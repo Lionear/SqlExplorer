@@ -24,6 +24,13 @@ public static class PluginCapabilities
     /// <summary>Creates host-managed connections tagged with the plugin as origin.</summary>
     public const string Connections = "connections";
 
+    /// <summary>
+    /// Auto-registers the plugin's own marker-annotated services into the host container and hands the
+    /// plugin a resolver (<see cref="IPluginRuntimeContext.Services"/>) scoped to just those services. The
+    /// plugin can never register under — or resolve — a host contract; only its own types.
+    /// </summary>
+    public const string Services = "services";
+
     /// <summary>Starts external processes (e.g. <c>docker</c>). Disclosure only — no host API to gate.</summary>
     public const string Process = "process";
 }

@@ -22,6 +22,11 @@ public class ServiceRegistrationScannerTests
 
     private sealed class DoubleMarked : ISingletonService, ITransientService;
 
+    private sealed class ForeignAndLocal : IThing, IDisposable, ISingletonService
+    {
+        public void Dispose() { }
+    }
+
     private static ServiceRegistration One<T>(IReadOnlyList<ServiceRegistration> regs) =>
         regs.Single(r => r.ImplementationType == typeof(T));
 
@@ -74,5 +79,16 @@ public class ServiceRegistrationScannerTests
     public void Throws_when_a_class_declares_more_than_one_marker()
     {
         Assert.Throws<InvalidOperationException>(() => ServiceRegistrationScanner.Scan([typeof(DoubleMarked)]));
+    }
+
+    [Fact] // The plugin guardrail: an interface from another assembly (here IDisposable) is dropped, so a
+           // plugin can never register under a host/SDK contract — only its own.
+    public void Own_assembly_filter_keeps_local_interfaces_and_drops_foreign_ones()
+    {
+        var reg = One<ForeignAndLocal>(ServiceRegistrationScanner.Scan([typeof(ForeignAndLocal)]))
+            .WithOwnAssemblyServiceTypesOnly();
+
+        Assert.Contains(typeof(IThing), reg.ServiceTypes);
+        Assert.DoesNotContain(typeof(IDisposable), reg.ServiceTypes);
     }
 }

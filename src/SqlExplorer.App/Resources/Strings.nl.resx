@@ -1299,6 +1299,12 @@
   <data name="Cap_process_Desc" xml:space="preserve">
     <value>Kan externe programma's op je computer starten (bijv. docker).</value>
   </data>
+  <data name="Cap_services_Title" xml:space="preserve">
+    <value>Eigen services</value>
+  </data>
+  <data name="Cap_services_Desc" xml:space="preserve">
+    <value>Registreert de eigen services van de plugin in de app zodat die ze kan koppelen. Kan de services van de app zelf niet vervangen of uitlezen.</value>
+  </data>
   <data name="StoreConsentApprove" xml:space="preserve">
     <value>Vertrouwen en installeren</value>
   </data>

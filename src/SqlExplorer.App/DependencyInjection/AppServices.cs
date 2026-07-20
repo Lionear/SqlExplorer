@@ -141,15 +141,38 @@ public static class AppServices
             }
         }
 
+        // Auto-register the services of any subsystem plugin that declared the "services" capability (SE-171
+        // phase 2). Guard-railed to the plugin's own interfaces so it can add services but never replace a
+        // host contract; the resolved allow-list becomes the plugin's scoped resolver (context.Services).
+        // Best-effort per plugin — a malformed plugin's scan must never abort host startup.
+        var pluginServiceTypes = new Dictionary<string, IReadOnlySet<Type>>();
+        foreach (var activation in subsystemActivations)
+        {
+            if (!activation.Capabilities.Contains(PluginCapabilities.Services))
+                continue;
+            try
+            {
+                pluginServiceTypes[activation.Id] =
+                    services.AddMarkedPluginServices(activation.Plugin.GetType().Assembly);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[subsystem] {activation.Id} service scan failed: {ex.Message}");
+            }
+        }
+
         // The activator resolves after BuildServiceProvider (App startup): its connections provider pulls the
         // live ConnectionService from the built container, so a connection a plugin creates lands in the real
         // host list (secrets to the keychain), tagged with the plugin id as origin. Storage is plugin-scoped
-        // JSON; Log routes to stderr for now (Output-panel wiring is a later seam).
+        // JSON; Log routes to stderr for now (Output-panel wiring is a later seam). hostServices (the built
+        // provider) + the per-plugin allow-list back each "services"-capable plugin's scoped resolver.
         services.AddSingleton(sp => new SubsystemActivator(
             subsystemActivations,
             id => new JsonPluginStorage(id),
             id => new ManagedConnections(id, sp.GetRequiredService<ConnectionService>()),
-            msg => Console.Error.WriteLine($"[subsystem] {msg}")));
+            msg => Console.Error.WriteLine($"[subsystem] {msg}"),
+            hostServices: sp,
+            pluginServiceTypes: pluginServiceTypes));
 
         // Host-side view of everything installed (loaded or not, enabled or not) for the Plugin Store's
         // Installed tab. Enable/disable/uninstall stage a change here, applied on next startup.

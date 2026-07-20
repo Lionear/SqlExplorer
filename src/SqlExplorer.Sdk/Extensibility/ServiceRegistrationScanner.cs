@@ -11,7 +11,19 @@ namespace SqlExplorer.Sdk.Extensibility;
 public sealed record ServiceRegistration(
     Type ImplementationType,
     IReadOnlyList<Type> ServiceTypes,
-    ServiceScope Scope);
+    ServiceScope Scope)
+{
+    /// <summary>
+    /// The same registration with its service interfaces narrowed to those declared in the implementation's
+    /// own assembly. The guardrail for plugin services: a plugin registers under its own contracts only, never
+    /// a host/SDK interface — so it can add services but not silently replace one the host provides.
+    /// </summary>
+    public ServiceRegistration WithOwnAssemblyServiceTypesOnly() =>
+        this with
+        {
+            ServiceTypes = ServiceTypes.Where(t => t.Assembly == ImplementationType.Assembly).ToArray(),
+        };
+}
 
 /// <summary>
 /// Reflects over assemblies for concrete classes that implement exactly one lifetime marker
