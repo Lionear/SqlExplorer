@@ -225,6 +225,21 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
     [ObservableProperty]
     private string _title = string.Empty;
 
+    /// <summary>Optional explanatory text a tool shows above its fields (<see cref="IToolPlugin.Description"/>).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDescription))]
+    private string? _description;
+
+    public bool HasDescription => !string.IsNullOrWhiteSpace(Description);
+
+    /// <summary>The connection/database the tool was launched on — the object it acts on. Shown in the dialog
+    /// so it's unambiguous which database a tool targets (e.g. Schema Diff changes this one).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasTargetSummary))]
+    private string? _targetSummary;
+
+    public bool HasTargetSummary => !string.IsNullOrWhiteSpace(TargetSummary);
+
     /// <summary>Route B: a tool-supplied view drives the form instead of the generated fields.</summary>
     [ObservableProperty]
     private Control? _customView;
@@ -245,6 +260,12 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
         _provider = provider;
         _providerId = providerId;
         Title = _pluginLoc.Resolve(tool.DialogTitleKey, tool.DialogTitle);
+
+        var description = _pluginLoc.Resolve(tool.DescriptionKey, tool.Description ?? string.Empty);
+        Description = string.IsNullOrWhiteSpace(description) ? null : description;
+        TargetSummary = string.IsNullOrWhiteSpace(profile.Database)
+            ? profile.Name
+            : $"{profile.Name} / {profile.Database}";
 
         if (tool is ICustomToolUi customUi)
         {

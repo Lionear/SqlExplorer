@@ -31,6 +31,14 @@ public interface IToolPlugin
     /// <summary>Optional localization key for <see cref="DialogTitle"/> (same rule as <see cref="TitleKey"/>).</summary>
     string? DialogTitleKey => null;
 
+    /// <summary>Optional explanatory text shown at the top of the tool's dialog, above its fields — what the
+    /// tool does and, for an asymmetric tool, which side it changes (e.g. "changes the target database to
+    /// match the one you pick"). Null (the default) shows nothing. Additive.</summary>
+    string? Description => null;
+
+    /// <summary>Optional localization key for <see cref="Description"/> (same rule as <see cref="TitleKey"/>).</summary>
+    string? DescriptionKey => null;
+
     /// <summary>
     /// Optional submenu path this tool lives under, as ordered ancestor labels (e.g. <c>["Shrink"]</c> to
     /// show it as <c>Tools ▸ Shrink ▸ {Title}</c>, or <c>["Maintenance", "Shrink"]</c> for a deeper nest).

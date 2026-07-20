@@ -1,6 +1,7 @@
 {
   "diff.title": "Schema Diff",
   "diff.dialogTitle": "Schema Diff",
+  "diff.description": "Builds a migration that changes the database above to match the one you pick below. It opens as a script in a new query tab to review and run — nothing changes automatically.",
 
   "diff.field.compareTo": "Compare against connection",
   "diff.field.database": "Database on that connection",

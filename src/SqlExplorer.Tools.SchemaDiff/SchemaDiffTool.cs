@@ -21,6 +21,11 @@ public sealed class SchemaDiffTool : IToolPlugin
     public string DialogTitle => "Schema Diff";
     public string? DialogTitleKey => "diff.dialogTitle";
 
+    public string? Description =>
+        "Builds a migration that changes the database above to match the one you pick below. " +
+        "It opens as a script in a new query tab to review and run — nothing changes automatically.";
+    public string? DescriptionKey => "diff.description";
+
     public ToolTarget Target { get; } = new(
         ProviderIds: SupportedProviders,
         NodeKinds: [DbNodeKind.Database],

@@ -59,6 +59,23 @@
     <Panel Grid.Row="0">
       <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasFields}">
         <StackPanel Margin="18,16" Spacing="8">
+          <!-- Which connection/database the tool acts on, and what it does — so it's unambiguous which
+               database is being targeted (e.g. Schema Diff changes this one). -->
+          <Border IsVisible="{Binding HasTargetSummary}" Padding="10,8" Margin="0,0,0,2"
+                  Background="{DynamicResource SEPanelBgBrush}"
+                  BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1" CornerRadius="4">
+            <StackPanel Spacing="4">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="{Binding Loc[ToolTargetLabel]}" FontSize="11.5" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SETextSecondaryBrush}" />
+                <TextBlock Text="{Binding TargetSummary}" FontSize="11.5" FontWeight="SemiBold"
+                           FontFamily="Cascadia Code,Consolas,Menlo,monospace"
+                           Foreground="{DynamicResource SETextPrimaryBrush}" />
+              </StackPanel>
+              <TextBlock Text="{Binding Description}" IsVisible="{Binding HasDescription}" TextWrapping="Wrap"
+                         FontSize="11.5" Foreground="{DynamicResource SETextSecondaryBrush}" />
+            </StackPanel>
+          </Border>
           <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource ToolFieldTemplate}"
                         IsEnabled="{Binding InputsEnabled}" />
           <Border IsVisible="{Binding HasPreview}" Margin="0,6,0,0" Padding="10,8"

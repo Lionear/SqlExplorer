@@ -1,6 +1,7 @@
 {
   "diff.title": "Schema-diff",
   "diff.dialogTitle": "Schema-diff",
+  "diff.description": "Bouwt een migratie die de database hierboven gelijktrekt met de database die je hieronder kiest. Het opent als script in een nieuwe query-tab om te bekijken en te draaien — er verandert niets automatisch.",
 
   "diff.field.compareTo": "Vergelijk met connectie",
   "diff.field.database": "Database op die connectie",
