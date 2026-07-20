@@ -3,6 +3,7 @@
   "diff.dialogTitle": "Schema Diff",
 
   "diff.field.compareTo": "Compare against connection",
+  "diff.field.database": "Database on that connection",
   "diff.field.apply": "Apply the changes to this connection",
 
   "diff.error.unsupported": "Schema Diff doesn't support the '{0}' engine yet (reads via information_schema; Postgres, MySQL and SQL Server only).",

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using SqlExplorer.Sdk.Localization;
 using SqlExplorer.Sdk.Tools;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -15,12 +16,12 @@ public partial class ToolFieldInput : ObservableObject
     {
     }
 
-    public ToolFieldInput(ToolField field, IPluginLocalizer localizer, IReadOnlyList<ToolConnectionOption> connections)
+    public ToolFieldInput(ToolField field, IPluginLocalizer localizer, IReadOnlyList<ToolPickerOption> options)
     {
         Field = field;
         _localizer = localizer;
         _value = field.Default;
-        ConnectionOptions = connections;
+        PickerOptions = new ObservableCollection<ToolPickerOption>(options);
     }
 
     public ToolField Field { get; }
@@ -42,22 +43,41 @@ public partial class ToolFieldInput : ObservableObject
     public bool IsChoice => Field.Type == ToolFieldType.Choice;
     public bool IsPassword => Field.Type == ToolFieldType.Password;
     public bool IsConnectionPicker => Field.Type == ToolFieldType.ConnectionPicker;
+    public bool IsDatabasePicker => Field.Type == ToolFieldType.DatabasePicker;
+
+    /// <summary>Connection- and database-pickers share one dropdown control in the dialog template.</summary>
+    public bool IsPicker => IsConnectionPicker || IsDatabasePicker;
 
     /// <summary>Text/Password/File all show the free-text box (File adds a Browse button beside it).</summary>
     public bool IsText => Field.Type is ToolFieldType.Text or ToolFieldType.Password or ToolFieldType.File;
 
     public IReadOnlyList<string> Choices => Field.Choices ?? [];
 
-    /// <summary>Candidate connections for a <see cref="ToolFieldType.ConnectionPicker"/> field, supplied by
-    /// the host (empty for every other field type).</summary>
-    public IReadOnlyList<ToolConnectionOption> ConnectionOptions { get; }
+    /// <summary>Options for a <see cref="ToolFieldType.ConnectionPicker"/> / <see cref="ToolFieldType.DatabasePicker"/>
+    /// field (empty for every other type). A database-picker's options are refilled by the host whenever its
+    /// companion connection changes, so this is observable.</summary>
+    public ObservableCollection<ToolPickerOption> PickerOptions { get; }
 
-    /// <summary>The picked connection; its id is stored in <see cref="Value"/> so it flows through the same
+    /// <summary>The picked option; its id/name is stored in <see cref="Value"/> so it flows through the same
     /// inputs dictionary as every other field.</summary>
-    public ToolConnectionOption? SelectedConnection
+    public ToolPickerOption? SelectedOption
     {
-        get => ConnectionOptions.FirstOrDefault(c => c.Id == Value);
+        get => PickerOptions.FirstOrDefault(c => c.Id == Value);
         set => Value = value?.Id;
+    }
+
+    /// <summary>Replace the picker's options (a connection change repopulating a database picker) and clear the
+    /// selection so a stale database name can't linger.</summary>
+    public void SetPickerOptions(IEnumerable<ToolPickerOption> options)
+    {
+        PickerOptions.Clear();
+        foreach (var option in options)
+        {
+            PickerOptions.Add(option);
+        }
+
+        Value = null;
+        OnPropertyChanged(nameof(SelectedOption));
     }
 
     // Masked bullet for a password unless revealed; (char)0 shows plaintext.

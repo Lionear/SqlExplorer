@@ -3,6 +3,7 @@
   "diff.dialogTitle": "Schema-diff",
 
   "diff.field.compareTo": "Vergelijk met connectie",
+  "diff.field.database": "Database op die connectie",
   "diff.field.apply": "Wijzigingen toepassen op deze connectie",
 
   "diff.error.unsupported": "Schema-diff ondersteunt de '{0}'-engine nog niet (leest via information_schema; alleen Postgres, MySQL en SQL Server).",

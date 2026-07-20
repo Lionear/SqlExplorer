@@ -32,8 +32,10 @@ public static class ToolHostApi
     //   also in v4 (2026-07-20): the connection-picker seam (SE-99) — a new ToolFieldType.ConnectionPicker
     //                  lets a tool take a *second* saved connection, and IToolHost gains ListConnections() +
     //                  OpenConnection(id) (returning a runnable ToolConnection) so a cross-connection tool
-    //                  (SchemaDiff, CopyTable) can open it. Default interface impls (empty/null) keep older
-    //                  hosts and non-dialog IToolHost implementors compiling; folded into the unreleased v4.
+    //                  (SchemaDiff, CopyTable) can open it. A companion ToolFieldType.DatabasePicker picks a
+    //                  database on that connection (IToolHost.ListDatabasesAsync + OpenConnection's database
+    //                  arg), since a server hosts many. Default interface impls (empty/null) keep older hosts
+    //                  and non-dialog IToolHost implementors compiling; folded into the unreleased v4.
     public const int Version = 4;
 
     /// <summary>Oldest plugin ABI this host still loads. Every bump has been additive (v2 tool defaults, v3

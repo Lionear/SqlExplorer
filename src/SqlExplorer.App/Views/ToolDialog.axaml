@@ -17,8 +17,8 @@
           <CheckBox Grid.Column="0" IsChecked="{Binding BoolValue}" IsVisible="{Binding IsBool}" />
           <ComboBox Grid.Column="0" HorizontalAlignment="Stretch" ItemsSource="{Binding Choices}"
                     SelectedItem="{Binding Value}" IsVisible="{Binding IsChoice}" />
-          <ComboBox Grid.Column="0" HorizontalAlignment="Stretch" ItemsSource="{Binding ConnectionOptions}"
-                    SelectedItem="{Binding SelectedConnection}" IsVisible="{Binding IsConnectionPicker}">
+          <ComboBox Grid.Column="0" HorizontalAlignment="Stretch" ItemsSource="{Binding PickerOptions}"
+                    SelectedItem="{Binding SelectedOption}" IsVisible="{Binding IsPicker}">
             <ComboBox.ItemTemplate>
               <DataTemplate>
                 <TextBlock Text="{Binding Name}" />

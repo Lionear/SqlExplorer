@@ -23,13 +23,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
-- **Schema Diff tool** — a new first-party tool compares this connection's schema to a second connection you
-  pick and reports the migration (an ALTER script that would make this one match the other); tick **Apply** to
-  run it. It diffs tables, columns (type / nullability / default), primary keys, unique constraints and foreign
-  keys, and generates dialect-correct DDL for Postgres, MySQL and SQL Server. Reads via `information_schema`, so
-  the picker offers same-provider connections only; SQLite and cross-engine diffs are not covered yet. Built on
-  a new plugin-SDK seam — `ToolFieldType.ConnectionPicker` plus `IToolHost.ListConnections()` /
-  `OpenConnection()` — so any tool can now take a second connection.
+- **Schema Diff tool** — a new first-party tool compares this database against a second one you pick — another
+  connection and one of its databases — and reports the migration (an ALTER script that would make this one
+  match the other); tick **Apply** to run it. It diffs tables, columns (type / nullability / default), primary
+  keys, unique constraints and foreign keys, and generates dialect-correct DDL for Postgres, MySQL and SQL
+  Server. Reads via `information_schema`, so the picker offers same-provider connections only; SQLite and
+  cross-engine diffs are not covered yet. Built on new plugin-SDK seams — `ToolFieldType.ConnectionPicker` and
+  `DatabasePicker` plus `IToolHost.ListConnections()` / `ListDatabasesAsync()` / `OpenConnection()` — so any
+  tool can now take a second connection and database.
 - **Icons in SQL completion** — each suggestion in the code-completion popup now carries an icon for its kind
   (table, column, function, foreign-key join condition, keyword), reusing the shared Lucide glyphs from the
   schema tree so a table reads the same in both places. The type / signature / join-condition detail alongside

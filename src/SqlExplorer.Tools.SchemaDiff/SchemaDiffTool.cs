@@ -33,6 +33,8 @@ public sealed class SchemaDiffTool : IToolPlugin
     [
         new("compareTo", "Compare against connection", ToolFieldType.ConnectionPicker,
             Required: true, LabelKey: "diff.field.compareTo"),
+        new("database", "Database on that connection", ToolFieldType.DatabasePicker,
+            Required: true, LabelKey: "diff.field.database"),
         new("apply", "Apply the changes to this connection", ToolFieldType.Bool,
             Default: "false", LabelKey: "diff.field.apply")
     ];
@@ -52,37 +54,41 @@ public sealed class SchemaDiffTool : IToolPlugin
         }
 
         var target = inputs.GetValueOrDefault("compareTo");
-        if (string.IsNullOrWhiteSpace(target))
+        var targetDatabase = inputs.GetValueOrDefault("database");
+        if (string.IsNullOrWhiteSpace(target) || string.IsNullOrWhiteSpace(targetDatabase))
         {
             progress.Report(new ToolProgress(loc.Get("diff.error.noTarget")));
             return;
         }
 
-        var other = context.Host.OpenConnection(target);
+        var other = context.Host.OpenConnection(target, targetDatabase);
         if (other is null)
         {
             progress.Report(new ToolProgress(loc.Get("diff.error.openFailed")));
             return;
         }
 
-        progress.Report(new ToolProgress(loc.Get("diff.progress.readingThis", context.Profile.Name)));
+        var thisLabel = $"{context.Profile.Name} / {context.Profile.Database}";
+        var otherLabel = $"{other.Profile.Name} / {targetDatabase}";
+
+        progress.Report(new ToolProgress(loc.Get("diff.progress.readingThis", thisLabel)));
         var thisSchema = await new SchemaReader(context.Provider).ReadAsync(context.Profile, context.ProviderId, ct);
 
-        progress.Report(new ToolProgress(loc.Get("diff.progress.readingOther", other.Profile.Name)));
+        progress.Report(new ToolProgress(loc.Get("diff.progress.readingOther", otherLabel)));
         var otherSchema = await new SchemaReader(other.Provider).ReadAsync(other.Profile, other.ProviderId, ct);
 
         // Transform *this* schema into the picked one — the script (and any apply) targets this connection.
         var changes = SchemaDiffer.Diff(thisSchema, otherSchema);
         if (changes.Count == 0)
         {
-            progress.Report(new ToolProgress(loc.Get("diff.result.identical", other.Profile.Name)));
+            progress.Report(new ToolProgress(loc.Get("diff.result.identical", otherLabel)));
             return;
         }
 
         var statements = new AlterScriptWriter(SqlDialect.For(context.ProviderId)).Statements(changes);
 
         progress.Report(new ToolProgress(
-            loc.Get("diff.result.summary", context.Profile.Name, other.Profile.Name, changes.Count)));
+            loc.Get("diff.result.summary", thisLabel, otherLabel, changes.Count)));
         progress.Report(new ToolProgress(string.Empty));
         foreach (var statement in statements)
         {

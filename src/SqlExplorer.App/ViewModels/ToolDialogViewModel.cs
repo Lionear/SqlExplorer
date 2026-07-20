@@ -81,7 +81,7 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
 
     IReadOnlyList<ToolConnectionInfo> IToolHost.ListConnections() => PickableConnections();
 
-    ToolConnection? IToolHost.OpenConnection(string connectionId)
+    ToolConnection? IToolHost.OpenConnection(string connectionId, string? database)
     {
         var saved = _connections.List().FirstOrDefault(c => c.Id == connectionId);
         if (saved is null || !_providers.TryGet(saved.ProviderId, out var provider))
@@ -89,7 +89,18 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
             return null;
         }
 
-        return new ToolConnection(_connections.Resolve(saved), provider, saved.ProviderId);
+        return new ToolConnection(_connections.Resolve(saved, database), provider, saved.ProviderId);
+    }
+
+    async Task<IReadOnlyList<string>> IToolHost.ListDatabasesAsync(string connectionId, CancellationToken ct)
+    {
+        var saved = _connections.List().FirstOrDefault(c => c.Id == connectionId);
+        if (saved is null || !_providers.TryGet(saved.ProviderId, out var provider))
+        {
+            return [];
+        }
+
+        return await provider.GetDatabasesAsync(_connections.Resolve(saved), ct);
     }
 
     // The picker offers same-provider connections only (a cross-provider schema diff would need type-mapping
@@ -101,6 +112,36 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
             .Where(c => c.ProviderId == _providerId && c.Name != _profile.Name)
             .Select(c => new ToolConnectionInfo(c.Id, c.Name, c.ProviderId))
             .ToList();
+
+    // Refill every database picker with the chosen connection's databases (cleared when nothing/failing).
+    private async Task PopulateDatabasePickersAsync(string? connectionId)
+    {
+        var dbFields = Fields.Where(f => f.IsDatabasePicker).ToList();
+        if (dbFields.Count == 0)
+        {
+            return;
+        }
+
+        IReadOnlyList<ToolPickerOption> options = [];
+        if (!string.IsNullOrWhiteSpace(connectionId))
+        {
+            try
+            {
+                var databases = await ((IToolHost)this).ListDatabasesAsync(connectionId, CancellationToken.None);
+                options = databases.Select(d => new ToolPickerOption(d, d)).ToList();
+            }
+            catch
+            {
+                // A connection that can't be reached just leaves the database picker empty.
+                options = [];
+            }
+        }
+
+        foreach (var field in dbFields)
+        {
+            field.SetPickerOptions(options);
+        }
+    }
 
     /// <summary>Set by the view so the VM can ask a yes/no question (destructive confirm).</summary>
     public Func<string, string, Task<bool>>? ConfirmRequested { get; set; }
@@ -207,14 +248,17 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
         {
             // Resolve the connection dropdown once per open, not per field, so every ConnectionPicker on a
             // tool shares one list.
-            IReadOnlyList<ToolConnectionOption> connectionOptions =
+            IReadOnlyList<ToolPickerOption> connectionOptions =
                 tool.Fields.Any(f => f.Type == ToolFieldType.ConnectionPicker)
-                    ? PickableConnections().Select(c => new ToolConnectionOption(c.Id, c.Name)).ToList()
+                    ? PickableConnections().Select(c => new ToolPickerOption(c.Id, c.Name)).ToList()
                     : [];
 
             foreach (var field in tool.Fields)
             {
-                var input = new ToolFieldInput(field, _pluginLoc, connectionOptions);
+                // A database picker starts empty; it's filled once its companion connection is chosen.
+                IReadOnlyList<ToolPickerOption> options =
+                    field.Type == ToolFieldType.ConnectionPicker ? connectionOptions : [];
+                var input = new ToolFieldInput(field, _pluginLoc, options);
                 input.PropertyChanged += OnFieldChanged;
                 Fields.Add(input);
             }
@@ -229,6 +273,12 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
         }
 
         OnPropertyChanged(nameof(CanExecute));
+
+        // A connection-picker just changed → refill any database-picker with that server's databases.
+        if (input.IsConnectionPicker)
+        {
+            await PopulateDatabasePickersAsync(input.Value);
+        }
 
         // A file field just changed → offer a preview (e.g. a backup's plaintext header) under it.
         if (input.IsFile && !string.IsNullOrWhiteSpace(input.Value))

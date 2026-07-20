@@ -41,6 +41,13 @@ public interface IToolHost
 
     /// <summary>Turn a connection id (a <see cref="ToolFieldType.ConnectionPicker"/> field's collected value)
     /// into a runnable <see cref="ToolConnection"/> — keychain secrets merged in — or null if no such
-    /// connection exists or its provider plugin isn't installed.</summary>
-    ToolConnection? OpenConnection(string connectionId) => null;
+    /// connection exists or its provider plugin isn't installed. <paramref name="database"/> targets a
+    /// specific database/catalog on the server (a <see cref="ToolFieldType.DatabasePicker"/> value); null
+    /// uses the connection's default.</summary>
+    ToolConnection? OpenConnection(string connectionId, string? database = null) => null;
+
+    /// <summary>The databases/catalogs on a saved connection, for a <see cref="ToolFieldType.DatabasePicker"/>
+    /// dropdown. Empty default so an older host degrades gracefully.</summary>
+    Task<IReadOnlyList<string>> ListDatabasesAsync(string connectionId, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<string>>([]);
 }

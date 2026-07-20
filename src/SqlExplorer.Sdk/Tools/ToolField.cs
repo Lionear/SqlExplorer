@@ -18,7 +18,13 @@ public enum ToolFieldType
     /// the tool turns it into a runnable connection via <see cref="IToolHost.OpenConnection"/>. The picker's
     /// options are host state, not knowable by the plugin, so <see cref="ToolField.Choices"/> is ignored here.
     /// </summary>
-    ConnectionPicker
+    ConnectionPicker,
+
+    /// <summary>A database on the connection chosen by this tool's <see cref="ConnectionPicker"/> field —
+    /// a server hosts many. The host repopulates the dropdown (via <see cref="IToolHost.ListDatabasesAsync"/>)
+    /// whenever that connection changes; the collected value is the database name, which the tool passes to
+    /// <see cref="IToolHost.OpenConnection"/>. Depends on a ConnectionPicker field being present.</summary>
+    DatabasePicker
 }
 
 /// <summary>
