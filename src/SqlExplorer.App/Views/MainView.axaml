@@ -576,16 +576,11 @@
                       Command="{Binding $parent[ItemsControl].DataContext.ToggleToolWindowCommand}"
                       CommandParameter="{Binding}">
                 <StackPanel Spacing="6" HorizontalAlignment="Center">
-                  <!-- Rotate the icon a quarter-turn too so it runs with the 90°-rotated label below
-                       (SE-181). RenderTransform suffices — the icon is square, so layout is unchanged. -->
+                  <!-- Icon stays upright: a clock/terminal/bot glyph has no reading direction, so rotating it
+                       with the label (SE-181) just read as tilted/broken. Only the text below is rotated. -->
                   <Path Width="15" Height="15" Stretch="Uniform" Data="{Binding Icon}"
                         Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3"
-                        StrokeJoin="Round" StrokeLineCap="Round" HorizontalAlignment="Center"
-                        RenderTransformOrigin="0.5,0.5">
-                    <Path.RenderTransform>
-                      <RotateTransform Angle="90" />
-                    </Path.RenderTransform>
-                  </Path>
+                        StrokeJoin="Round" StrokeLineCap="Round" HorizontalAlignment="Center" />
                   <!-- LayoutTransformControl (not RenderTransform): rotation must affect layout so the
                        stripe reserves the rotated text's height instead of overlapping the next button. -->
                   <LayoutTransformControl HorizontalAlignment="Center">

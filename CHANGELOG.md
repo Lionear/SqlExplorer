@@ -17,9 +17,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   round-trips (and so can't clear) the password.
 - **Startup restores the tab you left on** — with "Restore tabs on startup", the previously *selected* tab is
   now reselected instead of always landing on the last one in the row.
-- Small UI polish: the results **Export** action now reads as a button (not a text link); the clock icon on the
-  vertical **History** stripe is rotated to run with its label; and the **AI activity** panel's toggle only
-  appears while the MCP server is running (it live-appears/disappears as you start/stop the server).
+- Small UI polish: the results **Export** action now reads as a button (not a text link); and the **AI activity**
+  panel's toggle only appears while the MCP server is running (it live-appears/disappears as you start/stop the
+  server).
 
 ### Added
 
