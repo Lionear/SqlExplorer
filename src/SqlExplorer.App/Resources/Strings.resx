@@ -633,6 +633,15 @@
   <data name="BrowsePageSizeHint" xml:space="preserve">
     <value>Number of rows fetched per page when browsing a table. Applies to newly opened browse tabs.</value>
   </data>
+  <data name="PageQueryResults" xml:space="preserve">
+    <value>Page query results</value>
+  </data>
+  <data name="QueryPageSize" xml:space="preserve">
+    <value>Query page size (rows)</value>
+  </data>
+  <data name="QueryPageSizeHint" xml:space="preserve">
+    <value>When on, a single SELECT with no TOP/LIMIT of its own is shown one page at a time (use Previous/Next to walk the rows), so a stray "SELECT * FROM big_table" doesn't pull everything at once. Queries with their own TOP/LIMIT, other statements and scripts run unchanged. Applies to newly opened query tabs.</value>
+  </data>
   <data name="ConfirmOnExit" xml:space="preserve">
     <value>Ask for confirmation before quitting</value>
   </data>

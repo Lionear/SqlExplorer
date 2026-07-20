@@ -277,6 +277,15 @@
           </Grid>
           <TextBlock Text="{Binding Loc[BrowsePageSizeHint]}" FontSize="11" TextWrapping="Wrap"
                      Foreground="{DynamicResource SETextFaintBrush}" />
+          <ToggleSwitch IsChecked="{Binding PageQueryResults}" Margin="0,10,0,0"
+                        OnContent="{Binding Loc[PageQueryResults]}" OffContent="{Binding Loc[PageQueryResults]}" />
+          <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0" IsEnabled="{Binding PageQueryResults}">
+            <TextBlock Grid.Column="0" Text="{Binding Loc[QueryPageSize]}" VerticalAlignment="Center" />
+            <NumericUpDown Grid.Column="1" Width="150" Minimum="1" Maximum="1000000" FormatString="0"
+                           Value="{Binding QueryPageSize}" />
+          </Grid>
+          <TextBlock Text="{Binding Loc[QueryPageSizeHint]}" FontSize="11" TextWrapping="Wrap"
+                     Foreground="{DynamicResource SETextFaintBrush}" />
         </StackPanel>
 
         <!-- Query Log -->

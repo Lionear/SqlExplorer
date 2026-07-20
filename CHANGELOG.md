@@ -18,6 +18,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- **Paged query results** — running a single `SELECT` with no `TOP`/`LIMIT` of its own now shows the results one
+  page at a time with Previous/Next (DataGrip/DBeaver-style, default 200 rows/page), so a stray
+  `SELECT * FROM big_table` doesn't pull the whole table at once; the row-range indicator shows which rows
+  you're viewing. Queries with their own `TOP`/`LIMIT`, other statement types and multi-statement scripts run
+  unchanged. Toggle and page size live under Settings → Query.
 - **Scope-aware SQL completion** — code completion now understands query structure instead of scanning for
   `FROM`/`JOIN` with a regex. It resolves aliases through CTEs (`WITH x AS (…)`) and derived tables
   (`(SELECT …) d`), suggests the columns of the sources actually in scope, offers CTE names alongside real
@@ -44,6 +49,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Changed
 
+- **Double-click a result cell to open its value in a window** — long text and JSON are shown pretty-printed in
+  a standalone, resizable window you can copy from, and several can be open side by side. This replaces the
+  always-on strips below the grid (the click-to-view cell value and the selection count/sum/avg summary), which
+  are gone.
 - The connection tree's **AI access** submenu now marks the active level (None / Read-only / Read-write)
   with a check, so the current setting is visible at a glance instead of having to remember it.
 - **Refreshed icon set** — the schema tree, tabs, toolbars and Settings now use a consistent

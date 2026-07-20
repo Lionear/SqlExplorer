@@ -75,4 +75,11 @@ public sealed class MsSqlDialect : ISqlDialect
     // SQL Server's OFFSET/FETCH requires an ORDER BY; fall back to (SELECT NULL) for an unordered page.
     public string Paginate(string sql, int limit, int offset, string? orderBy = null) =>
         $"{sql}\nORDER BY {orderBy ?? "(SELECT NULL)"}\nOFFSET {offset} ROWS FETCH NEXT {limit} ROWS ONLY";
+
+    // SQL Server's OFFSET/FETCH needs an ORDER BY. When the query already has one, append OFFSET/FETCH to it
+    // (a second ORDER BY would be a syntax error); otherwise fall back to Paginate's ORDER BY (SELECT NULL).
+    public string PageQuery(string sql, int limit, int offset, bool alreadyOrdered = false) =>
+        alreadyOrdered
+            ? $"{sql}\nOFFSET {offset} ROWS FETCH NEXT {limit} ROWS ONLY"
+            : Paginate(sql, limit, offset);
 }

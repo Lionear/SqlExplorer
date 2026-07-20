@@ -60,7 +60,7 @@ public partial class DocumentView : UserControl
         {
             _resultsGrid.Sorting += OnGridSorting;
             _resultsGrid.CellPointerPressed += OnCellPointerPressed;
-            _resultsGrid.SelectionChanged += OnGridSelectionChanged;
+            _resultsGrid.DoubleTapped += OnGridDoubleTapped;
             _resultsGrid.LoadingRow += OnLoadingRow;
         }
 
@@ -107,10 +107,11 @@ public partial class DocumentView : UserControl
         }
     }
 
-    // Clicking a cell shows its full value in the viewer panel (long text / JSON read comfortably).
+    // Track the cell under the cursor so the context-menu actions (Copy cell / Set NULL / GUID) and the
+    // double-click value viewer know which cell they act on.
     private void OnCellPointerPressed(object? sender, DataGridCellPointerPressedEventArgs e)
     {
-        if (_viewModel is null || sender is not DataGrid grid)
+        if (sender is not DataGrid grid)
         {
             return;
         }
@@ -118,31 +119,30 @@ public partial class DocumentView : UserControl
         var columnIndex = grid.Columns.IndexOf(e.Column);
         if (e.Row.DataContext is EditableRow row && columnIndex >= 0 && columnIndex < row.Cells.Count)
         {
-            _viewModel.ShowCell(columnIndex, row.Cells[columnIndex].Value);
             _currentColumnIndex = columnIndex;
             _currentRow = row;
-            RecomputeAggregation();
         }
     }
 
-    private void OnGridSelectionChanged(object? sender, SelectionChangedEventArgs e) => RecomputeAggregation();
-
-    // Aggregate the current column's values across the selected rows.
-    private void RecomputeAggregation()
+    // Double-click a cell to open its full value in a standalone, non-modal window (long text / JSON read
+    // comfortably) — several can be open at once for side-by-side comparison.
+    private void OnGridDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (_viewModel is null || _resultsGrid is null)
+        if (_resultsGrid is null || _currentRow is not { } row
+            || _currentColumnIndex < 0 || _currentColumnIndex >= row.Cells.Count
+            || TopLevel.GetTopLevel(this) is not Window owner)
         {
             return;
         }
 
-        var column = _currentColumnIndex;
-        var values = _resultsGrid.SelectedItems
-            .OfType<EditableRow>()
-            .Where(row => column >= 0 && column < row.Cells.Count)
-            .Select(row => row.Cells[column].Value)
-            .ToList();
+        var column = _currentColumnIndex < _resultsGrid.Columns.Count
+            ? _resultsGrid.Columns[_currentColumnIndex].Header?.ToString() ?? string.Empty
+            : string.Empty;
 
-        _viewModel.UpdateAggregation(values);
+        var copyLabel = _viewModel?.Loc["Copy"] ?? "Copy";
+        var copiedLabel = _viewModel?.Loc["CopiedToClipboard"] ?? "Copied";
+        new CellValueWindow(column, DocumentViewModel.FormatCellValue(row.Cells[_currentColumnIndex].Value), copyLabel, copiedLabel)
+            .Show(owner);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -739,9 +739,9 @@ public partial class DocumentView : UserControl
 
         grid.ItemsSource = editable.Rows;
 
-        // Fresh result: forget the previous column/selection so the aggregation strip resets.
+        // Fresh result: forget the previously tracked cell.
         _currentColumnIndex = 0;
-        _viewModel?.UpdateAggregation([]);
+        _currentRow = null;
     }
 
     // Per-row template: a cell the provider marks actionable (ICustomCellActionUi — e.g. MSSQL's

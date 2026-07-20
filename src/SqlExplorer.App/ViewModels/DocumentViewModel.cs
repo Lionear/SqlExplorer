@@ -234,6 +234,14 @@ public partial class DocumentViewModel : ViewModelBase
     [ObservableProperty]
     private int _pageSize = 200;
 
+    // Query-result paging (SE-178), read once per tab like the browse page size. When a run is a single
+    // pageable SELECT, _pagedQueryBase holds it so next/prev can re-run it at another offset (_pagedQueryOrdered
+    // tells the dialect whether it already has an ORDER BY). _pageQueries/_queryPageSize are the settings.
+    private bool _pageQueries;
+    private int _queryPageSize;
+    private string? _pagedQueryBase;
+    private bool _pagedQueryOrdered;
+
     [ObservableProperty]
     private string _rowRange = string.Empty;
 
@@ -289,20 +297,6 @@ public partial class DocumentViewModel : ViewModelBase
         }
     }
 
-    // Cell-viewer panel: full value of the last-clicked cell (JSON pretty-printed when parseable).
-    [ObservableProperty]
-    private bool _isCellViewerVisible;
-
-    [ObservableProperty]
-    private string? _selectedCellColumn;
-
-    [ObservableProperty]
-    private string? _selectedCellValue;
-
-    // Aggregation strip: count over the selected rows + sum/avg/min/max when the current column is numeric.
-    [ObservableProperty]
-    private string _aggregationSummary = string.Empty;
-
     // Query-tab connection/database switcher (DBeaver-style): query-mode only, browse tabs stay pinned
     // to their tree-node's connection/database. Backs the two toolbar ComboBoxes in DocumentView.
     [ObservableProperty]
@@ -349,6 +343,8 @@ public partial class DocumentViewModel : ViewModelBase
         // Browse page size is a global preference read once per tab (like the editor font size); a changed
         // value applies to newly opened browse tabs. Guard against a zero/negative stored value.
         _pageSize = settings.BrowsePageSize > 0 ? settings.BrowsePageSize : 200;
+        _pageQueries = settings.PageQueryResults;
+        _queryPageSize = settings.QueryPageSize > 0 ? settings.QueryPageSize : 200;
     }
 
     /// <summary>SQL editor font size/word-wrap, read once from settings at document creation
@@ -418,11 +414,25 @@ public partial class DocumentViewModel : ViewModelBase
     /// monitor mode — those are write actions, and the live sessions grid is read-only.</summary>
     public bool ShowEditToolbar => !IsMonitorMode && Editable is not null;
 
-    public bool CanPrevPage => IsBrowseMode && Page > 0;
+    /// <summary>True while a query tab is showing a single SELECT's results one page at a time (SE-178) —
+    /// drives the under-grid prev/next/row-range nav.</summary>
+    public bool IsQueryPaged => _pagedQueryBase is not null;
 
-    // Cursor providers know "is there a next page?" from the token they returned; offset providers infer it
-    // from a full last page (a short page means the end).
-    public bool CanNextPage => IsBrowseMode && PageSize > 0 &&
+    // Enter/leave paged-query mode, notifying the derived paging state so the nav and buttons update.
+    private void SetPagedQuery(string? baseSql, bool ordered)
+    {
+        _pagedQueryBase = baseSql;
+        _pagedQueryOrdered = ordered;
+        OnPropertyChanged(nameof(IsQueryPaged));
+        PrevPageCommand.NotifyCanExecuteChanged();
+        NextPageCommand.NotifyCanExecuteChanged();
+    }
+
+    public bool CanPrevPage => (IsBrowseMode || IsQueryPaged) && Page > 0;
+
+    // Cursor providers know "is there a next page?" from the token they returned; offset providers (including
+    // paged queries) infer it from a full last page (a short page means the end).
+    public bool CanNextPage => (IsBrowseMode || IsQueryPaged) && PageSize > 0 &&
         (_cursorMode ? _lastNextCursor is not null : _lastRowCount == PageSize);
 
     /// <summary>
@@ -1223,6 +1233,8 @@ public partial class DocumentViewModel : ViewModelBase
             return;
         }
 
+        SetPagedQuery(null, false); // an EXPLAIN result isn't pageable — drop any prior paged-query bar
+
         await RunTracked(ct, async token =>
         {
             try
@@ -1247,7 +1259,24 @@ public partial class DocumentViewModel : ViewModelBase
     // may return zero, one, or several result sets — the host never needs to know which up front.
     // GO is not real T-SQL (a client-side batch separator only), so on SQL Server the text is split into
     // GO-batches first and each is executed separately; every other engine sends the text through as-is.
-    private Task RunScriptAsync(string sql, CancellationToken ct) => RunTracked(ct, async token =>
+    // "Run"/"Run at cursor": a single unbounded SELECT is shown paged (SE-178) — first page now, next/prev to
+    // walk the rest; anything else (a script, a non-SELECT, an already-bounded/limited query) runs as-is through
+    // the multi-result-set path below.
+    private Task RunScriptAsync(string sql, CancellationToken ct)
+    {
+        if (_pageQueries && _queryPageSize > 0 && QueryPaging.TryGetPageableSelect(sql, out var statement, out var ordered))
+        {
+            SetPagedQuery(statement, ordered);
+            PageSize = _queryPageSize;
+            Page = 0;
+            return LoadQueryPageAsync(ct, announce: true);
+        }
+
+        SetPagedQuery(null, false);
+        return RunScriptCoreAsync(sql, ct);
+    }
+
+    private Task RunScriptCoreAsync(string sql, CancellationToken ct) => RunTracked(ct, async token =>
     {
         var stopwatch = Stopwatch.StartNew();
         try
@@ -1317,15 +1346,19 @@ public partial class DocumentViewModel : ViewModelBase
         }
 
         Page--;
-        await LoadPageAsync(ct);
+        await ReloadPageAsync(ct);
     }
 
     [RelayCommand(CanExecute = nameof(CanNextPage))]
     private async Task NextPageAsync(CancellationToken ct)
     {
         Page++;
-        await LoadPageAsync(ct);
+        await ReloadPageAsync(ct);
     }
+
+    // A page-flip reloads the browse table or re-runs the paged query at the new offset (never announcing).
+    private Task ReloadPageAsync(CancellationToken ct) =>
+        IsQueryPaged ? LoadQueryPageAsync(ct, announce: false) : LoadPageAsync(ct);
 
     [RelayCommand]
     private async Task ApplyFilterAsync(CancellationToken ct)
@@ -1354,8 +1387,12 @@ public partial class DocumentViewModel : ViewModelBase
     // history — browse paging (same path, IsBrowseMode) would just clutter it.
     // A non-null runner overrides the default ExecuteQueryAsync call (cursor-paged browse fetches one page
     // via ExecuteCursorPageAsync) while reusing all the result-population, output, and error handling here.
+    // Shared single-result-set path for browse paging and query-result paging. <paramref name="announce"/>
+    // reports to the Output panel + query history — true for a fresh query run, false for a page-flip (browse or
+    // query), so flipping pages never spams the log (the RowRange bar already shows the count).
     private Task ExecuteAsync(string sql, CancellationToken ct,
-        Func<ConnectionProfile, CancellationToken, Task<QueryResult>>? runner = null) => RunTracked(ct, async token =>
+        Func<ConnectionProfile, CancellationToken, Task<QueryResult>>? runner = null, bool announce = false,
+        string? historySql = null) => RunTracked(ct, async token =>
     {
         var stopwatch = Stopwatch.StartNew();
         try
@@ -1370,21 +1407,19 @@ public partial class DocumentViewModel : ViewModelBase
             _lastRowCount = result.Rows.Count;
             _lastNextCursor = result.NextCursor;
             SetResultSets([new ResultSetTab("Result", EditableResultSet.From(result))]);
-            // Browse paging shares this path; its own RowRange header already shows the count, so only a
-            // typed query reports to the Output panel — otherwise every page-flip would spam it.
-            if (IsQueryMode)
+            if (announce)
             {
                 Report(OutputLevel.Info, DescribeOutcome([result], result.Elapsed.TotalMilliseconds));
-                AppendHistory(sql, QueryHistoryKind.Query, stopwatch.ElapsedMilliseconds, result.Rows.Count, success: true, error: null);
+                AppendHistory(historySql ?? sql, QueryHistoryKind.Query, stopwatch.ElapsedMilliseconds, result.Rows.Count, success: true, error: null);
             }
 
-            // Browse page-flips update the status bar too — it's a stat, not a log line.
+            // Browse/query page-flips update the status bar too — it's a stat, not a log line.
             SetRunStats(result.Rows.Count, result.Elapsed.TotalMilliseconds);
         }
         catch (OperationCanceledException)
         {
             stopwatch.Stop();
-            if (IsQueryMode)
+            if (announce)
             {
                 Report(OutputLevel.Info, Loc["QueryCancelled"]);
             }
@@ -1394,12 +1429,33 @@ public partial class DocumentViewModel : ViewModelBase
             stopwatch.Stop();
             SignalConnection(ConnectionState.Error);
             ReportFailure(ex.Message);
-            if (IsQueryMode)
+            if (announce)
             {
-                AppendHistory(sql, QueryHistoryKind.Query, stopwatch.ElapsedMilliseconds, 0, success: false, error: ex.Message);
+                AppendHistory(historySql ?? sql, QueryHistoryKind.Query, stopwatch.ElapsedMilliseconds, 0, success: false, error: ex.Message);
             }
         }
     });
+
+    // Run one page of the active paged query (SE-178) through the shared ExecuteAsync path and refresh the
+    // prev/next/row-range bar. announce is true only for the initial run, not for a page-flip.
+    private async Task LoadQueryPageAsync(CancellationToken ct, bool announce)
+    {
+        if (_pagedQueryBase is not { } baseSql)
+        {
+            return;
+        }
+
+        var dialect = _providers.Get(Connection.ProviderId).Dialect;
+        var paged = dialect.PageQuery(baseSql, PageSize, Page * PageSize, _pagedQueryOrdered);
+        await ExecuteAsync(paged, ct, announce: announce, historySql: baseSql);
+
+        var offset = Page * PageSize;
+        RowRange = _lastRowCount == 0
+            ? Loc.Get("RowRangeEmpty")
+            : Loc.Get("RowRange", offset + 1, offset + _lastRowCount);
+        PrevPageCommand.NotifyCanExecuteChanged();
+        NextPageCommand.NotifyCanExecuteChanged();
+    }
 
     private void AppendHistory(string sql, QueryHistoryKind kind, long durationMs, int rowCount, bool success, string? error)
     {
@@ -1420,64 +1476,9 @@ public partial class DocumentViewModel : ViewModelBase
         _queryLog.Record(entry); // No-op unless logging + the application source are enabled.
     }
 
-    /// <summary>Show a clicked cell's full value in the viewer panel, resolving the column name by index.</summary>
-    public void ShowCell(int columnIndex, object? value)
-    {
-        SelectedCellColumn = Editable is { } editable && columnIndex >= 0 && columnIndex < editable.Columns.Count
-            ? editable.Columns[columnIndex].Name
-            : null;
-        SelectedCellValue = FormatCellValue(value);
-        IsCellViewerVisible = true;
-    }
-
-    [RelayCommand]
-    private void HideCellViewer() => IsCellViewerVisible = false;
-
-    /// <summary>
-    /// Recompute the selection aggregation over <paramref name="values"/> (the current column across the
-    /// selected rows): always a count, plus sum/avg/min/max when every non-null value is numeric.
-    /// </summary>
-    public void UpdateAggregation(IReadOnlyList<object?> values)
-    {
-        if (values.Count == 0)
-        {
-            AggregationSummary = string.Empty;
-            return;
-        }
-
-        var numbers = new List<decimal>();
-        var numeric = true;
-        foreach (var value in values)
-        {
-            if (value is null or DBNull)
-            {
-                continue; // nulls are ignored by the numeric aggregates, like SQL
-            }
-
-            if (decimal.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture),
-                    NumberStyles.Any, CultureInfo.InvariantCulture, out var number))
-            {
-                numbers.Add(number);
-            }
-            else
-            {
-                numeric = false;
-                break;
-            }
-        }
-
-        var count = $"{Loc["AggCount"]} {values.Count}";
-        AggregationSummary = numeric && numbers.Count > 0
-            ? $"{count}  ·  {Loc["AggSum"]} {Num(numbers.Sum())}  ·  {Loc["AggAvg"]} {Num(numbers.Average())}" +
-              $"  ·  {Loc["AggMin"]} {Num(numbers.Min())}  ·  {Loc["AggMax"]} {Num(numbers.Max())}"
-            : count;
-    }
-
-    private static string Num(decimal value) => value.ToString("0.###", CultureInfo.InvariantCulture);
-
-    // Render a cell value for the viewer: NULL for null, pretty-printed JSON when the text parses as an
-    // object/array, otherwise the raw string.
-    private static string FormatCellValue(object? value)
+    /// <summary>Render a cell value for the double-click value window: NULL for null, pretty-printed JSON when
+    /// the text parses as an object/array, otherwise the raw string.</summary>
+    public static string FormatCellValue(object? value)
     {
         if (value is null or DBNull)
         {

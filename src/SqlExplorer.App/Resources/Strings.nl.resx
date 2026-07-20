@@ -633,6 +633,15 @@
   <data name="BrowsePageSizeHint" xml:space="preserve">
     <value>Aantal rijen per pagina bij het bladeren door een tabel. Geldt voor nieuw geopende bladertabbladen.</value>
   </data>
+  <data name="PageQueryResults" xml:space="preserve">
+    <value>Query-resultaten pagen</value>
+  </data>
+  <data name="QueryPageSize" xml:space="preserve">
+    <value>Paginagrootte query's (rijen)</value>
+  </data>
+  <data name="QueryPageSizeHint" xml:space="preserve">
+    <value>Indien aan wordt een enkele SELECT zonder eigen TOP/LIMIT pagina voor pagina getoond (gebruik Vorige/Volgende om door de rijen te bladeren), zodat een losse "SELECT * FROM grote_tabel" niet in één keer alles ophaalt. Query's met een eigen TOP/LIMIT, andere statements en scripts blijven ongewijzigd. Geldt voor nieuw geopende querytabbladen.</value>
+  </data>
   <data name="ConfirmOnExit" xml:space="preserve">
     <value>Vraag om bevestiging bij afsluiten</value>
   </data>

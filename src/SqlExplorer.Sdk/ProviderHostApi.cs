@@ -133,6 +133,10 @@ public static class ProviderHostApi
     //                   scope-aware completion in expression positions with its signature (SE-149 phase 2).
     //                   Purely additive and folded into the unreleased v26: a dialect (or older plugin) that
     //                   does not override it contributes no functions, so nothing regresses.
+    //   also in v26 (2026-07-20): added ISqlDialect.PageQuery (default-interface member delegating to Paginate)
+    //                   — pages a standalone SELECT that may already be ordered, for DataGrip/DBeaver-style
+    //                   query-result paging (SE-178). LIMIT/OFFSET dialects inherit the default; SQL Server
+    //                   overrides it to append OFFSET/FETCH to an existing ORDER BY. Purely additive.
     public const int Version = 26;
 
     /// <summary>Oldest plugin ABI this host still loads. Additive bumps (v11→v22 style) keep this fixed;

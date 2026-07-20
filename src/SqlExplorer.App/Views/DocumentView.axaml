@@ -24,7 +24,7 @@
       <Setter Property="Foreground" Value="{DynamicResource SETextPrimaryBrush}" />
     </Style>
   </UserControl.Styles>
-  <Grid x:Name="RootGrid" RowDefinitions="Auto,2*,Auto,Auto,Auto,3*,Auto,Auto">
+  <Grid x:Name="RootGrid" RowDefinitions="Auto,2*,Auto,Auto,Auto,3*,Auto">
 
     <!-- Row 0: mode-specific toolbar. Query = connection/database switcher + Run/Format; Browse = paging + filter. -->
     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8"
@@ -132,8 +132,8 @@
     <!-- Row 2 is intentionally empty (Auto → 0 height): execution outcomes now surface only in the
          host's Output panel, not inline under the editor. -->
 
-    <!-- Row 3: edit toolbar + pending-changes bar (shared by both modes). -->
-    <Grid Grid.Row="3" Margin="0,0,0,8"
+    <!-- Row 3: edit toolbar + pending-changes bar (shared by both modes). Equal space above and below. -->
+    <Grid Grid.Row="3" Margin="0,8,0,8"
           ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto"
           IsVisible="{Binding ShowEditToolbar}">
       <Button Grid.Column="0" Margin="0,0,8,0"
@@ -214,35 +214,17 @@
       </DataGrid>
     </Border>
 
-    <!-- Row 6: selection aggregation strip (count + sum/avg/min/max for a numeric column). -->
-    <Border Grid.Row="6" Margin="0,4,0,0" Padding="8,3"
-            Background="{DynamicResource SEToolbarBgBrush}"
-            BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1"
-            CornerRadius="{StaticResource SEControlRadius}"
-            IsVisible="{Binding AggregationSummary, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}">
-      <TextBlock Text="{Binding AggregationSummary}" FontSize="12"
-                 Foreground="{DynamicResource SETextSecondaryBrush}" />
-    </Border>
-
-    <!-- Row 7: cell-value viewer — appears on cell click; full value, JSON pretty-printed when parseable. -->
-    <Border Grid.Row="7" Margin="0,8,0,0" MaxHeight="200"
-            IsVisible="{Binding IsCellViewerVisible}"
-            BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1"
-            CornerRadius="{StaticResource SEControlRadius}" ClipToBounds="True">
-      <Grid RowDefinitions="Auto,*">
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="8,4"
-              Background="{DynamicResource SEToolbarBgBrush}">
-          <TextBlock Grid.Column="0" Text="{Binding SelectedCellColumn}" VerticalAlignment="Center"
-                     FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource SETextSecondaryBrush}" />
-          <Button Grid.Column="1" Classes="Subtle" Content="×" Padding="6,0" FontSize="15"
-                  Command="{Binding HideCellViewerCommand}" />
-        </Grid>
-        <TextBox Grid.Row="1" Text="{Binding SelectedCellValue}"
-                 IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                 BorderThickness="0" Padding="6"
-                 FontFamily="Cascadia Code,Consolas,Menlo,monospace" FontSize="12"
-                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
-      </Grid>
-    </Border>
+    <!-- Row 6: query-result paging nav (SE-178) — under the grid, DataGrip/DBeaver-style. Browse has its own
+         paging bar on top (with the filter box); this is the query-mode counterpart, prev/next + row range. -->
+    <Grid Grid.Row="6" ColumnDefinitions="Auto,Auto,Auto" Margin="0,6,0,0"
+          IsVisible="{Binding IsQueryPaged}">
+      <Button Grid.Column="0" Margin="0,0,6,0"
+              Content="{Binding Loc[PrevPage]}" Command="{Binding PrevPageCommand}" />
+      <Button Grid.Column="1" Margin="0,0,10,0"
+              Content="{Binding Loc[NextPage]}" Command="{Binding NextPageCommand}" />
+      <TextBlock Grid.Column="2" VerticalAlignment="Center"
+                 FontSize="12" Foreground="{DynamicResource SETextSecondaryBrush}"
+                 Text="{Binding RowRange}" />
+    </Grid>
   </Grid>
 </UserControl>

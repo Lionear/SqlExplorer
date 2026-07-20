@@ -1,0 +1,17 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SqlExplorer.App.Views.CellValueWindow"
+        Width="520" Height="420" MinWidth="280" MinHeight="180"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="*,Auto">
+    <TextBox x:Name="ValueBox" Grid.Row="0" IsReadOnly="True" AcceptsReturn="True"
+             TextWrapping="Wrap" BorderThickness="0" Padding="10"
+             FontFamily="Cascadia Code,Consolas,Menlo,monospace" FontSize="12"
+             ScrollViewer.VerticalScrollBarVisibility="Auto"
+             ScrollViewer.HorizontalScrollBarVisibility="Auto" />
+    <Border Grid.Row="1" Padding="10,8" BorderThickness="0,1,0,0"
+            BorderBrush="{DynamicResource SEHairlineBrush}">
+      <Button x:Name="CopyButton" HorizontalAlignment="Right" Click="OnCopyClick" />
+    </Border>
+  </Grid>
+</Window>

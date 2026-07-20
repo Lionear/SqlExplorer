@@ -348,6 +348,12 @@ public partial class SettingsViewModel : ViewModelBase
     private int _browsePageSize;
 
     [ObservableProperty]
+    private bool _pageQueryResults;
+
+    [ObservableProperty]
+    private int _queryPageSize;
+
+    [ObservableProperty]
     private bool _restoreTabsOnStartup;
 
     [ObservableProperty]
@@ -674,7 +680,7 @@ public partial class SettingsViewModel : ViewModelBase
             new SettingsCategory("Editor", localizer["SettingsEditor"], NodeIcons.SettingsEditor,
                 "font lettergrootte size word wrap terugloop format opmaak keyword casing indent inspringen"),
             new SettingsCategory("Query", localizer["SettingsQuery"], NodeIcons.SettingsQuery,
-                "timeout page pagina rows rijen results resultaten browse confirm bevestig"),
+                "timeout page pagina rows rijen results resultaten browse confirm bevestig paging pagineren next prev volgende vorige"),
             new SettingsCategory("QueryLog", localizer["SettingsQueryLog"], NodeIcons.SettingsQuery,
                 "query log audit logging"),
             new SettingsCategory("Keyboard", localizer["SettingsKeyboard"], NodeIcons.SettingsKeyboard,
@@ -859,6 +865,8 @@ public partial class SettingsViewModel : ViewModelBase
         ConfirmBeforeSave = settings.ConfirmBeforeSave;
         QueryTimeoutSeconds = settings.QueryTimeoutSeconds;
         BrowsePageSize = settings.BrowsePageSize;
+        PageQueryResults = settings.PageQueryResults;
+        QueryPageSize = settings.QueryPageSize;
         RestoreTabsOnStartup = settings.RestoreTabsOnStartup;
         PromptSaveQueryOnClose = settings.PromptSaveQueryOnClose;
         SelectedUpdateChannel = settings.UpdateChannel ?? _update.RunningChannel;
@@ -1018,6 +1026,8 @@ public partial class SettingsViewModel : ViewModelBase
         ConfirmBeforeSave = defaults.ConfirmBeforeSave;
         QueryTimeoutSeconds = defaults.QueryTimeoutSeconds;
         BrowsePageSize = defaults.BrowsePageSize;
+        PageQueryResults = defaults.PageQueryResults;
+        QueryPageSize = defaults.QueryPageSize;
         RestoreTabsOnStartup = defaults.RestoreTabsOnStartup;
         PromptSaveQueryOnClose = defaults.PromptSaveQueryOnClose;
         // No explicit default channel: fall back to the running build's channel, same as a fresh install.
@@ -1079,6 +1089,8 @@ public partial class SettingsViewModel : ViewModelBase
         settings.ConfirmBeforeSave = ConfirmBeforeSave;
         settings.QueryTimeoutSeconds = QueryTimeoutSeconds;
         settings.BrowsePageSize = BrowsePageSize;
+        settings.PageQueryResults = PageQueryResults;
+        settings.QueryPageSize = QueryPageSize;
         settings.RestoreTabsOnStartup = RestoreTabsOnStartup;
         settings.PromptSaveQueryOnClose = PromptSaveQueryOnClose;
         // Switching channels clears the "Later" dismissal so the new channel's build can notify afresh.
