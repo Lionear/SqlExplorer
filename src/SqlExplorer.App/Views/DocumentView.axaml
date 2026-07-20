@@ -132,8 +132,8 @@
     <!-- Row 2 is intentionally empty (Auto → 0 height): execution outcomes now surface only in the
          host's Output panel, not inline under the editor. -->
 
-    <!-- Row 3: edit toolbar + pending-changes bar (shared by both modes). -->
-    <Grid Grid.Row="3" Margin="0,0,0,8"
+    <!-- Row 3: edit toolbar + pending-changes bar (shared by both modes). Equal space above and below. -->
+    <Grid Grid.Row="3" Margin="0,8,0,8"
           ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto"
           IsVisible="{Binding ShowEditToolbar}">
       <Button Grid.Column="0" Margin="0,0,8,0"
