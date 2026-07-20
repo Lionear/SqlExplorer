@@ -40,7 +40,6 @@ public static class AppServices
     {
         var services = new ServiceCollection();
 
-        services.AddSingleton<ISqlFormatter, BasicSqlFormatter>();
         // Instantiated here (not just type-registered) so the plugin loader below can hand the same live
         // localizer to each plugin's PluginLocalizer — its culture is set later (App startup) and reflected
         // on every lookup, so plugin strings follow a language switch just like host strings.
@@ -237,8 +236,7 @@ public static class AppServices
         services.AddSingleton<MasterPasswordService>();
 
         // Per-connection schema snapshot (tables/views/columns), built by walking the lazy tree at
-        // connect. Powers object-search and schema-aware completion.
-        services.AddSingleton<ISchemaCache, SchemaCache>();
+        // connect. Powers object-search and schema-aware completion. Registered via ISingletonService.
 
         // Per-connection engine version string (e.g. "PostgreSQL 16.2"), fetched once at connect. Shown in
         // the status bar and the connect message; null when the provider reports no version (host-API v25).
@@ -352,6 +350,15 @@ public static class AppServices
                     settingsStore.Save(s);
                 });
         });
+
+        // Auto-register any class that opted into a lifetime marker (SqlExplorer.Sdk.Extensibility). Additive
+        // and last: it complements the explicit registrations above rather than replacing them, so a service
+        // migrates simply by dropping its manual line and implementing the marker. Plugin assemblies are out
+        // of scope for now — bridging their services into the host container is capability-gated future work.
+        services.AddMarkedServices(
+            typeof(ConnectionService).Assembly,     // SqlExplorer.Core
+            typeof(JsonPluginStateStore).Assembly,  // SqlExplorer.Infrastructure
+            typeof(AppServices).Assembly);          // SqlExplorer.App
 
         var provider = services.BuildServiceProvider();
 

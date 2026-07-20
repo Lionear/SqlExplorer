@@ -1,6 +1,7 @@
 using SqlExplorer.Core.Connections;
 using SqlExplorer.Core.Providers;
 using SqlExplorer.Sdk;
+using SqlExplorer.Sdk.Extensibility;
 
 namespace SqlExplorer.Core.Schema;
 
@@ -28,7 +29,8 @@ public interface ISchemaCache
 /// sidebar uses — so it needs no SDK/host-API change and works for every provider shape. It descends
 /// only through container nodes and stops at each table/view, reading that relation's Column children.
 /// </summary>
-public sealed class SchemaCache(IDbProviderRegistry providers, ConnectionService connections) : ISchemaCache
+public sealed class SchemaCache(IDbProviderRegistry providers, ConnectionService connections)
+    : ISchemaCache, ISingletonService
 {
     // Safety valve: cap total relations so a pathologically large server can't make the walk run away.
     private const int MaxObjects = 5000;

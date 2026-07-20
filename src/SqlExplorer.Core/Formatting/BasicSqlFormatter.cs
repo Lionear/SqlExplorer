@@ -1,5 +1,6 @@
 using System.Text;
 using SqlExplorer.Sdk;
+using SqlExplorer.Sdk.Extensibility;
 using SqlExplorer.Sdk.Formatting;
 
 namespace SqlExplorer.Core.Formatting;
@@ -11,7 +12,7 @@ namespace SqlExplorer.Core.Formatting;
 /// <see cref="SqlFormatOptions.IndentSize"/>. Providers may replace it with a dialect-specialised
 /// formatter via <see cref="IDbProvider.Formatter"/>; this stays the fallback for every engine.
 /// </summary>
-public sealed class BasicSqlFormatter : ISqlFormatter
+public sealed class BasicSqlFormatter : ISqlFormatter, ISingletonService
 {
     private static readonly HashSet<string> JoinPrefixes = new(StringComparer.OrdinalIgnoreCase)
     {
