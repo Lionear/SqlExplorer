@@ -40,6 +40,9 @@ public class DockerComposeBuilderTests
             "    image: postgres:16\n" +
             "    container_name: sales-pg-local\n" +
             "    restart: unless-stopped\n" +
+            "    labels:\n" +
+            "      kontena.managed: \"true\"\n" +
+            "      kontena.source: sqlexplorer\n" +
             "    environment:\n" +
             "      POSTGRES_DB: sales\n" +
             "      POSTGRES_USER: postgres\n" +
@@ -64,6 +67,8 @@ public class DockerComposeBuilderTests
         var expected =
             "docker run -d \\\n" +
             "  --name sales-pg-local \\\n" +
+            "  --label kontena.managed=true \\\n" +
+            "  --label kontena.source=sqlexplorer \\\n" +
             "  -e POSTGRES_DB=sales \\\n" +
             "  -e POSTGRES_USER=postgres \\\n" +
             "  -e POSTGRES_PASSWORD=devpassword \\\n" +
@@ -137,6 +142,19 @@ public class DockerComposeBuilderTests
         Assert.Contains("- \"9200:9200\"", Builder.Build(noPort, SnippetFormat.Compose));
     }
 
+    [Fact] // SE-184: every generated container carries the Kontena ownership labels, in both formats.
+    public void Both_formats_carry_the_kontena_ownership_labels()
+    {
+        var spec = new ContainerSpec("postgres", Values(("password", "pw")), ContainerName: "c");
+
+        Assert.Contains("    labels:\n      kontena.managed: \"true\"\n      kontena.source: sqlexplorer\n",
+            Builder.Build(spec, SnippetFormat.Compose));
+
+        var run = Builder.Build(spec, SnippetFormat.Run);
+        Assert.Contains("--label kontena.managed=true", run);
+        Assert.Contains("--label kontena.source=sqlexplorer", run);
+    }
+
     // ---- provider-driven catalog -------------------------------------------------------------------
 
     [Fact] // A third-party engine that ships a recipe becomes containerisable with no change to the builder.
@@ -158,6 +176,9 @@ public class DockerComposeBuilderTests
             "    image: cooldb:1\n" +
             "    container_name: cool-local\n" +
             "    restart: unless-stopped\n" +
+            "    labels:\n" +
+            "      kontena.managed: \"true\"\n" +
+            "      kontena.source: sqlexplorer\n" +
             "    environment:\n" +
             "      COOL_PASS: secret\n" +
             "    ports:\n" +

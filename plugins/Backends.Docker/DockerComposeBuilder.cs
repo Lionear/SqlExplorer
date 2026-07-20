@@ -143,6 +143,11 @@ public sealed class DockerComposeBuilder
 
     // ---- rendering --------------------------------------------------------------------------------
 
+    // Kontena ownership label contract (SE-184 / KON-61), agreed with the Kontena desktop app.
+    private const string KontenaManagedLabel = "kontena.managed";
+    private const string KontenaSourceLabel = "kontena.source";
+    private const string KontenaSourceValue = "sqlexplorer";
+
     private static string RenderCompose(
         ContainerRecipe engine, string name, string image, int hostPort,
         IReadOnlyList<KeyValuePair<string, string>> env, IReadOnlyList<string> command)
@@ -152,6 +157,11 @@ public sealed class DockerComposeBuilder
         sb.Append($"    image: {image}\n");
         sb.Append($"    container_name: {name}\n");
         sb.Append("    restart: unless-stopped\n");
+        // Kontena ownership labels (SE-184): let the Kontena desktop recognise these as SQL-Explorer-managed
+        // containers (docker ps --filter "label=kontena.managed=true") so it won't claim/clean them up.
+        sb.Append("    labels:\n");
+        sb.Append($"      {KontenaManagedLabel}: \"true\"\n");
+        sb.Append($"      {KontenaSourceLabel}: {KontenaSourceValue}\n");
 
         if (env.Count > 0)
         {
@@ -188,6 +198,9 @@ public sealed class DockerComposeBuilder
         var sb = new StringBuilder();
         sb.Append("docker run -d \\\n");
         sb.Append($"  --name {name} \\\n");
+        // Kontena ownership labels (SE-184) — see RenderCompose.
+        sb.Append($"  --label {KontenaManagedLabel}=true \\\n");
+        sb.Append($"  --label {KontenaSourceLabel}={KontenaSourceValue} \\\n");
         foreach (var (key, value) in env)
         {
             sb.Append($"  -e {ShellArg($"{key}={value}")} \\\n");
