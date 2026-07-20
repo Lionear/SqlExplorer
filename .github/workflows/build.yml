@@ -372,6 +372,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write   # open the changelog-roll sync PR back to develop (Stable only)
     steps:
       # Full history + tags so the changelog can diff against the previous v-tag.
       - uses: actions/checkout@v4
@@ -456,8 +457,34 @@ jobs:
               git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
               git add CHANGELOG.md
               git commit -m "chore(release): roll changelog for $VERSION"
-              git push origin main \
-                || echo "::warning::changelog roll-back push failed; roll [Unreleased] into [$VERSION] in CHANGELOG.md manually"
+              if git push origin main; then
+                ROLL_SHA=$(git rev-parse HEAD)
+                # The roll only ran on main; develop still carries the shipped notes under [Unreleased]
+                # (plus any next-version work merged since promotion). Cherry-pick the same commit onto
+                # develop through a PR so the roll never drifts (the 0.3.0 gap that needed PR #44 by hand).
+                # A PR, not a direct push: when develop has advanced the cherry-pick conflicts, and the PR
+                # is where that gets resolved. Best-effort — never fail an already-published release.
+                SYNC_BRANCH="chore/changelog-roll-$VERSION"
+                if git fetch origin develop && git checkout -B "$SYNC_BRANCH" origin/develop; then
+                  if git cherry-pick -x "$ROLL_SHA"; then
+                    if git push -f origin "$SYNC_BRANCH"; then
+                      gh pr create --base develop --head "$SYNC_BRANCH" \
+                        --title "chore(release): sync $VERSION changelog roll to develop" \
+                        --body "Automated after the $VERSION release: cherry-picks the changelog roll ($ROLL_SHA) so develop's history files the shipped notes under \`[$VERSION]\`. Merge to keep \`[Unreleased]\` clean." \
+                        || echo "::warning::changelog sync PR create failed; open a develop<-main changelog PR by hand"
+                    else
+                      echo "::warning::changelog sync branch push failed; open a develop<-main changelog PR by hand"
+                    fi
+                  else
+                    git cherry-pick --abort || true
+                    echo "::warning::changelog roll conflicts on develop; open a develop<-main changelog PR and resolve [Unreleased] by hand"
+                  fi
+                else
+                  echo "::warning::could not check out develop for changelog sync; open a develop<-main changelog PR by hand"
+                fi
+              else
+                echo "::warning::changelog roll-back push failed; roll [Unreleased] into [$VERSION] in CHANGELOG.md manually"
+              fi
             else
               echo "::warning::changelog roll-back skipped (nothing to roll or checkout failed); verify CHANGELOG.md"
             fi
