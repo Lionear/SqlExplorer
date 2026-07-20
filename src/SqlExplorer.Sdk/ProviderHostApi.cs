@@ -119,25 +119,25 @@ public static class ProviderHostApi
     //                   BasicSqlFormatter when null (SE-148). ISqlFormatter/SqlFormatOptions/KeywordCasing
     //                   moved into the SDK (SqlExplorer.Sdk.Formatting) so plugins can implement them.
     //                   Purely additive: v23–v25 plugins return null and keep loading unchanged.
-    //   also in v26 (2026-07-20): added IDbProvider.ContainerRecipe (ContainerRecipe?, default null) — a
-    //                   provider may declare how to spin up an empty local container matching its engine
-    //                   (image/port/data path + env/command carrying credentials), making containerisation
-    //                   open to third-party engines (SE-166). The Docker plugin reads all declared recipes via
-    //                   IProviderCatalog (the "providers" capability on the ToolHostApi/subsystem surface).
-    //                   Folded into the still-unreleased v26 rather than opening v27: the whole 0.4.0 dev cycle
-    //                   accumulates additive SDK surface under one version, bumped once at release (a plugin
-    //                   that does not override it returns null — not containerisable, e.g. SQLite — and the
-    //                   Docker plugin falls back to its built-in table, so nothing regresses).
-    //   also in v26 (2026-07-20): added ISqlDialect.Functions (IReadOnlyList<SqlFunction>, default empty via a
-    //                   default-interface member) — a dialect's built-in function catalogue, offered by
-    //                   scope-aware completion in expression positions with its signature (SE-149 phase 2).
-    //                   Purely additive and folded into the unreleased v26: a dialect (or older plugin) that
-    //                   does not override it contributes no functions, so nothing regresses.
-    //   also in v26 (2026-07-20): added ISqlDialect.PageQuery (default-interface member delegating to Paginate)
-    //                   — pages a standalone SELECT that may already be ordered, for DataGrip/DBeaver-style
-    //                   query-result paging (SE-178). LIMIT/OFFSET dialects inherit the default; SQL Server
-    //                   overrides it to append OFFSET/FETCH to an existing ORDER BY. Purely additive.
-    public const int Version = 26;
+    // v27 (2026-07-21): the additive surface added AFTER 0.3.0 shipped v26. A bump was owed the moment the
+    //                   SDK changed post-release: 0.3.0's IDbProvider/ISqlDialect lack these members, so a
+    //                   plugin that uses them must NOT be offered to a 0.3.0 host. These three were first
+    //                   (incorrectly) folded into v26 under the "one bump per release" rule — but that rule
+    //                   only permits folding into an *unreleased* dev number, and v26 was already released in
+    //                   0.3.0. Corrected to v27 here: a 0.3.0 host accepts [23,26] and now refuses these
+    //                   plugins instead of loading and crashing on the missing members. (Contrast ToolHostApi,
+    //                   which was correctly bumped 3→4 post-0.3.0, so its 0.4.0 fold-ins are safe.)
+    //   - IDbProvider.ContainerRecipe (ContainerRecipe?, default null, SE-166): a provider declares how to
+    //     spin up an empty local container matching its engine (image/port/data path + env/command carrying
+    //     credentials); the Docker plugin reads all declared recipes via IProviderCatalog. A provider that
+    //     does not override it returns null (not containerisable) and the Docker plugin degrades.
+    //   - ISqlDialect.Functions (IReadOnlyList<SqlFunction>, default empty, SE-149 phase 2): a dialect's
+    //     built-in function catalogue, offered by scope-aware completion in expression positions.
+    //   - ISqlDialect.PageQuery (default-interface member delegating to Paginate, SE-178): pages a standalone
+    //     SELECT that may already be ordered (DataGrip/DBeaver-style result paging); SQL Server overrides it
+    //     to append OFFSET/FETCH to an existing ORDER BY. All three purely additive at the type level — the
+    //     version bump exists purely to gate them away from a host that predates them.
+    public const int Version = 27;
 
     /// <summary>Oldest plugin ABI this host still loads. Additive bumps (v11→v22 style) keep this fixed;
     /// only a breaking change raises it. Raised to 23 by the v23 BuildNodeQuery signature change above —

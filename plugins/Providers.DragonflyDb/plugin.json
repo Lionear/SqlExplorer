@@ -4,6 +4,6 @@
   "type": "provider",
   "name": "DragonflyDB",
   "version": "1.2.0",
-  "hostApiVersion": 25,
+  "hostApiVersion": 27,
   "entryAssembly": "SqlExplorer.Providers.DragonflyDb.dll"
 }

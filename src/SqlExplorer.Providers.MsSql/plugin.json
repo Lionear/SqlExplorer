@@ -4,6 +4,6 @@
   "type": "provider",
   "name": "SQL Server",
   "version": "0.5.0",
-  "hostApiVersion": 26,
+  "hostApiVersion": 27,
   "entryAssembly": "SqlExplorer.Providers.MsSql.dll"
 }
