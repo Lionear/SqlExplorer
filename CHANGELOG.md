@@ -23,9 +23,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- **Containers are tagged for Kontena** — containers created by the Local Containers plugin now carry
+  `kontena.managed=true` / `kontena.source=sqlexplorer` labels (in both the compose file and the `docker run`
+  snippet), so the Kontena desktop app can recognise them as SQL-Explorer-managed and leave them alone.
 - **Query Log shows why it's empty** — when logging is off (or only one source is enabled), the Query Log
   window now shows a banner explaining it, instead of just an empty list.
-
 - **Paged query results** — running a single `SELECT` with no `TOP`/`LIMIT` of its own now shows the results one
   page at a time with Previous/Next (DataGrip/DBeaver-style, default 200 rows/page), so a stray
   `SELECT * FROM big_table` doesn't pull the whole table at once; the row-range indicator shows which rows
