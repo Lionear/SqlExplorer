@@ -16,10 +16,16 @@ public static class ToolHostApi
     //                  (PluginCapabilities), IManagedConnections (incl. All()) + ManagedConnectionInfo, IHostUi,
     //                  and the contribution seams IPanelPlugin / IMenuPlugin / IBackgroundPlugin /
     //                  IConnectionMenuPlugin. Additive: classic tools are untouched.
-    public const int Version = 3;
+    // v4 (2026-07-20): the "services" capability (SE-171) — a plugin that declares it gets its
+    //                  marker-annotated services (ISingletonService/ITransientService/IScopedService, in
+    //                  SqlExplorer.Sdk.Extensibility) auto-registered in the host container, and a scoped
+    //                  resolver on IPluginRuntimeContext.Services (new member). Additive for existing plugins;
+    //                  a plugin that *uses* the seam must declare v4 so an older host refuses it rather than
+    //                  crashing on the missing member.
+    public const int Version = 4;
 
     /// <summary>Oldest plugin ABI this host still loads. Every bump has been additive (v2 tool defaults, v3
-    /// extensibility seams), so older tools keep loading on a newer host.</summary>
+    /// extensibility seams, v4 the services capability), so older tools keep loading on a newer host.</summary>
     public const int MinimumSupported = 1;
 
     public static bool IsCompatible(int pluginVersion) =>

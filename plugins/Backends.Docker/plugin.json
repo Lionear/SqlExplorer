@@ -3,8 +3,8 @@
   "id": "local-containers",
   "type": "extension",
   "name": "Local Containers (Docker)",
-  "version": "0.1.0",
-  "hostApiVersion": 3,
+  "version": "0.2.0",
+  "hostApiVersion": 4,
   "entryAssembly": "SqlExplorer.Backends.Docker.dll",
   "capabilities": ["storage", "connections", "panel", "process", "menu", "background", "services"]
 }
