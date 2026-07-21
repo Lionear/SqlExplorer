@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
@@ -55,8 +56,10 @@ internal sealed class CopyTableView : UserControl
             HorizontalAlignment = HorizontalAlignment.Stretch,
             ItemsSource = ctx.ListConnections(),
             PlaceholderText = "Pick a connection…",
-            ItemTemplate = new FuncDataTemplate<ToolConnectionInfo>((c, _) =>
-                new TextBlock { Text = c?.Name ?? "" }, supportsRecycling: true)
+            // Bind (not a captured value): the closed selection box rebuilds the template and a captured value
+            // renders blank there — a binding to Name resolves for both the dropdown row and the selection box.
+            ItemTemplate = new FuncDataTemplate<ToolConnectionInfo>((_, _) =>
+                new TextBlock { [!TextBlock.TextProperty] = new Binding(nameof(ToolConnectionInfo.Name)) }, supportsRecycling: false)
         };
         _databaseBox = new ComboBox
         {
