@@ -29,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **"What's new" notes no longer overflow the window** — long release notes in the app- and plugin-update
   changelog dialogs wrapped off the right edge and ran past the bottom; the text now wraps to the window width
   and scrolls vertically.
+- The plugin-update notification now uses the Lucide icon set (a crisp refresh / download glyph) instead of a
+  Unicode symbol that could render as a missing-glyph box on some systems.
 
 ### Added
 
