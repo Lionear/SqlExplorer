@@ -103,6 +103,10 @@
                         OnContent="{Binding Loc[CloseToTray]}" OffContent="{Binding Loc[CloseToTray]}" />
           <TextBlock Text="{Binding Loc[CloseToTrayHint]}" FontSize="11" TextWrapping="Wrap"
                      Foreground="{DynamicResource SETextFaintBrush}" Margin="24,0,0,0" />
+          <ToggleSwitch IsChecked="{Binding AllowMultipleInstances}"
+                        OnContent="{Binding Loc[AllowMultipleInstances]}" OffContent="{Binding Loc[AllowMultipleInstances]}" />
+          <TextBlock Text="{Binding Loc[AllowMultipleInstancesHint]}" FontSize="11" TextWrapping="Wrap"
+                     Foreground="{DynamicResource SETextFaintBrush}" Margin="24,0,0,0" />
           <TextBlock Text="{Binding Loc[SettingsSchemaTree]}" FontWeight="SemiBold" Margin="0,10,0,0" />
           <ToggleSwitch IsChecked="{Binding ShowSystemDatabases}"
                         OnContent="{Binding Loc[ShowSystemDatabases]}" OffContent="{Binding Loc[ShowSystemDatabases]}" />

@@ -1,5 +1,6 @@
 using System.IO.Pipes;
 using System.Threading;
+using SqlExplorer.Infrastructure.Persistence;
 
 namespace SqlExplorer.App;
 
@@ -17,6 +18,11 @@ public static class SingleInstance
 {
     // Per-user so different logged-in users don't collide; a named pipe maps to a user-owned file on Unix.
     private static string PipeName => $"SqlExplorer.SingleInstance.{Environment.UserName}";
+
+    /// <summary>Reads the "allow multiple instances" preference straight from disk — before Avalonia and DI
+    /// exist — so <c>Program</c> can decide whether to run the single-instance probe at all (SE-124). A
+    /// missing/corrupt settings file degrades to the default (false = single instance).</summary>
+    public static bool MultipleInstancesAllowed() => new JsonAppSettingsStore().Load().AllowMultipleInstances;
 
     /// <summary>
     /// Returns true if this process should own the UI (no other instance answered). Returns false if an

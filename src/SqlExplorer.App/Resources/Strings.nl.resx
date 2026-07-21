@@ -651,6 +651,12 @@
   <data name="CloseToTrayHint" xml:space="preserve">
     <value>De sluitknop verbergt het venster en houdt de app op de achtergrond actief (bijv. de MCP-server). Afsluiten via het systeemvak-icoon of Bestand &gt; Afsluiten.</value>
   </data>
+  <data name="AllowMultipleInstances" xml:space="preserve">
+    <value>Meerdere instanties toestaan</value>
+  </data>
+  <data name="AllowMultipleInstancesHint" xml:space="preserve">
+    <value>Uit: de app opnieuw starten brengt het bestaande venster naar voren. Aan: elke start opent een eigen, los venster. Werkt vanaf de volgende start.</value>
+  </data>
   <data name="QueryLogMenu" xml:space="preserve">
     <value>Query-log</value>
   </data>
