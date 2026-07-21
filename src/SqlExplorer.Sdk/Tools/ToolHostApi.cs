@@ -38,7 +38,14 @@ public static class ToolHostApi
     //                  generated SQL to a new query tab on the primary connection instead of running DDL itself
     //                  (SchemaDiff uses this). Default interface impls (empty/null) keep older hosts and
     //                  non-dialog IToolHost implementors compiling; folded into the unreleased v4.
-    public const int Version = 4;
+    // v5 (2026-07-21): Copy Table (SE-188/SE-100). IToolHost gains OpenQueryEditorOn(connectionId, database,
+    //                  sql) — the destination counterpart of OpenQueryEditor, so a copy/migration tool can
+    //                  script to the *picked* connection rather than the launched one — and SetPluginSetting(
+    //                  key, value), the write counterpart of GetPluginSetting, so a tool can remember a choice
+    //                  (Copy Table remembers its last run/script mode) across runs. Both are additive default
+    //                  no-ops. New number rather than a fold-in because v4 shipped in 0.4.0 — folding post-release
+    //                  surface into a released number is the SE-166 crash trap. MinimumSupported stays 1.
+    public const int Version = 5;
 
     /// <summary>Oldest plugin ABI this host still loads. Every bump has been additive (v2 tool defaults, v3
     /// extensibility seams, v4 the services + providers capabilities), so older tools keep loading on a newer

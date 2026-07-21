@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlExplorer.Tools.CopyTable</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Contract only. No driver dependency: the tool reads the source table's schema and rows purely through
+         the host's IDbProvider, and either runs the CREATE + INSERT on the target (via the picked ToolConnection)
+         or hands a script to a query tab there. Route A (declared fields), so no Avalonia reference. Private=false
+         keeps Sdk.dll out of the plugin folder so the host's copy is used across the ALC boundary. -->
+    <ProjectReference Include="..\..\src\SqlExplorer.Sdk\SqlExplorer.Sdk.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Localization embedded into the main DLL. WithCulture=false stops MSBuild routing the ".nl." file
+         to a satellite assembly; LogicalName fixes the resource name the host's PluginLocalizer expects. -->
+    <EmbeddedResource Include="Lang\strings.json" LogicalName="Lang/strings.json" WithCulture="false" />
+    <EmbeddedResource Include="Lang\strings.nl.json" LogicalName="Lang/strings.nl.json" WithCulture="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="SqlExplorer.Sdk" />
+    <Using Include="SqlExplorer.Sdk.Connections" />
+    <Using Include="SqlExplorer.Sdk.Schema" />
+    <Using Include="SqlExplorer.Sdk.Query" />
+    <Using Include="SqlExplorer.Sdk.Branding" />
+    <Using Include="SqlExplorer.Sdk.Localization" />
+    <Using Include="SqlExplorer.Sdk.Tools" />
+  </ItemGroup>
+
+</Project>

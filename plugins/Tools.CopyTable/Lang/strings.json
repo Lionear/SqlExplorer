@@ -1,0 +1,33 @@
+{
+  "copy.title": "Copy Table",
+  "copy.dialogTitle": "Copy Table",
+  "copy.description": "Copies the table above to the connection and database you pick below. Run the copy to create and fill the table on the target, or open it as a script to review the SQL first.",
+
+  "copy.field.toConnection": "Copy to connection",
+  "copy.field.toDatabase": "Database on that connection",
+  "copy.field.what": "What to copy",
+  "copy.field.rows": "Rows",
+  "copy.field.keepIdentity": "Keep identity / sequence values",
+  "copy.field.dropExisting": "Drop target table if it exists",
+  "copy.field.mode": "How",
+
+  "copy.all": "all",
+
+  "copy.error.unsupported": "Copy Table doesn't support the '{0}' engine yet (reads via information_schema; Postgres, MySQL and SQL Server only).",
+  "copy.error.noTable": "Right-click a table to copy.",
+  "copy.error.noTarget": "Pick a connection and database to copy to.",
+  "copy.error.notFound": "Couldn't find a table named '{0}' on this connection.",
+
+  "copy.progress.reading": "Reading the shape of {0}…",
+  "copy.progress.read": "Read {0}: {1} column(s).",
+  "copy.progress.readingRows": "Reading {0} rows…",
+  "copy.progress.creating": "Creating the table on the target…",
+  "copy.progress.created": "Created the table on the target.",
+  "copy.progress.copyingRows": "Copying {0} row(s)…",
+  "copy.progress.copiedRows": "Copied {0} row(s).",
+
+  "copy.script.header": "-- Copy of {0} -> {1}: run this on the target to create the table and insert {2} row(s).",
+  "copy.script.ambiguous": "-- NOTE: more than one schema has a table by this name; scripted schema '{0}'. Adjust if needed.",
+  "copy.result.opened": "Opened the copy script in a query tab on {0} — review it there and run when ready ({1} row(s)).",
+  "copy.result.ran": "Copied {0} to {1}."
+}

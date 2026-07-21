@@ -953,6 +953,8 @@ public partial class MainViewModel : ViewModelBase
         dialog.Configure(tool, profile, nodeRef, provider, connection.ProviderId);
         // Let a tool hand generated SQL to a query tab on the launched connection/database (SchemaDiff).
         dialog.OpenQueryRequested = sql => OpenQueryWithContent(connection, node.DatabaseName, sql);
+        // ...or on a picked secondary connection/database, for a tool that scripts to the destination (Copy Table).
+        dialog.OpenQueryOnConnectionRequested = (target, database, sql) => OpenQueryWithContent(target, database, sql);
         await ToolDialogRequested(dialog);
     }
 

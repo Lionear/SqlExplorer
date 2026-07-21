@@ -9,7 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Copy Table** (store-only tool plugin) — right-click a table and copy it to another connection and database.
+  Choose structure + data, structure only or data only, all rows or the first N, and whether to keep the
+  source's identity/sequence values. Either **run the copy** — creating and filling the table on the target
+  with a live checklist — or **open it as a script** on the target to review the SQL first; the tool remembers
+  which you used last. Same-engine (Postgres, MySQL, SQL Server) in this first cut; indexes/foreign keys,
+  SQLite and cross-engine copy are planned follow-ups.
 
 ## [0.4.0] - 2026-07-21
 

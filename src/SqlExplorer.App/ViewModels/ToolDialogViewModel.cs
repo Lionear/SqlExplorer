@@ -73,6 +73,10 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
     /// with the given SQL (used by <see cref="IToolHost.OpenQueryEditor"/>).</summary>
     public Action<string>? OpenQueryRequested { get; set; }
 
+    /// <summary>Set by <c>MainViewModel</c> per open: opens a query tab on a picked <i>secondary</i> connection
+    /// and database with the given SQL (used by <see cref="IToolHost.OpenQueryEditorOn"/>).</summary>
+    public Action<SavedConnection, string?, string>? OpenQueryOnConnectionRequested { get; set; }
+
     // --- IToolHost: the host services handed to the running tool ---
     Task<string?> IToolHost.PickSaveFileAsync(string suggestedName, params string[] extensions) =>
         SaveFilePicker?.Invoke(suggestedName, extensions) ?? Task.FromResult<string?>(null);
@@ -82,6 +86,12 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
 
     string? IToolHost.GetPluginSetting(string key) =>
         _pluginStore.Get(_tool.Id).TryGetValue(key, out var value) ? value : null;
+
+    void IToolHost.SetPluginSetting(string key, string? value)
+    {
+        var values = new Dictionary<string, string?>(_pluginStore.Get(_tool.Id)) { [key] = value };
+        _pluginStore.Save(_tool.Id, values);
+    }
 
     IReadOnlyList<ToolConnectionInfo> IToolHost.ListConnections() => PickableConnections();
 
@@ -108,6 +118,14 @@ public partial class ToolDialogViewModel : ViewModelBase, IToolUiContext, IToolH
     }
 
     void IToolHost.OpenQueryEditor(string sql) => OpenQueryRequested?.Invoke(sql);
+
+    void IToolHost.OpenQueryEditorOn(string connectionId, string? database, string sql)
+    {
+        if (_connections.List().FirstOrDefault(c => c.Id == connectionId) is { } saved)
+        {
+            OpenQueryOnConnectionRequested?.Invoke(saved, database, sql);
+        }
+    }
 
     // The picker offers same-provider connections only (a cross-provider schema diff would need type-mapping
     // we don't do yet) and never the launched connection itself (comparing it to itself is a no-op). The

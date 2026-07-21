@@ -1,0 +1,33 @@
+{
+  "copy.title": "Tabel kopiëren",
+  "copy.dialogTitle": "Tabel kopiëren",
+  "copy.description": "Kopieert de tabel hierboven naar de connectie en database die je hieronder kiest. Voer de kopie uit om de tabel op de bestemming aan te maken en te vullen, of open 'm als script om de SQL eerst te bekijken.",
+
+  "copy.field.toConnection": "Kopiëren naar connectie",
+  "copy.field.toDatabase": "Database op die connectie",
+  "copy.field.what": "Wat kopiëren",
+  "copy.field.rows": "Rijen",
+  "copy.field.keepIdentity": "Identity-/sequence-waarden behouden",
+  "copy.field.dropExisting": "Bestaande doeltabel eerst verwijderen",
+  "copy.field.mode": "Hoe",
+
+  "copy.all": "alle",
+
+  "copy.error.unsupported": "Tabel kopiëren ondersteunt de '{0}'-engine nog niet (leest via information_schema; alleen Postgres, MySQL en SQL Server).",
+  "copy.error.noTable": "Rechtsklik op een tabel om te kopiëren.",
+  "copy.error.noTarget": "Kies een connectie en database om naartoe te kopiëren.",
+  "copy.error.notFound": "Geen tabel met de naam '{0}' gevonden op deze connectie.",
+
+  "copy.progress.reading": "Vorm van {0} lezen…",
+  "copy.progress.read": "{0} gelezen: {1} kolom(men).",
+  "copy.progress.readingRows": "{0} rijen lezen…",
+  "copy.progress.creating": "Tabel op de bestemming aanmaken…",
+  "copy.progress.created": "Tabel op de bestemming aangemaakt.",
+  "copy.progress.copyingRows": "{0} rij(en) kopiëren…",
+  "copy.progress.copiedRows": "{0} rij(en) gekopieerd.",
+
+  "copy.script.header": "-- Kopie van {0} -> {1}: draai dit op de bestemming om de tabel te maken en {2} rij(en) in te voegen.",
+  "copy.script.ambiguous": "-- LET OP: meerdere schema's hebben een tabel met deze naam; schema '{0}' gescript. Pas aan indien nodig.",
+  "copy.result.opened": "Kopie-script geopend in een query-tab op {0} — bekijk het daar en draai wanneer je klaar bent ({1} rij(en)).",
+  "copy.result.ran": "{0} gekopieerd naar {1}."
+}

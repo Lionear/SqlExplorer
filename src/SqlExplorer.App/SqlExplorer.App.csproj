@@ -45,9 +45,10 @@
     <ProjectReference Include="..\..\plugins\Providers.Elasticsearch\SqlExplorer.Providers.Elasticsearch.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Providers.MongoDb\SqlExplorer.Providers.MongoDb.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Providers.Redis\SqlExplorer.Providers.Redis.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
-    <!-- Cross-connection schema-diff tool (SE-99): store-only, so Debug-staged for development but not
-         bundled in Release — users install it from the Plugin Store (like the other plugins/ tools). -->
+    <!-- Cross-connection schema-diff / copy-table tools (SE-99 / SE-100): store-only, so Debug-staged for
+         development but not bundled in Release — users install them from the Plugin Store (like the other tools). -->
     <ProjectReference Include="..\..\plugins\Tools.SchemaDiff\SqlExplorer.Tools.SchemaDiff.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
+    <ProjectReference Include="..\..\plugins\Tools.CopyTable\SqlExplorer.Tools.CopyTable.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Tools.UniversalBackup\SqlExplorer.Tools.UniversalBackup.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Tools.MsSqlBacpac\SqlExplorer.Tools.MsSqlBacpac.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Backends.Docker\SqlExplorer.Backends.Docker.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />

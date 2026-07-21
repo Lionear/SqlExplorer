@@ -50,3 +50,7 @@ jobs:
       # the plugin (which references Avalonia), so this step is heavier than the Core-only one above.
       - name: Test (Backends.Docker)
         run: dotnet test tests/SqlExplorer.Backends.Docker.Tests/SqlExplorer.Backends.Docker.Tests.csproj -c Release
+
+      # Copy Table plugin (SE-100/SE-188): the pure CREATE-TABLE / identity rendering, no database or host.
+      - name: Test (Tools.CopyTable)
+        run: dotnet test tests/SqlExplorer.Tools.CopyTable.Tests/SqlExplorer.Tools.CopyTable.Tests.csproj -c Release

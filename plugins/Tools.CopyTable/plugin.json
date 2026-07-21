@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "copy-table",
+  "type": "tool",
+  "name": "Copy Table",
+  "version": "0.1.0",
+  "hostApiVersion": 5,
+  "entryAssembly": "SqlExplorer.Tools.CopyTable.dll",
+  "localization": "Lang/strings"
+}

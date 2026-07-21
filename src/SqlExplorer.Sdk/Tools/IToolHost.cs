@@ -55,4 +55,17 @@ public interface IToolHost
     /// was launched on), pre-filled with <paramref name="sql"/>, for the user to review and run in the normal
     /// editor. Lets a tool hand off generated SQL instead of executing DDL itself. No-op default.</summary>
     void OpenQueryEditor(string sql) { }
+
+    /// <summary>Open a new query tab on a <b>secondary</b> connection the user picked (a
+    /// <see cref="ToolFieldType.ConnectionPicker"/> value) and one of its databases, pre-filled with
+    /// <paramref name="sql"/>. The destination counterpart of <see cref="OpenQueryEditor"/>: a copy/migration
+    /// tool can hand its generated script to the connection it targets rather than the one it launched on.
+    /// No-op default so older hosts degrade gracefully.</summary>
+    void OpenQueryEditorOn(string connectionId, string? database, string sql) { }
+
+    /// <summary>Persist one of this tool's plugin settings (the write counterpart of
+    /// <see cref="GetPluginSetting"/>): the host stores <paramref name="value"/> under <paramref name="key"/>
+    /// in the tool's settings, so a later run can read back a remembered choice (e.g. the last-used mode).
+    /// No-op default so older hosts degrade gracefully — a tool must not depend on the value surviving.</summary>
+    void SetPluginSetting(string key, string? value) { }
 }
