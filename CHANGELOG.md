@@ -40,7 +40,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   `information_schema`, so the picker offers same-provider connections only; SQLite and cross-engine diffs are
   not covered yet. Built on new plugin-SDK seams — `ToolFieldType.ConnectionPicker` and `DatabasePicker` plus
   `IToolHost.ListConnections()` / `ListDatabasesAsync()` / `OpenConnection()` / `OpenQueryEditor()` — so any
-  tool can take a second connection and database and hand generated SQL to a query tab.
+  tool can take a second connection and database and hand generated SQL to a query tab. Installs from the
+  Plugin Store (not bundled with the app).
 - **Icons in SQL completion** — each suggestion in the code-completion popup now carries an icon for its kind
   (table, column, function, foreign-key join condition, keyword), reusing the shared Lucide glyphs from the
   schema tree so a table reads the same in both places. The type / signature / join-condition detail alongside

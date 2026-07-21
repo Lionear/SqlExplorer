@@ -9,7 +9,7 @@
          through the host's IDbProvider (ExecuteQueryAsync over information_schema, ExecuteDdlAsync to apply).
          Route A (declared fields), so no Avalonia reference. Private=false keeps Sdk.dll out of the plugin
          folder so the host's copy is used across the ALC boundary (single type identity). -->
-    <ProjectReference Include="..\SqlExplorer.Sdk\SqlExplorer.Sdk.csproj" Private="false" />
+    <ProjectReference Include="..\..\src\SqlExplorer.Sdk\SqlExplorer.Sdk.csproj" Private="false" />
   </ItemGroup>
 
   <ItemGroup>

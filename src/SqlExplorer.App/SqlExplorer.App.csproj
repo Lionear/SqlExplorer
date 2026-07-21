@@ -34,8 +34,6 @@
          unconditionally staged like the MVP providers — always present in Debug AND Release, not an
          optional Store install (plan §3.2, Rick: "kern-feature, altijd aanwezig"). -->
     <ProjectReference Include="..\SqlExplorer.Tools.MsSqlAdmin\SqlExplorer.Tools.MsSqlAdmin.csproj" ReferenceOutputAssembly="false" Private="false" />
-    <!-- First-party cross-connection schema-diff tool (SE-99): always present, loaded at runtime, not linked. -->
-    <ProjectReference Include="..\SqlExplorer.Tools.SchemaDiff\SqlExplorer.Tools.SchemaDiff.csproj" ReferenceOutputAssembly="false" Private="false" />
     <!-- First-party MCP tool plugin (type "mcp"): the four core tools served by the host-owned MCP server.
          Staged like the providers/admin tool — always present, loaded at runtime, not linked. -->
     <ProjectReference Include="..\SqlExplorer.Mcp.Server\SqlExplorer.Mcp.Server.csproj" ReferenceOutputAssembly="false" Private="false" />
@@ -47,6 +45,9 @@
     <ProjectReference Include="..\..\plugins\Providers.Elasticsearch\SqlExplorer.Providers.Elasticsearch.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Providers.MongoDb\SqlExplorer.Providers.MongoDb.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Providers.Redis\SqlExplorer.Providers.Redis.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
+    <!-- Cross-connection schema-diff tool (SE-99): store-only, so Debug-staged for development but not
+         bundled in Release — users install it from the Plugin Store (like the other plugins/ tools). -->
+    <ProjectReference Include="..\..\plugins\Tools.SchemaDiff\SqlExplorer.Tools.SchemaDiff.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Tools.UniversalBackup\SqlExplorer.Tools.UniversalBackup.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Tools.MsSqlBacpac\SqlExplorer.Tools.MsSqlBacpac.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Backends.Docker\SqlExplorer.Backends.Docker.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />

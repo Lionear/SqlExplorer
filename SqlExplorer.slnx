@@ -23,7 +23,7 @@
     <Project Path="src/SqlExplorer.Infrastructure/SqlExplorer.Infrastructure.csproj" />
     <Project Path="src/SqlExplorer.Screenshots/SqlExplorer.Screenshots.csproj" />
     <Project Path="src/SqlExplorer.Sdk/SqlExplorer.Sdk.csproj" />
-    <Project Path="src/SqlExplorer.Tools.SchemaDiff/SqlExplorer.Tools.SchemaDiff.csproj" />
+    <Project Path="plugins/Tools.SchemaDiff/SqlExplorer.Tools.SchemaDiff.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SqlExplorer.App.Tests/SqlExplorer.App.Tests.csproj" />
