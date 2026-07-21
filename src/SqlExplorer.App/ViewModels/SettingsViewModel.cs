@@ -368,6 +368,10 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _closeToTray;
 
+    /// <summary>Allow a second launch to open its own window instead of surfacing the running one (SE-124).</summary>
+    [ObservableProperty]
+    private bool _allowMultipleInstances;
+
     /// <summary>Show only one bottom-docked tool panel (Output/Containers/plugin panels) at a time (SE-165).</summary>
     [ObservableProperty]
     private bool _singleBottomPanel;
@@ -877,6 +881,7 @@ public partial class SettingsViewModel : ViewModelBase
         SingleBottomPanel = settings.SingleBottomPanel;
         ConfirmOnExit = settings.ConfirmOnExit;
         CloseToTray = settings.CloseToTray;
+        AllowMultipleInstances = settings.AllowMultipleInstances;
         QueryLogEnabled = settings.QueryLogEnabled;
         QueryLogApp = settings.QueryLogApp;
         QueryLogMcp = settings.QueryLogMcp;
@@ -1038,6 +1043,7 @@ public partial class SettingsViewModel : ViewModelBase
         SingleBottomPanel = defaults.SingleBottomPanel;
         ConfirmOnExit = defaults.ConfirmOnExit;
         CloseToTray = defaults.CloseToTray;
+        AllowMultipleInstances = defaults.AllowMultipleInstances;
         QueryLogEnabled = defaults.QueryLogEnabled;
         QueryLogApp = defaults.QueryLogApp;
         QueryLogMcp = defaults.QueryLogMcp;
@@ -1105,6 +1111,7 @@ public partial class SettingsViewModel : ViewModelBase
         settings.SingleBottomPanel = SingleBottomPanel;
         settings.ConfirmOnExit = ConfirmOnExit;
         settings.CloseToTray = CloseToTray;
+        settings.AllowMultipleInstances = AllowMultipleInstances;
         settings.QueryLogEnabled = QueryLogEnabled;
         settings.QueryLogApp = QueryLogApp;
         settings.QueryLogMcp = QueryLogMcp;

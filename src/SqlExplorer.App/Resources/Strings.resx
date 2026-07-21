@@ -651,6 +651,12 @@
   <data name="CloseToTrayHint" xml:space="preserve">
     <value>The close button hides the window and keeps the app running in the background (e.g. the MCP server). Quit from the tray icon or File &gt; Exit.</value>
   </data>
+  <data name="AllowMultipleInstances" xml:space="preserve">
+    <value>Allow multiple instances</value>
+  </data>
+  <data name="AllowMultipleInstancesHint" xml:space="preserve">
+    <value>When off, launching the app again brings the running window to the front. When on, each launch opens its own independent window. Takes effect on the next launch.</value>
+  </data>
   <data name="QueryLogMenu" xml:space="preserve">
     <value>Query Log</value>
   </data>

@@ -32,6 +32,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- **Allow multiple instances** (Settings → General) — off by default, launching the app again brings the running
+  window to the front (the single-instance behaviour). Turn it on to let each launch open its own independent
+  window — handy for keeping two databases, or dev and prod, side by side. Takes effect on the next launch.
 - **Script table data as INSERT** — right-click a table → *SQL commands ▸ INSERT (with data)* to generate real
   `INSERT` statements from the table's rows (Top 100, Top 1000, or all rows) into a new query tab, ready to run on
   another connection. Unlike the existing INSERT scaffold (which uses `:name` placeholders), this writes the actual
