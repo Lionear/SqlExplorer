@@ -763,18 +763,20 @@
             Background="{DynamicResource SEPanelBgBrush}" BorderBrush="{DynamicResource SEHairlineBrush}"
             BorderThickness="1" CornerRadius="8" Padding="14,12,10,12" BoxShadow="0 6 22 0 #40000000">
       <Grid ColumnDefinitions="Auto,*,Auto">
-        <!-- amber ⟳ for available updates, blue ↑ for a held-back "update the app first" -->
+        <!-- amber refresh-cw for available updates, blue download for a held-back "update the app first" -->
         <Border Grid.Column="0" Width="30" Height="30" CornerRadius="7" VerticalAlignment="Top" Margin="0,0,12,0"
                 IsVisible="{Binding !PluginUpdates.IsHeldBack}"
                 Background="#1FE0A33E" BorderBrush="#59E0A33E" BorderThickness="1">
-          <TextBlock Text="⟳" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"
-                     Foreground="{DynamicResource SEStatusWaitingBrush}" />
+          <Path Width="15" Height="15" Stretch="Uniform" Data="{x:Static sdk:Icons.RefreshCw}"
+                Stroke="{DynamicResource SEStatusWaitingBrush}" StrokeThickness="1.6"
+                StrokeJoin="Round" StrokeLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
         <Border Grid.Column="0" Width="30" Height="30" CornerRadius="7" VerticalAlignment="Top" Margin="0,0,12,0"
                 IsVisible="{Binding PluginUpdates.IsHeldBack}"
                 Background="#1F2F6FEB" BorderBrush="#592F6FEB" BorderThickness="1">
-          <TextBlock Text="↑" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"
-                     Foreground="{DynamicResource SEAccentBrush}" />
+          <Path Width="15" Height="15" Stretch="Uniform" Data="{x:Static sdk:Icons.Download}"
+                Stroke="{DynamicResource SEAccentBrush}" StrokeThickness="1.6"
+                StrokeJoin="Round" StrokeLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
         <StackPanel Grid.Column="1" Spacing="2">
           <TextBlock Text="{Binding PluginUpdates.NotificationTitle}" FontSize="13" FontWeight="SemiBold"
