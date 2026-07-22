@@ -28,6 +28,50 @@ public class QueryPagingTests
         Assert.True(QueryPaging.TryGetPageableSelect("WITH c AS (SELECT 1 x) SELECT * FROM c", out _, out _));
     }
 
+    [Theory]
+    [InlineData("SELECT * FROM [dbo].[Donations];")]
+    [InlineData("SELECT * FROM [dbo].[Donations] ;")]
+    [InlineData("SELECT * FROM [dbo].[Donations];  \n")]
+    [InlineData("SELECT * FROM [dbo].[Donations];;")]
+    public void A_terminating_semicolon_is_dropped_because_paging_appends_to_the_statement(string sql)
+    {
+        // Paging appends (ORDER BY … OFFSET … FETCH, LIMIT …), so a statement that still ends in a semicolon
+        // produces "SELECT …; OFFSET 0 ROWS" — a syntax error on every engine. Typing the semicolon you would
+        // type anywhere else must not break the page bar.
+        Assert.True(QueryPaging.TryGetPageableSelect(sql, out var stmt, out _));
+        Assert.Equal("SELECT * FROM [dbo].[Donations]", stmt);
+    }
+
+    [Fact]
+    public void A_semicolon_terminated_select_pages_into_runnable_sql()
+    {
+        Assert.True(QueryPaging.TryGetPageableSelect("SELECT * FROM Donations;", out var stmt, out var ordered));
+
+        var sqlServer = new MsSqlDialect().PageQuery(stmt, 200, 0, ordered);
+        Assert.Equal(
+            "SELECT * FROM Donations\nORDER BY (SELECT NULL)\nOFFSET 0 ROWS FETCH NEXT 200 ROWS ONLY",
+            sqlServer);
+        Assert.DoesNotContain(";", sqlServer);
+    }
+
+    [Fact]
+    public void A_semicolon_after_an_order_by_keeps_the_ordered_flag()
+    {
+        Assert.True(QueryPaging.TryGetPageableSelect("SELECT * FROM t ORDER BY id;", out var stmt, out var ordered));
+        Assert.True(ordered);
+        Assert.Equal("SELECT * FROM t ORDER BY id", stmt);
+        Assert.Equal(
+            "SELECT * FROM t ORDER BY id\nOFFSET 0 ROWS FETCH NEXT 200 ROWS ONLY",
+            new MsSqlDialect().PageQuery(stmt, 200, 0, ordered));
+    }
+
+    [Fact]
+    public void A_semicolon_inside_a_literal_is_not_a_terminator()
+    {
+        Assert.True(QueryPaging.TryGetPageableSelect("SELECT * FROM t WHERE s = ';'", out var stmt, out _));
+        Assert.Equal("SELECT * FROM t WHERE s = ';'", stmt);
+    }
+
     [Fact]
     public void Is_case_insensitive()
     {

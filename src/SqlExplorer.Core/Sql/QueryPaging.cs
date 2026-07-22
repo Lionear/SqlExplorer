@@ -32,7 +32,13 @@ public static class QueryPaging
             return false;
         }
 
-        var statements = SqlStatementSplitter.Split(sql);
+        // Spans holding nothing but separators don't count: a stray extra semicolon ("SELECT * FROM t;;")
+        // splits into the statement plus a lone ";", and losing the page bar over a typo is the same surprise
+        // the semicolon itself used to be.
+        var statements = SqlStatementSplitter.Split(sql)
+            .Where(s => StripTerminators(s.Text).Length > 0)
+            .ToList();
+
         if (statements.Count != 1)
         {
             return false; // a whole script — pages would be meaningless
@@ -56,9 +62,33 @@ public static class QueryPaging
             return false;
         }
 
-        statement = text;
+        var trimmed = StripTerminators(text);
+        if (trimmed.Length == 0)
+        {
+            return false;
+        }
+
+        statement = trimmed;
         ordered = words.Any(w => w.Equals("ORDER", StringComparison.OrdinalIgnoreCase));
         return true;
+    }
+
+    /// <summary>
+    /// The statement without its terminating semicolon(s). Every dialect pages by <em>appending</em> to the
+    /// statement (<c>ORDER BY … OFFSET … FETCH</c>, <c>LIMIT …</c>), so a semicolon left on the end produces
+    /// <c>SELECT * FROM t; OFFSET 0 ROWS</c> — a syntax error on every engine. The splitter is quote-aware,
+    /// so a semicolon still standing at the end here is a terminator, not part of a literal or a delimited
+    /// identifier.
+    /// </summary>
+    private static string StripTerminators(string text)
+    {
+        var trimmed = text.TrimEnd();
+        while (trimmed.EndsWith(';'))
+        {
+            trimmed = trimmed[..^1].TrimEnd();
+        }
+
+        return trimmed;
     }
 
     // The bare identifier/keyword words that sit at paren depth 0, outside strings, comments, dollar-quotes and

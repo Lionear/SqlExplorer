@@ -28,6 +28,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- **A query that ends in a semicolon can be paged again.** `SELECT * FROM Donations;` failed with "Incorrect
+  syntax near the keyword 'ORDER'" (and the equivalent on every other engine), because paging appends its
+  `ORDER BY … OFFSET … FETCH` / `LIMIT` *after* the statement — semicolon and all. The terminator is now
+  dropped before the page is built, and a stray extra semicolon no longer costs you the page bar either.
 - **Schema Diff against MySQL compared the wrong things.** Two MySQL databases diffed as "drop everything,
   recreate everything", because MySQL's schema *is* the database, and foreign keys came out referencing the
   same column several times. Both are corrected, and a MySQL migration now applies cleanly.
