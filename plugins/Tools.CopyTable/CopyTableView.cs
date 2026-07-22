@@ -95,7 +95,13 @@ public sealed class CopyTableView : UserControl, IToolDialogLifecycle
                 Orientation = Orientation.Horizontal, Spacing = 9, VerticalAlignment = VerticalAlignment.Center,
                 Children =
                 {
-                    Chip(L("copy.ui.from"), new TextBlock { Text = sourceTable, FontFamily = Mono, FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center }),
+                    // Qualified the same way as the To chip, so both sides read database.table and it's
+                    // obvious which database the copy leaves from.
+                    Chip(L("copy.ui.from"), new TextBlock
+                    {
+                        Text = string.IsNullOrWhiteSpace(ctx.Profile.Database) ? sourceTable : $"{ctx.Profile.Database}.{sourceTable}",
+                        FontFamily = Mono, FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center
+                    }),
                     new TextBlock { Text = "→", Opacity = 0.55, VerticalAlignment = VerticalAlignment.Center, FontSize = 16 },
                     Chip(L("copy.ui.to"), _targetChip)
                 }
