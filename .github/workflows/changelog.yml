@@ -1,0 +1,33 @@
+name: Changelog
+
+# Validates the changelog fragments in changelog.d/ (SE-185). Deliberately its own workflow rather than
+# a step in Tests: that one skips markdown-only changes (paths-ignore "**.md"), which is precisely the
+# shape of a pull request that adds nothing but a fragment — the case this check exists for.
+#
+# It only checks names. A fragment called SE-190.fix.md (no such category) would otherwise be skipped
+# in silence at release time, and the entry would quietly never appear in the changelog.
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fragments:
+    name: Changelog fragments
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate fragment names
+        run: python3 tools/changelog-render.py --check
+
+      # Shows the maintainer what the next release's notes will read like, without changing anything.
+      - name: Preview the Unreleased section
+        run: python3 tools/changelog-render.py --dry-run

@@ -50,9 +50,9 @@ it keeps a one-person project alive.
 5. **Mind the credential trust boundary.** Connection secrets are stored in the OS keychain via
    `ISecretStore` and never written to disk in plaintext, logged, or transmitted anywhere other than
    the database being connected to. Anything that would change that needs an issue first.
-6. **Record it in the changelog.** When the work is finished, add a bullet under `## [Unreleased]`
-   in [`CHANGELOG.md`](CHANGELOG.md) — see *Changelog* below. A finished item that leaves no trace
-   there is not finished.
+6. **Record it in the changelog.** When the work is finished, add a fragment under
+   [`changelog.d/`](changelog.d/README.md) — see *Changelog* below. A finished item that leaves no
+   trace there is not finished.
 
 ## Commit style
 
@@ -70,17 +70,33 @@ Subject: short, imperative, lowercase, no trailing period.
 
 ## Changelog
 
-Every finished work item lands in [`CHANGELOG.md`](CHANGELOG.md) under `## [Unreleased]`, so that
-from one release to the next it is clear what actually changed — without reading the git log. The
-file follows [Keep a Changelog](https://keepachangelog.com/).
+Every finished work item lands in the changelog, so that from one release to the next it is clear what
+actually changed — without reading the git log. The file follows
+[Keep a Changelog](https://keepachangelog.com/).
 
-- Group each bullet under the right section: **Added** for new features, **Changed** for changes in
-  existing behaviour, **Fixed** for bug fixes, **Removed** for removed features. The commit types map
-  straight onto these: `feat:` → **Added**, `fix:` → **Fixed**, `changed`/`refactor:`/`perf:` →
-  **Changed**, `removed` → **Removed**.
+**Write a fragment, not `CHANGELOG.md` itself.** One file per change, named after its ticket:
+
+```
+changelog.d/SE-190.fixed.md
+```
+
+`<category>` is the part before `.md`: `added`, `changed`, `deprecated`, `removed`, `fixed` or
+`security`. The file holds the markdown bullet(s). See
+[`changelog.d/README.md`](changelog.d/README.md).
+
+This exists because every branch used to append to the same `### Added` block, so two branches landing
+in parallel conflicted on that one line — every time, on a file where the conflict carries no
+information (both sides are additions; the resolution is always "keep both"). Separate files can't
+collide.
+
+- Pick the right category: **Added** for new features, **Changed** for changes in existing behaviour,
+  **Fixed** for bug fixes, **Removed** for removed features. The commit types map straight onto these:
+  `feat:` → **added**, `fix:` → **fixed**, `refactor:`/`perf:` → **changed**.
 - Keep it user-facing: describe what changed for the person *using* SQL Explorer, not the class that
   changed.
-- Add to `[Unreleased]` — never write a version heading yourself.
+- Never write a version heading yourself. `python tools/changelog-render.py --dry-run` shows what the
+  next release's `[Unreleased]` section will look like; the release workflow folds the fragments in and
+  deletes them.
 - **Releasing is a tag.** The maintainer bumps `<Version>` in `Directory.Build.props`, then pushes a
   `v<semver>` tag (`git tag v0.3.0 && git push origin v0.3.0`). The Release workflow rolls
   `[Unreleased]` into a dated `## [0.3.0]` section and uses the same text as the GitHub release notes

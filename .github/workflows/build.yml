@@ -407,6 +407,11 @@ jobs:
           # falls back to a neutral line so a release never ships blank notes. On a Stable build the
           # checked-out tree is the v-tag, whose [Unreleased] still holds the pending entries (they are
           # rolled into [VERSION] further down, after the release is published).
+          # Fold the changelog fragments (changelog.d/, SE-185) into [Unreleased] first — that is where
+          # the pending entries live between releases, so the notes below would otherwise be empty. It
+          # edits the working tree only; the roll further down commits the result.
+          python3 tools/changelog-render.py || true
+
           CHANGELOG=CHANGELOG.md tools/changelog-unreleased.sh > notes.md || true
           [ -s notes.md ] || echo "No changes recorded." > notes.md
 
@@ -450,12 +455,14 @@ jobs:
             # must never fail an already-published release; on failure the maintainer rolls it by hand.
             if git fetch origin main \
                && git checkout -B main origin/main \
+               && python3 tools/changelog-render.py \
                && VERSION="$VERSION" DATE="$(date -u +%Y-%m-%d)" REPO="$GH_REPO" \
                     CHANGELOG=CHANGELOG.md tools/changelog-roll.sh \
-               && ! git diff --quiet -- CHANGELOG.md; then
+               && ! git diff --quiet -- CHANGELOG.md changelog.d; then
               git config user.name  "github-actions[bot]"
               git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-              git add CHANGELOG.md
+              # -A so the folded-in fragments are removed by the same commit that archives them.
+              git add -A CHANGELOG.md changelog.d
               git commit -m "chore(release): roll changelog for $VERSION"
               if git push origin main; then
                 ROLL_SHA=$(git rev-parse HEAD)
