@@ -61,12 +61,24 @@ public sealed partial class ColumnFilterEntry(string columnName) : ObservableObj
 /// so the tab strip can highlight which one the grid currently shows.</summary>
 public sealed partial class ResultSetTab(string label, EditableResultSet set) : ObservableObject
 {
-    public string Label { get; } = label;
+    [ObservableProperty]
+    private string _label = label;
 
-    public EditableResultSet Set { get; } = set;
+    /// <summary>Settable because a page-flip replaces this tab's rows in place (SE-197) — the tab, its
+    /// statement and its offset survive; only the result set is swapped.</summary>
+    [ObservableProperty]
+    private EditableResultSet _set = set;
 
     [ObservableProperty]
     private bool _isSelected;
+
+    /// <summary>The statement that produced this tab, when the whole script was pageable — then each tab
+    /// carries its own prev/next. Null for a tab that can't be paged on its own.</summary>
+    public PageableStatement? Statement { get; init; }
+
+    /// <summary>Row offset this tab is currently showing, so the page bar reflects the tab you're looking at
+    /// rather than a single document-wide page number.</summary>
+    public int Offset { get; set; }
 }
 
 /// <summary>
@@ -242,6 +254,10 @@ public partial class DocumentViewModel : ViewModelBase
     private string? _pagedQueryBase;
     private bool _pagedQueryOrdered;
 
+    // A script made entirely of pageable SELECTs (SE-197): every result tab keeps its own statement and
+    // offset, and the one page bar drives whichever tab is selected.
+    private bool _pagedScript;
+
     [ObservableProperty]
     private string _rowRange = string.Empty;
 
@@ -416,17 +432,25 @@ public partial class DocumentViewModel : ViewModelBase
 
     /// <summary>True while a query tab is showing a single SELECT's results one page at a time (SE-178) —
     /// drives the under-grid prev/next/row-range nav.</summary>
-    public bool IsQueryPaged => _pagedQueryBase is not null;
+    public bool IsQueryPaged => _pagedQueryBase is not null || _pagedScript;
 
     // Enter/leave paged-query mode, notifying the derived paging state so the nav and buttons update.
-    private void SetPagedQuery(string? baseSql, bool ordered)
+    private void SetPagedQuery(string? baseSql, bool ordered, bool pagedScript = false)
     {
         _pagedQueryBase = baseSql;
         _pagedQueryOrdered = ordered;
+        _pagedScript = pagedScript;
         OnPropertyChanged(nameof(IsQueryPaged));
         PrevPageCommand.NotifyCanExecuteChanged();
         NextPageCommand.NotifyCanExecuteChanged();
     }
+
+    /// <summary>The selected tab, when it can be paged on its own (SE-197).</summary>
+    private ResultSetTab? PagedTab =>
+        _pagedScript && SelectedResultSetIndex >= 0 && SelectedResultSetIndex < ResultSets.Count
+        && ResultSets[SelectedResultSetIndex].Statement is not null
+            ? ResultSets[SelectedResultSetIndex]
+            : null;
 
     public bool CanPrevPage => (IsBrowseMode || IsQueryPaged) && Page > 0;
 
@@ -1264,16 +1288,153 @@ public partial class DocumentViewModel : ViewModelBase
     // the multi-result-set path below.
     private Task RunScriptAsync(string sql, CancellationToken ct)
     {
-        if (_pageQueries && _queryPageSize > 0 && QueryPaging.TryGetPageableSelect(sql, out var statement, out var ordered))
+        if (_pageQueries && _queryPageSize > 0)
         {
-            SetPagedQuery(statement, ordered);
-            PageSize = _queryPageSize;
-            Page = 0;
-            return LoadQueryPageAsync(ct, announce: true);
+            if (QueryPaging.TryGetPageableSelect(sql, out var statement, out var ordered))
+            {
+                SetPagedQuery(statement, ordered);
+                PageSize = _queryPageSize;
+                Page = 0;
+                return LoadQueryPageAsync(ct, announce: true);
+            }
+
+            // A script that is nothing but SELECTs gets a page bar per result tab. GO batches are excluded:
+            // they'd have to be re-run as batches, and a tab could no longer be traced to one statement.
+            if (SingleBatch(sql) && QueryPaging.TryGetPageableScript(sql, out var statements))
+            {
+                SetPagedQuery(null, false, pagedScript: true);
+                PageSize = _queryPageSize;
+                Page = 0;
+                return RunPagedScriptAsync(statements, ct);
+            }
         }
 
         SetPagedQuery(null, false);
         return RunScriptCoreAsync(sql, ct);
+    }
+
+    private bool SingleBatch(string sql) =>
+        Connection.ProviderId != "sqlserver" || SqlStatementSplitter.SplitGoBatches(sql).Count == 1;
+
+    // First run of an all-SELECT script (SE-197): every statement at offset 0, in one round-trip, each
+    // landing in its own tab that remembers the statement it came from so prev/next can re-run just that one.
+    private Task RunPagedScriptAsync(IReadOnlyList<PageableStatement> statements, CancellationToken ct) =>
+        RunTracked(ct, async token =>
+        {
+            var stopwatch = Stopwatch.StartNew();
+            try
+            {
+                var profile = _connections.Resolve(Connection, _database);
+                var provider = _providers.Get(Connection.ProviderId);
+                var sql = string.Join("\n", statements.Select(s => Paged(provider.Dialect, s, 0) + ";"));
+
+                var results = await provider.ExecuteScriptAsync(profile, sql, token);
+                stopwatch.Stop();
+                SignalConnection(ConnectionState.Connected);
+
+                // A driver that hands back a different number of result sets than we asked for breaks the
+                // one-tab-one-statement mapping paging depends on — fall back rather than page the wrong one.
+                if (results.Count != statements.Count)
+                {
+                    SetPagedQuery(null, false);
+                    SetResultSets(BuildResultTabs(results));
+                }
+                else
+                {
+                    SetResultSets([.. results.Select((r, i) => new ResultSetTab(
+                        ResultTabLabel(i, r.Rows.Count, PageSize, 0),
+                        EditableResultSet.From(r)) { Statement = statements[i] })]);
+                }
+
+                var totalRows = results.Sum(r => r.Rows.Count);
+                Report(OutputLevel.Info, DescribeOutcome(results, stopwatch.Elapsed.TotalMilliseconds));
+                SetRunStats(totalRows, stopwatch.Elapsed.TotalMilliseconds);
+                SyncPageBarToSelectedTab();
+                AppendHistory(OriginalScript(statements), QueryHistoryKind.Query, stopwatch.ElapsedMilliseconds,
+                    totalRows, success: true, error: null);
+            }
+            catch (OperationCanceledException)
+            {
+                stopwatch.Stop();
+                Report(OutputLevel.Info, Loc["QueryCancelled"]);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                SignalConnection(ConnectionState.Error);
+                ReportFailure(ex.Message);
+                AppendHistory(OriginalScript(statements), QueryHistoryKind.Query, stopwatch.ElapsedMilliseconds,
+                    0, success: false, error: ex.Message);
+            }
+        });
+
+    // History records what the user wrote, not the offset-rewritten form they'd be surprised to find there.
+    private static string OriginalScript(IReadOnlyList<PageableStatement> statements) =>
+        string.Join(";\n", statements.Select(s => s.Sql)) + ";";
+
+    private string Paged(ISqlDialect dialect, PageableStatement statement, int offset) =>
+        dialect.PageQuery(statement.Sql, PageSize, offset, statement.Ordered);
+
+    private static string ResultTabLabel(int index, int rows, int pageSize, int offset) =>
+        rows >= pageSize || offset > 0
+            ? $"Result {index + 1} · rows {offset + 1}–{offset + rows}"
+            : $"Result {index + 1} · {rows} rows";
+
+    // Re-run only the selected tab's statement at its new offset and swap that tab's rows. The other tabs,
+    // and their own offsets, are left exactly as they were.
+    private Task LoadSelectedTabPageAsync(int offset, CancellationToken ct) => RunTracked(ct, async token =>
+    {
+        if (PagedTab is not { Statement: { } statement } tab)
+        {
+            return;
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            var profile = _connections.Resolve(Connection, _database);
+            var provider = _providers.Get(Connection.ProviderId);
+            var result = await provider.ExecuteQueryAsync(profile, Paged(provider.Dialect, statement, offset), token);
+            stopwatch.Stop();
+            SignalConnection(ConnectionState.Connected);
+
+            tab.Offset = offset;
+            tab.Set = EditableResultSet.From(result);
+            tab.Label = ResultTabLabel(ResultSets.IndexOf(tab), result.Rows.Count, PageSize, offset);
+            SetResult(tab.Set);
+            SyncPageBarToSelectedTab();
+            SetRunStats(result.Rows.Count, result.Elapsed.TotalMilliseconds);
+        }
+        catch (OperationCanceledException)
+        {
+            stopwatch.Stop();
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            SignalConnection(ConnectionState.Error);
+            ReportFailure(ex.Message);
+        }
+    });
+
+    // The page bar shows the tab you're looking at: its offset becomes the page number, its row count decides
+    // whether there's a next page. Called after a run, a page-flip and every tab switch.
+    private void SyncPageBarToSelectedTab()
+    {
+        if (PagedTab is not { } tab)
+        {
+            return;
+        }
+
+        var rows = tab.Set.Rows.Count;
+        _lastRowCount = rows;
+        _lastNextCursor = null;
+        Page = PageSize > 0 ? tab.Offset / PageSize : 0;
+        RowRange = rows == 0
+            ? Loc.Get("RowRangeEmpty")
+            : Loc.Get("RowRange", tab.Offset + 1, tab.Offset + rows);
+        PrevPageCommand.NotifyCanExecuteChanged();
+        NextPageCommand.NotifyCanExecuteChanged();
     }
 
     private Task RunScriptCoreAsync(string sql, CancellationToken ct) => RunTracked(ct, async token =>
@@ -1383,9 +1544,12 @@ public partial class DocumentViewModel : ViewModelBase
         await ReloadPageAsync(ct);
     }
 
-    // A page-flip reloads the browse table or re-runs the paged query at the new offset (never announcing).
+    // A page-flip reloads the browse table, re-runs the paged query, or — for an all-SELECT script — re-runs
+    // just the selected tab's statement at its own new offset (never announcing).
     private Task ReloadPageAsync(CancellationToken ct) =>
-        IsQueryPaged ? LoadQueryPageAsync(ct, announce: false) : LoadPageAsync(ct);
+        _pagedScript ? LoadSelectedTabPageAsync(Page * PageSize, ct)
+        : IsQueryPaged ? LoadQueryPageAsync(ct, announce: false)
+        : LoadPageAsync(ct);
 
     [RelayCommand]
     private async Task ApplyFilterAsync(CancellationToken ct)
@@ -1564,6 +1728,10 @@ public partial class DocumentViewModel : ViewModelBase
         {
             SetResult(ResultSets[value].Set);
         }
+
+        // Each tab of an all-SELECT script pages independently, so switching tabs moves the page bar to
+        // that tab's own position rather than leaving it on the previous tab's page number.
+        SyncPageBarToSelectedTab();
     }
 
     // Drives the tab strip's highlight — the Button in DocumentView.axaml binds Classes.Accent to IsSelected.

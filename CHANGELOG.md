@@ -28,11 +28,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
-- **A script no longer dumps every row of every table.** `SELECT * FROM a; SELECT * FROM b;` returned both
-  tables in full, because a script can't carry a prev/next bar and so wasn't bounded at all. Each unbounded
-  `SELECT` in a script is now limited to one page of rows *on the server*, its result tab reads "first N rows",
-  and the Output panel says the results were capped. Statements with their own `TOP`/`LIMIT` and non-SELECTs
-  run exactly as written, and the whole thing follows the existing "Page query results" setting.
+- **A script no longer dumps every row of every table — and every result tab gets its own Previous/Next.**
+  `SELECT * FROM a; SELECT * FROM b;` returned both tables in full, because paging only ever applied to a
+  single SELECT. When a script is nothing but SELECTs, each result tab now pages independently: the tab shows
+  which rows you're looking at ("rows 201–400"), Previous/Next move just that tab, and switching tabs moves
+  the page bar to where that tab is. A script that mixes SELECTs with other statements can't map tabs to
+  statements safely, so it has no page bar — but its SELECTs are still bounded to one page each on the
+  server, and the Output panel says so. Statements with their own `TOP`/`LIMIT` and non-SELECTs run exactly
+  as written, and the whole thing follows the existing "Page query results" setting.
 - **A query that ends in a semicolon can be paged again.** `SELECT * FROM Donations;` failed with "Incorrect
   syntax near the keyword 'ORDER'" (and the equivalent on every other engine), because paging appends its
   `ORDER BY … OFFSET … FETCH` / `LIMIT` *after* the statement — semicolon and all. The terminator is now

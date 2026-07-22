@@ -13,6 +13,10 @@ namespace SqlExplorer.Core.Sql;
 /// verbatim. Quote/comment/paren-aware, so a keyword inside a string, a quoted identifier or a subquery never
 /// misleads the check.
 /// </summary>
+/// <summary>One statement of a fully pageable script: the SQL without its terminator, and whether it already
+/// carries a top-level <c>ORDER BY</c> (which decides how a dialect appends its offset clause).</summary>
+public sealed record PageableStatement(string Sql, bool Ordered);
+
 public static class QueryPaging
 {
     // Keywords whose top-level presence means the statement already bounds itself or isn't a plain result set.
@@ -72,6 +76,48 @@ public static class QueryPaging
 
         statement = trimmed;
         ordered = words.Any(w => w.Equals("ORDER", StringComparison.OrdinalIgnoreCase));
+        return true;
+    }
+
+    /// <summary>
+    /// True when a script is <b>entirely</b> made of pageable SELECTs (at least two of them) — the shape
+    /// where every result tab can carry its own prev/next, because each result set maps to exactly one
+    /// statement.
+    ///
+    /// <para>The all-or-nothing rule is the point. Mix a SELECT with an UPDATE and the driver's result sets
+    /// no longer line up one-for-one with the statements — whether a non-result statement yields a
+    /// <c>QueryResult</c> at all is a driver's business — so a page-flip could re-run the wrong statement.
+    /// Those scripts fall back to <see cref="CapPageableStatements"/>: bounded, but no page bar.</para>
+    /// </summary>
+    public static bool TryGetPageableScript(string sql, out IReadOnlyList<PageableStatement> statements)
+    {
+        statements = [];
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            return false;
+        }
+
+        var spans = SqlStatementSplitter.Split(sql)
+            .Where(s => StripTerminators(s.Text).Length > 0)
+            .ToList();
+
+        if (spans.Count < 2)
+        {
+            return false; // one statement is the single-SELECT paging path; zero is nothing to do
+        }
+
+        var found = new List<PageableStatement>(spans.Count);
+        foreach (var span in spans)
+        {
+            if (!TryGetPageableSelect(span.Text, out var statement, out var ordered))
+            {
+                return false;
+            }
+
+            found.Add(new PageableStatement(statement, ordered));
+        }
+
+        statements = found;
         return true;
     }
 

@@ -142,6 +142,41 @@ public class QueryPagingTests
         Assert.Equal(0, count);
     }
 
+    // --- A script that is nothing but SELECTs pages per result tab ---
+
+    [Fact]
+    public void An_all_select_script_is_pageable_per_statement()
+    {
+        Assert.True(QueryPaging.TryGetPageableScript(
+            "SELECT * FROM [dbo].[Character];\nSELECT * FROM [dbo].[Corporation] ORDER BY id;",
+            out var statements));
+
+        Assert.Equal(2, statements.Count);
+        Assert.Equal("SELECT * FROM [dbo].[Character]", statements[0].Sql);
+        Assert.False(statements[0].Ordered);
+        Assert.Equal("SELECT * FROM [dbo].[Corporation] ORDER BY id", statements[1].Sql);
+        Assert.True(statements[1].Ordered);
+    }
+
+    [Theory]
+    [InlineData("SELECT * FROM a;\nUPDATE b SET x = 1;")]          // mixed: result sets stop lining up
+    [InlineData("SELECT * FROM a;\nSELECT TOP 10 * FROM b;")]      // one already bounds itself
+    [InlineData("SELECT * FROM a;")]                                // single statement = the other path
+    [InlineData("")]
+    public void A_script_that_is_not_all_pageable_selects_gets_no_page_bar(string sql) =>
+        Assert.False(QueryPaging.TryGetPageableScript(sql, out _));
+
+    [Fact]
+    public void A_mixed_script_still_gets_its_selects_bounded()
+    {
+        // The two features are complementary: no page bar, but not unbounded either.
+        const string sql = "SELECT * FROM a;\nUPDATE b SET x = 1;";
+
+        Assert.False(QueryPaging.TryGetPageableScript(sql, out _));
+        QueryPaging.CapPageableStatements(sql, SqlServer, 200, out var capped);
+        Assert.Equal(1, capped);
+    }
+
     [Fact]
     public void Postgres_gets_its_own_limit_syntax()
     {
