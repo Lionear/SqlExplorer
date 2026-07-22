@@ -45,5 +45,23 @@ category) fails the build rather than being silently skipped at release time.
 
 ## Still edit CHANGELOG.md directly?
 
-Only for a released section, or to correct something already rolled. For anything unreleased, write a
-fragment — that is the whole point.
+For a released section, or to correct something already rolled — and for one case that is easy to miss:
+**a fragment can only add, never amend.** When a later change makes an *already written* unreleased entry
+wrong, the fix is to edit that entry, wherever it lives.
+
+That matters more than it sounds. Work lands in pieces, so a feature's first entry ("SQLite is a planned
+follow-up") is routinely overtaken by the piece that follows it, and two bullets that contradict each
+other are worse than one that is merely incomplete. Before a release, read the whole `[Unreleased]`
+section as a user would — as one description of what changed, not as a pile of commits:
+
+```bash
+python tools/changelog-render.py --dry-run
+```
+
+Two things to look for, both of which bit us before 0.5.0:
+
+- **Superseded claims.** The first Copy Table entry still said indexes, foreign keys and SQLite were
+  follow-ups, three entries above the one that added them.
+- **"Fixed" for something that never shipped.** A bug introduced and fixed between two releases was never
+  a bug anyone had. Fold what it says into the feature's own entry and drop the Fixed bullet — check the
+  previous version's section to see whether the thing had actually shipped.
