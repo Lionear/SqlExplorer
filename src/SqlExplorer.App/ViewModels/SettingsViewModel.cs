@@ -171,9 +171,88 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Set by the view: shows the "switch &amp; downgrade" confirmation for a channel that offers an
+    /// older build than the one running. True = the user accepted the downgrade.</summary>
+    public Func<Core.Update.ChannelOffer, Task<bool>>? ConfirmChannelDowngrade { get; set; }
+
+    // Suppresses the channel-switch evaluation while the selection is being set programmatically (load,
+    // reset-to-defaults, or reverting a downgrade the user declined) — those aren't a user choosing a channel.
+    private bool _settingChannel;
+    private Core.Update.UpdateChannel _channelBeforeSwitch;
+
+    // The downgrade the user explicitly accepted, held until Save so the banner can pick it up. Cleared by
+    // any further channel change: an accepted downgrade you then switched away from isn't a choice any more.
+    private Core.Update.ChannelOffer? _acceptedDowngrade;
+
     partial void OnSelectedUpdateChannelChanged(Core.Update.UpdateChannel value)
     {
         OnPropertyChanged(nameof(SelectedUpdateChannelOption));
+        UpdateCheckStatus = null;
+        _acceptedDowngrade = null;
+
+        if (_settingChannel)
+        {
+            _channelBeforeSwitch = value;
+            return;
+        }
+
+        _ = EvaluateChannelSwitchAsync(value, _channelBeforeSwitch);
+        _channelBeforeSwitch = value;
+    }
+
+    /// <summary>
+    /// Says what picking this channel would actually mean, before it means it (SE-163).
+    ///
+    /// <para>An automatic check never offers a lower build, which is right — but it left a gap: a user who
+    /// deliberately moves from Nightly to Stable while Stable is behind used to get <i>silence</i>, no signal
+    /// and no path. So a channel that offers an older core now asks outright, and taking it queues that build
+    /// for install rather than leaving the user on a channel with nothing to say.</para>
+    /// </summary>
+    private async Task EvaluateChannelSwitchAsync(
+        Core.Update.UpdateChannel channel, Core.Update.UpdateChannel previous)
+    {
+        UpdateCheckStatus = Loc["UpdateCheckChecking"];
+        var offer = await _update.PeekChannelAsync(channel, System.Threading.CancellationToken.None);
+
+        if (offer is null)
+        {
+            UpdateCheckStatus = Loc.Get("UpdateChannelUnreachable", channel.ToString());
+            return;
+        }
+
+        if (offer.IsSameBuild)
+        {
+            UpdateCheckStatus = Loc.Get("UpdateChannelSameBuild", channel.ToString());
+            return;
+        }
+
+        // Higher or equal core: the normal update path already handles it, and says so on the next check.
+        if (!offer.IsDowngrade)
+        {
+            UpdateCheckStatus = null;
+            return;
+        }
+
+        // No confirmation hook (headless/tests): don't switch behind the user's back — say what it means.
+        if (ConfirmChannelDowngrade is null)
+        {
+            UpdateCheckStatus = Loc.Get("UpdateChannelDowngradeInfo", channel.ToString(), offer.Version);
+            return;
+        }
+
+        if (await ConfirmChannelDowngrade(offer))
+        {
+            _acceptedDowngrade = offer;
+            UpdateCheckStatus = offer.CanInstall
+                ? Loc.Get("UpdateChannelDowngradeAccepted", offer.Version)
+                : Loc.Get("UpdateChannelDowngradeNoAsset", offer.Version);
+            return;
+        }
+
+        // Declined: put the dropdown back where it was, rather than leaving it showing a channel we didn't take.
+        _settingChannel = true;
+        SelectedUpdateChannel = previous;
+        _settingChannel = false;
         UpdateCheckStatus = null;
     }
 
@@ -873,7 +952,9 @@ public partial class SettingsViewModel : ViewModelBase
         QueryPageSize = settings.QueryPageSize;
         RestoreTabsOnStartup = settings.RestoreTabsOnStartup;
         PromptSaveQueryOnClose = settings.PromptSaveQueryOnClose;
+        _settingChannel = true;
         SelectedUpdateChannel = settings.UpdateChannel ?? _update.RunningChannel;
+        _settingChannel = false;
         CheckForUpdatesOnStartup = settings.CheckForUpdatesOnStartup;
         SelectedUpdateIntervalMinutes = settings.UpdateCheckIntervalMinutes;
         UpdateCheckStatus = null;
@@ -1036,7 +1117,9 @@ public partial class SettingsViewModel : ViewModelBase
         RestoreTabsOnStartup = defaults.RestoreTabsOnStartup;
         PromptSaveQueryOnClose = defaults.PromptSaveQueryOnClose;
         // No explicit default channel: fall back to the running build's channel, same as a fresh install.
+        _settingChannel = true;
         SelectedUpdateChannel = defaults.UpdateChannel ?? _update.RunningChannel;
+        _settingChannel = false;
         CheckForUpdatesOnStartup = defaults.CheckForUpdatesOnStartup;
         SelectedUpdateIntervalMinutes = defaults.UpdateCheckIntervalMinutes;
         ShowSystemDatabases = defaults.ShowSystemDatabases;
@@ -1105,6 +1188,13 @@ public partial class SettingsViewModel : ViewModelBase
             settings.DismissedUpdateVersion = null;
         }
         settings.UpdateChannel = SelectedUpdateChannel;
+        // An accepted downgrade is queued here, after the channel is persisted: the banner drives the same
+        // download/verify/install path as any other offer, so nothing about applying a build is special-cased.
+        if (_acceptedDowngrade is { } downgrade && downgrade.Channel == SelectedUpdateChannel)
+        {
+            _update.SurfaceChosen(downgrade);
+            _acceptedDowngrade = null;
+        }
         settings.CheckForUpdatesOnStartup = CheckForUpdatesOnStartup;
         settings.UpdateCheckIntervalMinutes = SelectedUpdateIntervalMinutes;
         settings.ShowSystemDatabases = ShowSystemDatabases;

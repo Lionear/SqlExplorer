@@ -1674,6 +1674,32 @@
   <data name="UpdateCheckNow" xml:space="preserve">
     <value>Check for updates</value>
   </data>
+  <data name="UpdateChannelUnreachable" xml:space="preserve">
+    <value>Couldn't reach the {0} channel — the switch is saved, but nothing could be checked.</value>
+  </data>
+  <data name="UpdateChannelSameBuild" xml:space="preserve">
+    <value>{0} offers exactly the build you're running.</value>
+  </data>
+  <data name="UpdateChannelDowngradeInfo" xml:space="preserve">
+    <value>{0} currently offers {1}, which is older than the build you're running.</value>
+  </data>
+  <data name="UpdateChannelDowngradeTitle" xml:space="preserve">
+    <value>Switch channel and downgrade?</value>
+  </data>
+  <data name="UpdateChannelDowngradeMessage" xml:space="preserve">
+    <value>The {0} channel currently offers {1}. You're running {2}.
+
+Switching means downgrading to {1}. Plugins built for a newer host may stop loading until you switch back.</value>
+  </data>
+  <data name="UpdateChannelDowngradeYes" xml:space="preserve">
+    <value>Switch &amp; downgrade</value>
+  </data>
+  <data name="UpdateChannelDowngradeAccepted" xml:space="preserve">
+    <value>{0} is queued — close Settings to download and install it.</value>
+  </data>
+  <data name="UpdateChannelDowngradeNoAsset" xml:space="preserve">
+    <value>{0} has no download for this platform; the channel is switched but nothing can be installed here.</value>
+  </data>
   <data name="UpdateCheckChecking" xml:space="preserve">
     <value>Checking…</value>
   </data>

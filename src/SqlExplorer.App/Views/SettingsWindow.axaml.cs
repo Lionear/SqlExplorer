@@ -27,6 +27,18 @@ public partial class SettingsWindow : Window
                 };
                 // "What's new" from the Updates pane opens the changelog dialog owned by this window.
                 vm.ChangelogRequested = dialog => new UpdateAvailableWindow(dialog).ShowDialog(this);
+                // Switching to a channel that is behind the running build (SE-163): say what it means and get
+                // an explicit yes, rather than switching in silence — the "No" text is the safe default here.
+                vm.ConfirmChannelDowngrade = async offer =>
+                {
+                    var dialog = new ConfirmDialog(
+                        vm.Loc["UpdateChannelDowngradeTitle"],
+                        vm.Loc.Get("UpdateChannelDowngradeMessage",
+                            offer.Channel.ToString(), offer.Version, offer.RunningVersion),
+                        vm.Loc["UpdateChannelDowngradeYes"],
+                        vm.Loc["Cancel"]);
+                    return await dialog.ShowDialog<bool>(this);
+                };
             }
         };
 

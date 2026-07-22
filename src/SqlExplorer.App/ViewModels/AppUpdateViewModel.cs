@@ -142,6 +142,23 @@ public sealed partial class AppUpdateViewModel : ViewModelBase
         return result.Status;
     }
 
+    /// <summary>What a channel currently offers, regardless of whether it's newer (SE-163). Settings uses it
+    /// to tell the user what picking that channel would actually mean, before it means it.</summary>
+    public Task<ChannelOffer?> PeekChannelAsync(UpdateChannel channel, CancellationToken ct) =>
+        _service.PeekAsync(channel, ct);
+
+    /// <summary>
+    /// Put a channel offer the user deliberately chose into the banner's download/install flow — including a
+    /// <b>downgrade</b>, which <see cref="CheckAsync"/> would never surface on its own.
+    ///
+    /// <para>That asymmetry is deliberate rather than an inconsistency: an automatic check must never present
+    /// an older build as an update, but a user who confirmed "switch and downgrade" has already been told
+    /// exactly what it means. The intent travels as this one call, so the rule in <c>IsNewer</c> stays as
+    /// strict as it was.</para>
+    /// </summary>
+    public void SurfaceChosen(ChannelOffer offer) =>
+        Surface(UpdateCheckResult.Available(offer.Manifest, offer.Asset));
+
     /// <summary>Builds the notes-only changelog dialog VM for the current offer (or null if there's none).</summary>
     public UpdateAvailableViewModel? BuildDialog() =>
         _current is { Manifest: { } manifest } ? new UpdateAvailableViewModel(manifest, Loc) : null;

@@ -1674,6 +1674,32 @@
   <data name="UpdateCheckNow" xml:space="preserve">
     <value>Controleren op updates</value>
   </data>
+  <data name="UpdateChannelUnreachable" xml:space="preserve">
+    <value>Kanaal {0} niet bereikbaar — de wissel is opgeslagen, maar er kon niets gecontroleerd worden.</value>
+  </data>
+  <data name="UpdateChannelSameBuild" xml:space="preserve">
+    <value>{0} biedt exact de build die je draait.</value>
+  </data>
+  <data name="UpdateChannelDowngradeInfo" xml:space="preserve">
+    <value>{0} biedt nu {1}, ouder dan de build die je draait.</value>
+  </data>
+  <data name="UpdateChannelDowngradeTitle" xml:space="preserve">
+    <value>Kanaal wisselen en downgraden?</value>
+  </data>
+  <data name="UpdateChannelDowngradeMessage" xml:space="preserve">
+    <value>Kanaal {0} biedt nu {1}. Jij draait {2}.
+
+Wisselen betekent downgraden naar {1}. Plugins die voor een nieuwere host zijn gebouwd, laden mogelijk niet meer tot je terugwisselt.</value>
+  </data>
+  <data name="UpdateChannelDowngradeYes" xml:space="preserve">
+    <value>Wisselen &amp; downgraden</value>
+  </data>
+  <data name="UpdateChannelDowngradeAccepted" xml:space="preserve">
+    <value>{0} staat klaar — sluit Instellingen om 'm te downloaden en installeren.</value>
+  </data>
+  <data name="UpdateChannelDowngradeNoAsset" xml:space="preserve">
+    <value>{0} heeft geen download voor dit platform; het kanaal is gewisseld maar er valt hier niets te installeren.</value>
+  </data>
   <data name="UpdateCheckChecking" xml:space="preserve">
     <value>Bezig met controleren…</value>
   </data>

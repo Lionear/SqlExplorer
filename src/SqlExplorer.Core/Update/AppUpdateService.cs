@@ -75,6 +75,32 @@ public sealed class AppUpdateService
         return offered.CompareBuildTo(running) > 0;
     }
 
+    /// <summary>
+    /// What <paramref name="channel"/> currently offers, with no judgement about whether you should take it
+    /// (SE-163). <see cref="CheckAsync"/> answers "is there something newer?" and deliberately says no to a
+    /// lower core, so an automatic notification can never present a downgrade as an update. But a user
+    /// *choosing* a channel in Settings is asking a different question — "what is on that channel?" — and
+    /// deserves an answer even when it's older than what they run. Null when the channel can't be reached.
+    /// </summary>
+    public async Task<ChannelOffer?> PeekAsync(UpdateChannel channel, CancellationToken ct)
+    {
+        var manifest = await _source.FetchAsync(channel, ct);
+        if (manifest is null)
+        {
+            return null;
+        }
+
+        ChannelStamp.TryParse(_runningVersion, out var running);
+        ChannelStamp.TryParse(manifest.Version, out var offered);
+
+        return new ChannelOffer(
+            channel,
+            manifest,
+            SelectAsset(manifest),
+            RunningVersion: _runningVersion,
+            CoreComparedToRunning: SemVer.Compare(offered.Core, running.Core));
+    }
+
     /// <summary>The asset for this platform: on Windows prefer the installer over the portable zip.</summary>
     private UpdateAsset? SelectAsset(UpdateManifest manifest)
     {
