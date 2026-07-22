@@ -15,7 +15,7 @@ Browsing a table with the editable result grid — all data shown is synthetic:
 
 Every database engine ships as a plugin; the Plugin Store manages them:
 
-![The Plugin Store listing the built-in database providers](docs/images/plugin-store.png)
+![The Plugin Store listing the built-in database providers alongside the ones installed from the store](docs/images/plugin-store.png)
 
 > Screenshots are rendered headlessly from the real app (no display, no real database) by
 > [`SqlExplorer.Screenshots`](src/SqlExplorer.Screenshots) — regenerate with `tools/screenshots.sh`.
