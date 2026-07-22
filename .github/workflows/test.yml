@@ -60,6 +60,10 @@ jobs:
       - name: Test (Tools.SchemaDiff)
         run: dotnet test tests/SqlExplorer.Tools.SchemaDiff.Tests/SqlExplorer.Tools.SchemaDiff.Tests.csproj -c Release
 
+      # Generate Scripts plugin (SE-98): assembling a whole schema into one ordered script.
+      - name: Test (Tools.GenerateScripts)
+        run: dotnet test tests/SqlExplorer.Tools.GenerateScripts.Tests/SqlExplorer.Tools.GenerateScripts.Tests.csproj -c Release
+
       # The steps above name their projects one by one, which is how SqlExplorer.Tools.SchemaDiff.Tests
       # managed to sit outside CI from the day it was added: adding a test project doesn't fail anything,
       # it just quietly runs nowhere. This fails the build instead of letting the next one slip through.

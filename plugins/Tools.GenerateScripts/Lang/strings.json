@@ -1,0 +1,17 @@
+{
+  "gen.title": "Generate Scripts",
+  "gen.dialogTitle": "Generate Scripts",
+  "gen.description": "Scripts every table in this database as CREATE statements — optionally with its indexes and foreign keys. Nothing is changed: the script opens in a query tab, or is written to a file.",
+  "gen.field.what": "What to script",
+  "gen.field.dropFirst": "Add DROP TABLE before each CREATE",
+  "gen.field.output": "Where to put it",
+  "gen.field.file": "File",
+  "gen.error.unsupported": "Generate Scripts doesn't support the '{0}' engine yet (Postgres, MySQL, SQL Server and SQLite).",
+  "gen.progress.reading": "Reading the schema of {0}…",
+  "gen.progress.scripted": "Scripted {0} table(s).",
+  "gen.script.header": "-- Schema of {0} — {1} table(s), scripted by SQL Explorer.\n-- Review before running: this creates objects and does not check whether they already exist.",
+  "gen.result.empty": "{0} has no tables to script.",
+  "gen.result.opened": "Opened a script for {0} table(s) from {1} in a query tab.",
+  "gen.result.written": "Wrote {0} table(s) to {1}.",
+  "gen.result.cancelled": "No file chosen — nothing was written."
+}

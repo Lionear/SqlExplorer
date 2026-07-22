@@ -15,8 +15,8 @@
   <ItemGroup>
     <!-- Reading a schema is shared with Copy Table, source-linked rather than packaged: plugins load into
          isolated ALCs, so a shared DLL would have to be duplicated per plugin folder anyway (or promoted
-         into the SDK, whose surface is a public contract). See plugins/Shared.SchemaRead/README.md. -->
-    <Compile Include="..\Shared.SchemaRead\*.cs" />
+         into the SDK, whose surface is a public contract). See plugins/Shared.Schema/README.md. -->
+    <Compile Include="..\Shared.Schema\*.cs" />
   </ItemGroup>
 
   <ItemGroup>

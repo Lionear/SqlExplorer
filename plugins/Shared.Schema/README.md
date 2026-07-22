@@ -1,4 +1,4 @@
-# Shared.SchemaRead
+# Shared.Schema
 
 Reading a table's shape out of a live database is the same job for every tool that has to recreate one
 somewhere else, and it is engine-specific in the same four ways each time: which catalogue holds the
@@ -10,12 +10,12 @@ secondary indexes but lost `AUTO_INCREMENT`. This folder is the one answer.
 It is **not a project**. The files are source-linked into each plugin that needs them:
 
 ```xml
-<Compile Include="..\Shared.SchemaRead\*.cs" />
+<Compile Include="..\Shared.Schema\*.cs" />
 ```
 
 so each plugin compiles its own copy into its own assembly. That is deliberate: plugins load into isolated
 `AssemblyLoadContext`s and only `SqlExplorer.Sdk` and `Avalonia*` are shared with the host, so a separate
-`Shared.SchemaRead.dll` would either have to be duplicated per plugin folder anyway or be promoted into the
+`Shared.Schema.dll` would either have to be duplicated per plugin folder anyway or be promoted into the
 SDK — and the SDK is a public contract we would then owe compatibility to. These types never cross the ALC
 boundary, so two identical copies are harmless.
 
@@ -29,6 +29,8 @@ boundary, so two identical copies are harmless.
 | `SqliteSchemaReader.cs` | SQLite, via `sqlite_master` + the PRAGMA table-valued functions. |
 | `SqlDialect.cs` | Per-engine quoting, column rendering (including identity) and the DDL whose shape genuinely diverges. |
 | `SqlRows.cs` | Case-insensitive view over a `QueryResult`, so readers address catalogue cells by name. |
+| `SchemaChange.cs` | The change vocabulary a consumer renders: create/drop table, add/alter/drop column, keys, indexes, foreign keys. |
+| `AlterScriptWriter.cs` | Renders those changes into runnable DDL for one dialect. Schema Diff feeds it a diff; Generate Scripts feeds it a whole schema as creates. |
 
 The mapping half of each reader is pure (`BuildTables`) and unit-tested without a database, in
 `tests/SqlExplorer.Tools.SchemaDiff.Tests`.

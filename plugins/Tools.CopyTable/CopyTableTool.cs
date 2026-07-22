@@ -9,7 +9,7 @@ namespace SqlExplorer.Tools.CopyTable;
 /// live checklist — or <b>opens it as a script</b> in a new query tab on the target to review and run.
 /// Same-provider only (the picker enforces it), so one dialect renders both sides.
 ///
-/// <para>The read comes from <c>Shared.SchemaRead</c>, the same reader Schema Diff uses, narrowed to the one
+/// <para>The read comes from <c>Shared.Schema</c>, the same reader Schema Diff uses, narrowed to the one
 /// clicked table — which is what brings SQLite along with Postgres, MySQL and SQL Server. The tool only
 /// knows the table's <em>name</em> (the clicked node), not its schema, so it resolves the schema from the
 /// read; when the name is ambiguous across schemas it takes the first and says so.</para>

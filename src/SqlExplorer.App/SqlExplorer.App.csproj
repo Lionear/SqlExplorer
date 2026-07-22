@@ -48,6 +48,7 @@
     <!-- Cross-connection schema-diff / copy-table tools (SE-99 / SE-100): store-only, so Debug-staged for
          development but not bundled in Release — users install them from the Plugin Store (like the other tools). -->
     <ProjectReference Include="..\..\plugins\Tools.SchemaDiff\SqlExplorer.Tools.SchemaDiff.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
+    <ProjectReference Include="..\..\plugins\Tools.GenerateScripts\SqlExplorer.Tools.GenerateScripts.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Tools.CopyTable\SqlExplorer.Tools.CopyTable.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Tools.UniversalBackup\SqlExplorer.Tools.UniversalBackup.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
     <ProjectReference Include="..\..\plugins\Tools.MsSqlBacpac\SqlExplorer.Tools.MsSqlBacpac.csproj" ReferenceOutputAssembly="false" Private="false" Condition="'$(Configuration)' == 'Debug'" />
