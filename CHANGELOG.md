@@ -28,6 +28,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- **A script no longer dumps every row of every table.** `SELECT * FROM a; SELECT * FROM b;` returned both
+  tables in full, because a script can't carry a prev/next bar and so wasn't bounded at all. Each unbounded
+  `SELECT` in a script is now limited to one page of rows *on the server*, its result tab reads "first N rows",
+  and the Output panel says the results were capped. Statements with their own `TOP`/`LIMIT` and non-SELECTs
+  run exactly as written, and the whole thing follows the existing "Page query results" setting.
 - **A query that ends in a semicolon can be paged again.** `SELECT * FROM Donations;` failed with "Incorrect
   syntax near the keyword 'ORDER'" (and the equivalent on every other engine), because paging appends its
   `ORDER BY … OFFSET … FETCH` / `LIMIT` *after* the statement — semicolon and all. The terminator is now

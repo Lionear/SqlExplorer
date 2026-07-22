@@ -72,6 +72,87 @@ public class QueryPagingTests
         Assert.Equal("SELECT * FROM t WHERE s = ';'", stmt);
     }
 
+    // --- Capping a script's SELECTs (a script can't be paged, but it shouldn't run wide open either) ---
+
+    private static readonly ISqlDialect SqlServer = new MsSqlDialect();
+
+    [Fact]
+    public void Every_unbounded_select_in_a_script_is_bounded()
+    {
+        var sql = "SELECT * FROM [dbo].[Character];\nSELECT * FROM [dbo].[Corporation];";
+
+        var capped = QueryPaging.CapPageableStatements(sql, SqlServer, 200, out var count);
+
+        Assert.Equal(2, count);
+        Assert.Equal(
+            "SELECT * FROM [dbo].[Character]\nORDER BY (SELECT NULL)\nOFFSET 0 ROWS FETCH NEXT 200 ROWS ONLY;\n" +
+            "SELECT * FROM [dbo].[Corporation]\nORDER BY (SELECT NULL)\nOFFSET 0 ROWS FETCH NEXT 200 ROWS ONLY;",
+            capped);
+    }
+
+    [Fact]
+    public void A_statement_that_already_bounds_itself_is_left_alone()
+    {
+        var sql = "SELECT TOP 10 * FROM a;\nSELECT * FROM b;";
+
+        var capped = QueryPaging.CapPageableStatements(sql, SqlServer, 200, out var count);
+
+        Assert.Equal(1, count);
+        Assert.Contains("SELECT TOP 10 * FROM a;", capped);
+        Assert.DoesNotContain("TOP 10 * FROM a\nORDER BY", capped);
+    }
+
+    [Fact]
+    public void Non_selects_run_exactly_as_written()
+    {
+        // Rewriting a statement we chose not to bound would be a change nobody asked for — and an UPDATE
+        // with an OFFSET clause bolted on is not the same statement.
+        var sql = "UPDATE a SET x = 1;\nDELETE FROM b;\nINSERT INTO c VALUES (1);";
+
+        var capped = QueryPaging.CapPageableStatements(sql, SqlServer, 200, out var count);
+
+        Assert.Equal(0, count);
+        Assert.Equal(sql, capped);
+    }
+
+    [Fact]
+    public void A_script_with_nothing_to_cap_comes_back_untouched()
+    {
+        var sql = "-- just a comment\nUPDATE a SET x = 1;";
+        Assert.Equal(sql, QueryPaging.CapPageableStatements(sql, SqlServer, 200, out var count));
+        Assert.Equal(0, count);
+    }
+
+    [Fact]
+    public void An_order_by_in_a_script_is_kept_and_paged_without_a_second_one()
+    {
+        var capped = QueryPaging.CapPageableStatements(
+            "SELECT * FROM a ORDER BY id;\nSELECT * FROM b;", SqlServer, 50, out var count);
+
+        Assert.Equal(2, count);
+        Assert.Contains("SELECT * FROM a ORDER BY id\nOFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY;", capped);
+        Assert.DoesNotContain("ORDER BY id\nORDER BY", capped);
+    }
+
+    [Fact]
+    public void A_limit_of_zero_disables_capping_entirely()
+    {
+        var sql = "SELECT * FROM a;\nSELECT * FROM b;";
+        Assert.Equal(sql, QueryPaging.CapPageableStatements(sql, SqlServer, 0, out var count));
+        Assert.Equal(0, count);
+    }
+
+    [Fact]
+    public void Postgres_gets_its_own_limit_syntax()
+    {
+        var capped = QueryPaging.CapPageableStatements(
+            "SELECT * FROM a;\nSELECT * FROM b;", new PostgresDialect(), 200, out var count);
+
+        Assert.Equal(2, count);
+        Assert.Contains("LIMIT 200", capped);
+        Assert.DoesNotContain("FETCH NEXT", capped);
+    }
+
     [Fact]
     public void Is_case_insensitive()
     {

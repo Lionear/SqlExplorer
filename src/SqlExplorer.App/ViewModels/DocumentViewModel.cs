@@ -1288,6 +1288,23 @@ public partial class DocumentViewModel : ViewModelBase
                 ? SqlStatementSplitter.SplitGoBatches(sql)
                 : [sql];
 
+            // A script can't be paged — its statements aren't all result sets, and one prev/next bar can't
+            // drive several of them — but "SELECT * FROM a; SELECT * FROM b;" shouldn't pull both tables in
+            // full either. Each unbounded SELECT is bounded to one page's worth server-side; everything else
+            // runs as written. Governed by the same setting as query paging, and reported below, because a
+            // silently shortened result set is worse than a slow one.
+            var capLimit = _pageQueries ? _queryPageSize : 0;
+            var cappedStatements = 0;
+            if (capLimit > 0)
+            {
+                batches = [.. batches.Select(b =>
+                {
+                    var text = QueryPaging.CapPageableStatements(b, provider.Dialect, capLimit, out var capped);
+                    cappedStatements += capped;
+                    return text;
+                })];
+            }
+
             var results = new List<QueryResult>();
             foreach (var batch in batches)
             {
@@ -1298,8 +1315,12 @@ public partial class DocumentViewModel : ViewModelBase
             // The run auto-connected: light the connection's status dot in the tree.
             SignalConnection(ConnectionState.Connected);
             var totalRows = results.Sum(r => r.Rows.Count);
-            SetResultSets(BuildResultTabs(results));
+            SetResultSets(BuildResultTabs(results, cappedStatements > 0 ? capLimit : 0));
             Report(OutputLevel.Info, DescribeOutcome(results, stopwatch.Elapsed.TotalMilliseconds));
+            if (cappedStatements > 0 && results.Any(r => r.Rows.Count >= capLimit))
+            {
+                Report(OutputLevel.Info, Loc.Get("StatusScriptCapped", capLimit));
+            }
             SetRunStats(totalRows, stopwatch.Elapsed.TotalMilliseconds);
             if (IsQueryMode)
             {
@@ -1323,10 +1344,16 @@ public partial class DocumentViewModel : ViewModelBase
         }
     });
 
-    private static List<ResultSetTab> BuildResultTabs(IReadOnlyList<QueryResult> results) =>
+    // capLimit > 0 means the script's SELECTs were bounded to that many rows: a result set that came back
+    // exactly full is the one that was cut off, and its tab says "first N" rather than claiming N is all there is.
+    private static List<ResultSetTab> BuildResultTabs(IReadOnlyList<QueryResult> results, int capLimit = 0) =>
         results.Count <= 1
             ? [new ResultSetTab("Result", EditableResultSet.From(results.Count == 1 ? results[0] : EmptyResult()))]
-            : results.Select((r, i) => new ResultSetTab($"Result {i + 1} · {r.Rows.Count} rows", EditableResultSet.From(r))).ToList();
+            : results.Select((r, i) => new ResultSetTab(
+                capLimit > 0 && r.Rows.Count >= capLimit
+                    ? $"Result {i + 1} · first {r.Rows.Count} rows"
+                    : $"Result {i + 1} · {r.Rows.Count} rows",
+                EditableResultSet.From(r))).ToList();
 
     private static QueryResult EmptyResult() => new() { Columns = [], Rows = [], RecordsAffected = 0, Elapsed = TimeSpan.Zero };
 

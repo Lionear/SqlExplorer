@@ -45,6 +45,9 @@
   <data name="StatusBarMs" xml:space="preserve">
     <value>{0} ms</value>
   </data>
+  <data name="StatusScriptCapped" xml:space="preserve">
+    <value>Each SELECT in the script was limited to the first {0} rows — turn off “Page query results” in Settings to run them unbounded.</value>
+  </data>
   <data name="StatusAffected" xml:space="preserve">
     <value>{0} affected · {1:F0} ms</value>
   </data>
@@ -640,7 +643,7 @@
     <value>Query page size (rows)</value>
   </data>
   <data name="QueryPageSizeHint" xml:space="preserve">
-    <value>When on, a single SELECT with no TOP/LIMIT of its own is shown one page at a time (use Previous/Next to walk the rows), so a stray "SELECT * FROM big_table" doesn't pull everything at once. Queries with their own TOP/LIMIT, other statements and scripts run unchanged. Applies to newly opened query tabs.</value>
+    <value>When on, a single SELECT with no TOP/LIMIT of its own is shown one page at a time (use Previous/Next to walk the rows), so a stray "SELECT * FROM big_table" doesn't pull everything at once. A multi-statement script can't have a page bar, so each such SELECT in one is limited to a single page of rows instead, and the result tab says so. Queries with their own TOP/LIMIT and non-SELECT statements run unchanged. Applies to newly opened query tabs.</value>
   </data>
   <data name="ConfirmOnExit" xml:space="preserve">
     <value>Ask for confirmation before quitting</value>

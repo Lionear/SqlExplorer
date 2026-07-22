@@ -45,6 +45,9 @@
   <data name="StatusBarMs" xml:space="preserve">
     <value>{0} ms</value>
   </data>
+  <data name="StatusScriptCapped" xml:space="preserve">
+    <value>Elke SELECT in het script is beperkt tot de eerste {0} rijen — zet “Query-resultaten pagen” uit in Instellingen om ze onbegrensd te draaien.</value>
+  </data>
   <data name="StatusAffected" xml:space="preserve">
     <value>{0} gewijzigd · {1:F0} ms</value>
   </data>
@@ -640,7 +643,7 @@
     <value>Paginagrootte query's (rijen)</value>
   </data>
   <data name="QueryPageSizeHint" xml:space="preserve">
-    <value>Indien aan wordt een enkele SELECT zonder eigen TOP/LIMIT pagina voor pagina getoond (gebruik Vorige/Volgende om door de rijen te bladeren), zodat een losse "SELECT * FROM grote_tabel" niet in één keer alles ophaalt. Query's met een eigen TOP/LIMIT, andere statements en scripts blijven ongewijzigd. Geldt voor nieuw geopende querytabbladen.</value>
+    <value>Indien aan wordt een enkele SELECT zonder eigen TOP/LIMIT pagina voor pagina getoond (gebruik Vorige/Volgende om door de rijen te bladeren), zodat een losse "SELECT * FROM grote_tabel" niet in één keer alles ophaalt. Een script met meerdere statements kan geen paginabalk hebben; daar wordt elke zulke SELECT in plaats daarvan beperkt tot één pagina rijen, en het resultaattabblad zegt dat erbij. Query's met een eigen TOP/LIMIT en niet-SELECT-statements blijven ongewijzigd. Geldt voor nieuw geopende querytabbladen.</value>
   </data>
   <data name="ConfirmOnExit" xml:space="preserve">
     <value>Vraag om bevestiging bij afsluiten</value>

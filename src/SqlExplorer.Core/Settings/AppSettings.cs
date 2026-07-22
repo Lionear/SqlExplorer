@@ -113,7 +113,9 @@ public sealed class AppSettings
     public int BrowsePageSize { get; set; } = 200;
 
     /// <summary>Show an ad-hoc query's results one page at a time (DataGrip/DBeaver-style next/prev) when it's a
-    /// single unbounded SELECT, so "SELECT * FROM big_table" doesn't pull everything at once (SE-178). Default on.</summary>
+    /// single unbounded SELECT, so "SELECT * FROM big_table" doesn't pull everything at once (SE-178).
+    /// A multi-statement script can't carry a page bar, so there each unbounded SELECT is bounded to
+    /// <see cref="QueryPageSize"/> rows instead (SE-197). Default on.</summary>
     public bool PageQueryResults { get; set; } = true;
 
     /// <summary>Rows per page when <see cref="PageQueryResults"/> is on. Default 200, matching
