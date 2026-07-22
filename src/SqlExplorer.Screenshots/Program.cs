@@ -19,6 +19,7 @@ using SqlExplorer.Sdk.Formatting;
 using SqlExplorer.Core.History;
 using SqlExplorer.Core.Localization;
 using SqlExplorer.Core.Logging;
+using SqlExplorer.Core.Plugins;
 using SqlExplorer.Core.Providers;
 using SqlExplorer.Core.Schema;
 using SqlExplorer.Core.Settings;
@@ -57,6 +58,10 @@ internal static class Program
                 .UseSkia()
                 .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
                 .SetupWithoutStarting();
+
+            // Seed the sandbox before the container is built: plugin discovery runs inside
+            // AppServices.Build(), so anything a scene needs on disk has to be there first.
+            SceneCatalog.PrepareSandbox(opts.Scene);
 
             var services = AppServices.Build();
 
@@ -251,7 +256,49 @@ internal static class SceneCatalog
             services.GetRequiredService<KeymapService>()) { DataContext = viewModel };
     }
 
-    // The Plugin Store on its Installed tab, listing the bundled database engines (no network needed).
+    // The engines that ship beside the binary but are Store installs in a real profile: the build stages
+    // every provider into the bundled root, so a capture would otherwise show all eight as "Built-in".
+    private static readonly string[] StoreInstalledPlugins = ["mongodb", "redis", "dragonflydb", "elasticsearch"];
+
+    /// <summary>
+    /// Puts the sandbox in the state a scene needs before DI (and therefore plugin discovery) runs.
+    /// For the Store scene that means a realistic install mix: the four SQL engines stay bundled and the
+    /// four NoSQL engines are copied into the per-user root, where discovery's "user copy wins on id"
+    /// rule makes them user-installed — enable/disable/uninstall actions and all.
+    /// </summary>
+    public static void PrepareSandbox(string scene)
+    {
+        if (scene != "store")
+        {
+            return;
+        }
+
+        foreach (var id in StoreInstalledPlugins)
+        {
+            var source = Path.Combine(PluginPaths.BundledRoot, id);
+            if (Directory.Exists(source))
+            {
+                CopyDirectory(source, PluginPaths.UserPluginDir(id));
+            }
+        }
+    }
+
+    private static void CopyDirectory(string source, string target)
+    {
+        Directory.CreateDirectory(target);
+        foreach (var file in Directory.EnumerateFiles(source))
+        {
+            File.Copy(file, Path.Combine(target, Path.GetFileName(file)), overwrite: true);
+        }
+
+        foreach (var dir in Directory.EnumerateDirectories(source))
+        {
+            CopyDirectory(dir, Path.Combine(target, Path.GetFileName(dir)));
+        }
+    }
+
+    // The Plugin Store on its Installed tab: four built-in engines plus the four installed from the
+    // Store (see PrepareSandbox) — no network needed.
     private static Window BuildStore(IServiceProvider services)
     {
         var viewModel = services.GetRequiredService<PluginStoreViewModel>();
