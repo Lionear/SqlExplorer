@@ -35,16 +35,29 @@ public sealed class AlterScriptWriter(SqlDialect dialect)
         AddColumn c => [$"ALTER TABLE {dialect.QuoteTable(c.Table)} {dialect.AddColumnClause} {dialect.ColumnSpec(c.Column)};"],
         DropColumn c => [$"ALTER TABLE {dialect.QuoteTable(c.Table)} DROP COLUMN {dialect.Quote(c.Column.Name)};"],
         AlterColumn c => dialect.AlterColumn(c.Table, c.From, c.To),
-        AddPrimaryKey c => [$"ALTER TABLE {dialect.QuoteTable(c.Table)} ADD CONSTRAINT {dialect.Quote(c.Key.Name)} PRIMARY KEY ({Cols(c.Key.Columns)});"],
-        DropPrimaryKey c => [$"ALTER TABLE {dialect.QuoteTable(c.Table)} DROP CONSTRAINT {dialect.Quote(c.Key.Name)};"],
-        AddUnique c => [$"ALTER TABLE {dialect.QuoteTable(c.Table)} ADD CONSTRAINT {dialect.Quote(c.Unique.Name)} UNIQUE ({Cols(c.Unique.Columns)});"],
-        DropUnique c => [$"ALTER TABLE {dialect.QuoteTable(c.Table)} DROP CONSTRAINT {dialect.Quote(c.Unique.Name)};"],
+        AddPrimaryKey c => [Constraint(c.Table, "add primary key", c.Key.Name,
+            $"ALTER TABLE {dialect.QuoteTable(c.Table)} ADD {dialect.PrimaryKeyClause(c.Key, Cols(c.Key.Columns))};")],
+        DropPrimaryKey c => [Constraint(c.Table, "drop primary key", c.Key.Name,
+            $"ALTER TABLE {dialect.QuoteTable(c.Table)} DROP CONSTRAINT {dialect.Quote(c.Key.Name)};")],
+        AddUnique c => [Constraint(c.Table, "add unique constraint", c.Unique.Name,
+            $"ALTER TABLE {dialect.QuoteTable(c.Table)} ADD CONSTRAINT {dialect.Quote(c.Unique.Name)} UNIQUE ({Cols(c.Unique.Columns)});")],
+        DropUnique c => [Constraint(c.Table, "drop unique constraint", c.Unique.Name,
+            $"ALTER TABLE {dialect.QuoteTable(c.Table)} DROP CONSTRAINT {dialect.Quote(c.Unique.Name)};")],
         AddIndex c => [RenderCreateIndex(c.Table, c.Index)],
-        DropIndex c => [$"DROP INDEX {dialect.Quote(c.Index.Name)};"],
-        AddForeignKey c => [RenderAddForeignKey(c.Table, c.ForeignKey)],
-        DropForeignKey c => [$"ALTER TABLE {dialect.QuoteTable(c.Table)} DROP CONSTRAINT {dialect.Quote(c.ForeignKey.Name)};"],
+        DropIndex c => [dialect.DropIndex(c.Table, c.Index)],
+        AddForeignKey c => [Constraint(c.Table, "add foreign key", c.ForeignKey.Name,
+            RenderAddForeignKey(c.Table, c.ForeignKey))],
+        DropForeignKey c => [Constraint(c.Table, "drop foreign key", c.ForeignKey.Name,
+            $"ALTER TABLE {dialect.QuoteTable(c.Table)} DROP CONSTRAINT {dialect.Quote(c.ForeignKey.Name)};")],
         _ => []
     };
+
+    // An engine that can't ALTER a constraint (SQLite) gets a note instead of DDL that would fail on run.
+    private string Constraint(TableDef table, string what, string name, string statement) =>
+        dialect.SupportsAlterConstraint
+            ? statement
+            : $"-- NOTE: cannot {what} {dialect.Quote(name)} on {dialect.QuoteTable(table)} — this engine " +
+              "only supports adding and dropping columns; recreate the table to apply.";
 
     private IEnumerable<string> RenderCreateTable(TableDef t)
     {
@@ -53,7 +66,7 @@ public sealed class AlterScriptWriter(SqlDialect dialect)
 
         if (t.PrimaryKey is { } pk)
         {
-            body.Add($"CONSTRAINT {dialect.Quote(pk.Name)} PRIMARY KEY ({Cols(pk.Columns)})");
+            body.Add(dialect.PrimaryKeyClause(pk, Cols(pk.Columns)));
         }
 
         body.AddRange(t.Uniques.Select(u => $"CONSTRAINT {dialect.Quote(u.Name)} UNIQUE ({Cols(u.Columns)})"));

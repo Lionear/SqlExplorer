@@ -2,17 +2,13 @@
   "diff.title": "Schema Diff",
   "diff.dialogTitle": "Schema Diff",
   "diff.description": "Builds a migration that changes the database above to match the one you pick below. It opens as a script in a new query tab to review and run — nothing changes automatically.",
-
   "diff.field.compareTo": "Compare against connection",
   "diff.field.database": "Database on that connection",
-
-  "diff.error.unsupported": "Schema Diff doesn't support the '{0}' engine yet (reads via information_schema; Postgres, MySQL and SQL Server only).",
+  "diff.error.unsupported": "Schema Diff doesn't support the '{0}' engine yet (Postgres, MySQL, SQL Server and SQLite only).",
   "diff.error.noTarget": "Pick a connection and database to compare against.",
   "diff.error.openFailed": "Couldn't open the selected connection.",
-
   "diff.progress.readingThis": "Reading schema of {0}…",
   "diff.progress.readingOther": "Reading schema of {0}…",
-
   "diff.result.identical": "No differences — this schema already matches {0}.",
   "diff.result.summary": "Migration to align {0} with {1}: {2} change(s).",
   "diff.script.header": "-- These statements run against {0}; they add/adjust what it's missing or differs on versus {1}.",

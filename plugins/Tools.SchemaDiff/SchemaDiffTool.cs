@@ -13,7 +13,7 @@ namespace SqlExplorer.Tools.SchemaDiff;
 /// </summary>
 public sealed class SchemaDiffTool : IToolPlugin
 {
-    private static readonly string[] SupportedProviders = ["postgres", "mysql", "sqlserver"];
+    private static readonly string[] SupportedProviders = ["postgres", "mysql", "sqlserver", "sqlite"];
 
     public string Id => "schema-diff";
     public string Title => "Schema Diff";

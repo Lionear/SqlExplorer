@@ -16,7 +16,8 @@ public abstract class SqlDialect
         "postgres" => new PostgresDialect(),
         "mysql" => new MySqlDialect(),
         "sqlserver" => new SqlServerDialect(),
-        _ => new GenericDialect()   // sqlite and any third-party engine: ANSI-ish, in-place column alter unsupported.
+        "sqlite" => new SqliteDialect(),
+        _ => new GenericDialect()   // any third-party engine: ANSI-ish, in-place column alter unsupported.
     };
 
     public abstract string Quote(string identifier);
@@ -28,7 +29,7 @@ public abstract class SqlDialect
         string.IsNullOrEmpty(table.Schema) ? Quote(table.Name) : $"{Quote(table.Schema)}.{Quote(table.Name)}";
 
     /// <summary>Render <c>col type [NOT NULL] [DEFAULT expr]</c> for a CREATE/ADD.</summary>
-    public string ColumnSpec(ColumnDef c)
+    public virtual string ColumnSpec(ColumnDef c)
     {
         var sb = new StringBuilder();
         sb.Append(Quote(c.Name)).Append(' ').Append(c.DataType);
@@ -45,6 +46,22 @@ public abstract class SqlDialect
         return sb.ToString();
     }
 
+    /// <summary>The inline/added PRIMARY KEY clause. Named everywhere except MySQL, which calls every
+    /// primary key "PRIMARY" — emitting that as a constraint name reads as nonsense and can't be used in an
+    /// ALTER at all.</summary>
+    public virtual string PrimaryKeyClause(PrimaryKeyDef key, string columns) =>
+        $"CONSTRAINT {Quote(key.Name)} PRIMARY KEY ({columns})";
+
+    /// <summary>Whether the engine can add or drop a constraint on an existing table. SQLite can't — its
+    /// ALTER TABLE only renames, adds and drops columns — so the writer emits a note there instead of DDL
+    /// that would fail when run.</summary>
+    public virtual bool SupportsAlterConstraint => true;
+
+    /// <summary>Drop a secondary index. The one DDL where the engines disagree on <i>shape</i> rather than
+    /// syntax: Postgres and SQLite drop an index by its (schema-qualified) name alone, while MySQL and SQL
+    /// Server need the table it belongs to.</summary>
+    public virtual string DropIndex(TableDef table, IndexDef index) => $"DROP INDEX {Quote(index.Name)};";
+
     /// <summary>The statements that turn column <paramref name="from"/> into <paramref name="to"/> on
     /// <paramref name="table"/>. May be several (Postgres) or one (MySQL); a dialect that can't do it in
     /// place returns a single explanatory comment.</summary>
@@ -54,6 +71,31 @@ public abstract class SqlDialect
 public sealed class PostgresDialect : SqlDialect
 {
     public override string Quote(string identifier) => $"\"{identifier.Replace("\"", "\"\"")}\"";
+
+    // A serial column's default is nextval() on a sequence that belongs to the *source* database — copying
+    // that expression verbatim produces a CREATE TABLE that fails on the target ("relation … does not
+    // exist"). Postgres' own shorthand recreates the sequence with the table, which is what was meant.
+    public override string ColumnSpec(ColumnDef c)
+    {
+        if (c.Default is not { } d || !d.Contains("nextval(", StringComparison.OrdinalIgnoreCase))
+        {
+            return base.ColumnSpec(c);
+        }
+
+        var serial = c.DataType.ToLowerInvariant() switch
+        {
+            "bigint" => "bigserial",
+            "smallint" => "smallserial",
+            _ => "serial"
+        };
+        return $"{Quote(c.Name)} {serial}";   // serial already implies NOT NULL and its own default
+    }
+
+    // An index lives in its table's schema, and DROP INDEX takes no table — so it must be qualified.
+    public override string DropIndex(TableDef table, IndexDef index) =>
+        string.IsNullOrEmpty(table.Schema)
+            ? $"DROP INDEX {Quote(index.Name)};"
+            : $"DROP INDEX {Quote(table.Schema)}.{Quote(index.Name)};";
 
     public override IEnumerable<string> AlterColumn(TableDef table, ColumnDef from, ColumnDef to)
     {
@@ -83,6 +125,11 @@ public sealed class MySqlDialect : SqlDialect
 {
     public override string Quote(string identifier) => $"`{identifier.Replace("`", "``")}`";
 
+    public override string DropIndex(TableDef table, IndexDef index) =>
+        $"DROP INDEX {Quote(index.Name)} ON {QuoteTable(table)};";
+
+    public override string PrimaryKeyClause(PrimaryKeyDef key, string columns) => $"PRIMARY KEY ({columns})";
+
     // MySQL restates the whole column definition in one MODIFY.
     public override IEnumerable<string> AlterColumn(TableDef table, ColumnDef from, ColumnDef to)
     {
@@ -93,6 +140,9 @@ public sealed class MySqlDialect : SqlDialect
 public sealed class SqlServerDialect : SqlDialect
 {
     public override string AddColumnClause => "ADD";
+
+    public override string DropIndex(TableDef table, IndexDef index) =>
+        $"DROP INDEX {Quote(index.Name)} ON {QuoteTable(table)};";
 
     public override string Quote(string identifier) => $"[{identifier.Replace("]", "]]")}]";
 
@@ -122,5 +172,27 @@ public sealed class GenericDialect : SqlDialect
                      $"({from.DataType}{(from.Nullable ? " NULL" : " NOT NULL")} -> " +
                      $"{to.DataType}{(to.Nullable ? " NULL" : " NOT NULL")}); this engine can't alter a " +
                      "column in place — recreate the table to apply.";
+    }
+}
+
+
+/// <summary>
+/// SQLite: ANSI-ish quoting, but a deliberately limited ALTER TABLE. It can add and drop columns (3.35+),
+/// yet it cannot alter one in place, and it cannot add or drop a constraint at all — constraints only exist
+/// as part of a CREATE TABLE. Those changes are emitted as notes so the generated migration stays runnable
+/// and honest about what it left to the reader.
+/// </summary>
+public sealed class SqliteDialect : SqlDialect
+{
+    public override bool SupportsAlterConstraint => false;
+
+    public override string Quote(string identifier) => $"\"{identifier.Replace("\"", "\"\"")}\"";
+
+    public override IEnumerable<string> AlterColumn(TableDef table, ColumnDef from, ColumnDef to)
+    {
+        yield return $"-- NOTE: column {Quote(to.Name)} on {QuoteTable(table)} changed " +
+                     $"({from.DataType}{(from.Nullable ? " NULL" : " NOT NULL")} -> " +
+                     $"{to.DataType}{(to.Nullable ? " NULL" : " NOT NULL")}); SQLite can't alter a column " +
+                     "in place — recreate the table and copy the rows over to apply.";
     }
 }

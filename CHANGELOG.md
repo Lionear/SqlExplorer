@@ -11,7 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
-- **Copy Table** (store-only tool plugin) — right-click a table and copy it to another connection and database.
+- **Schema Diff now reads secondary indexes and supports SQLite.** A migration includes the `CREATE INDEX` /
+  `DROP INDEX` work it used to silently skip, and SQLite databases can be compared at all (read through
+  `sqlite_master` and PRAGMA rather than `information_schema`). Indexes an engine creates behind a primary
+  key or unique constraint are left out, so they aren't dropped twice.
+- **Copy Table (store-only tool plugin) — right-click a table and copy it to another connection and database.
   Choose structure + data, structure only or data only, all rows or the first N, and whether to keep the
   source's identity/sequence values. Either **run the copy** — creating and filling the table on the target
   with a live checklist — or **open it as a script** on the target to review the SQL first; the tool remembers
@@ -21,6 +25,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **Tools can own their whole dialog** — a tool plugin's own view may now render the run's progress and result
   itself (stepped checklist with per-step detail and progress, and its own footer buttons) instead of the
   generic checklist and action bar. Copy Table is the first tool to use it; every other tool is unchanged.
+
+### Fixed
+
+- **Schema Diff against MySQL compared the wrong things.** Two MySQL databases diffed as "drop everything,
+  recreate everything", because MySQL's schema *is* the database, and foreign keys came out referencing the
+  same column several times. Both are corrected, and a MySQL migration now applies cleanly.
+- **Schema Diff produced scripts that couldn't run.** A Postgres `serial` column was recreated with a
+  `DEFAULT nextval(…)` pointing at a sequence that doesn't exist on the target; `DROP INDEX` was emitted in
+  Postgres form for every engine, though MySQL and SQL Server need the table named. Generated migrations for
+  Postgres, MySQL, SQL Server and SQLite are now verified end-to-end against live engines.
 
 ## [0.4.0] - 2026-07-21
 
