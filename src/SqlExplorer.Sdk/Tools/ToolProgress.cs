@@ -15,9 +15,14 @@ public enum ToolItemStatus
 ///
 /// <para><paramref name="ItemKey"/>/<paramref name="ItemStatus"/> are optional and additive: a tool that
 /// works through a known set of items (e.g. per table/object) can key a line to a checklist row and flip
-/// its status live. Tools that don't set them are unaffected — the line is just appended to the log.</para></summary>
+/// its status live. Tools that don't set them are unaffected — the line is just appended to the log.</para>
+///
+/// <para><paramref name="Detail"/> is a short trailing note for one item — "7 cols · PK", "1,240 / 5,000" —
+/// which a lifecycle-owning view (<c>IToolDialogLifecycle</c>) renders right-aligned on the step's row. The
+/// host's own checklist ignores it, so it costs nothing for tools that don't set it.</para></summary>
 public sealed record ToolProgress(
     string Message,
     double? Fraction = null,
     string? ItemKey = null,
-    ToolItemStatus? ItemStatus = null);
+    ToolItemStatus? ItemStatus = null,
+    string? Detail = null);

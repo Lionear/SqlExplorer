@@ -90,15 +90,19 @@
         </StackPanel>
       </ScrollViewer>
 
+      <!-- A lifecycle-owning view stays enabled during the run (it renders its own progress and buttons)
+           and gets the dialog edge-to-edge; a plain Route-B input view keeps the host's padding and is
+           disabled while the tool runs. -->
       <ContentControl Content="{Binding CustomView}" IsVisible="{Binding HasCustomView}"
-                      IsEnabled="{Binding InputsEnabled}" Margin="18,16"
+                      IsEnabled="{Binding CustomViewEnabled}"
+                      Margin="{Binding CustomViewMargin}"
                       HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
     </Panel>
 
     <!-- Row 1: Checklist and Log are mutually exclusive (HasLogArea is false whenever HasChecklist is
          true), so a Panel — not a StackPanel — lets whichever one is visible stretch to fill the whole row
          once it expands to "*" during a run. -->
-    <Panel Grid.Row="1">
+    <Panel Grid.Row="1" IsVisible="{Binding !CustomOwnsLifecycle}">
       <!-- Live per-item checklist (object-selection backup/restore); hidden for tools that don't report items. -->
       <Border Margin="18,8,18,0" IsVisible="{Binding HasChecklist}"
               BorderBrush="{DynamicResource SEHairlineBrush}" BorderThickness="1"
@@ -136,10 +140,11 @@
     <!-- Progress bar (indeterminate until a tool reports a fraction) -->
     <ProgressBar Grid.Row="2" Margin="18,8,18,0" Height="4" Minimum="0" Maximum="1"
                  Value="{Binding Progress}" IsIndeterminate="{Binding IsProgressIndeterminate}"
-                 IsVisible="{Binding IsRunning}" />
+                 IsVisible="{Binding HostChromeRunning}" />
 
-    <!-- Action bar -->
-    <Grid Grid.Row="3" Margin="18,12" ColumnDefinitions="Auto,*,Auto,Auto">
+    <!-- Action bar — a lifecycle-owning custom view (IToolDialogLifecycle) draws its own instead. -->
+    <Grid Grid.Row="3" Margin="18,12" ColumnDefinitions="Auto,*,Auto,Auto"
+          IsVisible="{Binding !CustomOwnsLifecycle}">
       <TextBlock Grid.Column="0" Text="{Binding Loc[ToolRunning]}" VerticalAlignment="Center"
                  FontSize="11.5" Foreground="{DynamicResource SETextFaintBrush}"
                  IsVisible="{Binding IsRunning}" />

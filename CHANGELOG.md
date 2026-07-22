@@ -16,7 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   source's identity/sequence values. Either **run the copy** — creating and filling the table on the target
   with a live checklist — or **open it as a script** on the target to review the SQL first; the tool remembers
   which you used last. Same-engine (Postgres, MySQL, SQL Server) in this first cut; indexes/foreign keys,
-  SQLite and cross-engine copy are planned follow-ups.
+  SQLite and cross-engine copy are planned follow-ups. Rows are copied in batches, so a large table shows
+  real progress instead of one long wait.
+- **Tools can own their whole dialog** — a tool plugin's own view may now render the run's progress and result
+  itself (stepped checklist with per-step detail and progress, and its own footer buttons) instead of the
+  generic checklist and action bar. Copy Table is the first tool to use it; every other tool is unchanged.
 
 ## [0.4.0] - 2026-07-21
 

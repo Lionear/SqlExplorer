@@ -49,6 +49,13 @@ public static class ToolHostApi
     //                  mirroring the IToolHost pickers, so a tool's own view can build a destination
     //                  connection/database dropdown (Copy Table's custom view). Default impls (empty) keep
     //                  existing custom views compiling.
+    //   also in v5 (2026-07-22): the lifecycle-owning Route-B view — IToolDialogLifecycle (+ ToolRunOutcome)
+    //                  in SqlExplorer.Sdk.Ui. A custom view that implements it renders the run's progress and
+    //                  completion itself and the host hides its generic checklist/log/progress bar/action bar.
+    //                  Companion additions: IToolUiContext.Localizer/RunAsync()/CancelRun()/CloseDialog() (so
+    //                  the view can drive the run from its own buttons) and ToolProgress.Detail (the short
+    //                  right-aligned note per step). All additive defaults; a view that ignores them keeps the
+    //                  host-rendered chrome. Folded into the still-unreleased v5.
     public const int Version = 5;
 
     /// <summary>Oldest plugin ABI this host still loads. Every bump has been additive (v2 tool defaults, v3

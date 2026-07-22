@@ -24,6 +24,18 @@ public sealed class CopyTableTool : IToolPlugin, ICustomToolUi
     // Session-remembered dialog choice (persisted via SetPluginSetting too). Starts on "Run the copy".
     private string _lastMode = ModeRun;
 
+    // The live dialog view, and what the last run landed — the view owns the whole dialog lifecycle
+    // (IToolDialogLifecycle), so the tool hands it the run's summary and answers its "Open target table".
+    private CopyTableView? _view;
+    private IToolHost? _host;
+    private string? _openConnectionId;
+    private string? _openDatabase;
+    private string? _openSelect;
+
+    // Rows per INSERT batch: small enough that the progress bar moves on a large table, big enough that a
+    // copy isn't dominated by round-trips.
+    private const int BatchRows = 500;
+
     public string Id => "copy-table";
     public string Title => "Copy Table";
     public string? TitleKey => "copy.title";
@@ -63,8 +75,19 @@ public sealed class CopyTableTool : IToolPlugin, ICustomToolUi
 
     // Route B: supply the tailored dialog (From → To pickers, segmented options, mode cards) instead of the
     // host's generic field form. Values still flow back through IToolUiContext under the same field keys.
-    public Avalonia.Controls.Control CreateView(IToolUiContext context) =>
-        new CopyTableView(context, _lastMode, context.Node?.Name ?? "table");
+    public Avalonia.Controls.Control CreateView(IToolUiContext context)
+    {
+        var view = new CopyTableView(context, _lastMode, context.Node?.Name ?? "table");
+        view.OpenTargetRequested += () =>
+        {
+            if (_host is { } host && _openConnectionId is { } id && _openSelect is { } sql)
+            {
+                host.OpenQueryEditorOn(id, _openDatabase, sql);
+            }
+        };
+        _view = view;
+        return view;
+    }
 
     public async Task ExecuteAsync(
         ToolExecutionContext context,
@@ -106,6 +129,14 @@ public sealed class CopyTableTool : IToolPlugin, ICustomToolUi
         _lastMode = mode;
         context.Host.SetPluginSetting(LastModeKey, mode);
 
+        var started = DateTime.UtcNow;
+
+        // Remember what the view's "Open target table" link should open once the copy lands.
+        _host = context.Host;
+        _openConnectionId = toConnection;
+        _openDatabase = toDatabase;
+        _openSelect = null;
+
         var reader = new TableReader(context.Provider);
         progress.Report(new ToolProgress(loc.Get("copy.progress.reading", tableName),
             ItemKey: "schema", ItemStatus: ToolItemStatus.Running));
@@ -119,7 +150,10 @@ public sealed class CopyTableTool : IToolPlugin, ICustomToolUi
         }
 
         progress.Report(new ToolProgress(loc.Get("copy.progress.read", tableName, model.Columns.Count),
-            ItemKey: "schema", ItemStatus: ToolItemStatus.Done));
+            ItemKey: "schema", ItemStatus: ToolItemStatus.Done,
+            Detail: model.PrimaryKey is { Columns.Count: > 0 }
+                ? loc.Get("copy.detail.columnsPk", model.Columns.Count)
+                : loc.Get("copy.detail.columns", model.Columns.Count)));
 
         var dialect = context.Provider.Dialect;
         var literalDialect = SqlValueLiteral.DialectFor(context.ProviderId);
@@ -144,13 +178,20 @@ public sealed class CopyTableTool : IToolPlugin, ICustomToolUi
 
         if (mode == ModeScript)
         {
+            progress.Report(new ToolProgress(loc.Get("copy.progress.scripting"),
+                ItemKey: "script", ItemStatus: ToolItemStatus.Running));
             await OpenAsScriptAsync(context, model, data, dropExisting, copyStructure, copyData, keepIdentity,
                 dialect, literalDialect, quotedTarget, toConnection!, toDatabase!, ambiguous, tableName, progress, loc);
+            _view?.SetSummary(new CopySummary(tableName, $"{toDatabase}.{model.Name}", data?.Rows.Count ?? 0,
+                DateTime.UtcNow - started, Scripted: true));
         }
         else
         {
             await RunCopyAsync(context, model, data, dropExisting, copyStructure, copyData, keepIdentity,
                 dialect, literalDialect, quotedTarget, toConnection!, toDatabase!, progress, loc, ct);
+            _openSelect = $"SELECT * FROM {quotedTarget};";
+            _view?.SetSummary(new CopySummary(tableName, $"{toDatabase}.{model.Name}", data?.Rows.Count ?? 0,
+                DateTime.UtcNow - started, Scripted: false));
         }
     }
 
@@ -189,29 +230,51 @@ public sealed class CopyTableTool : IToolPlugin, ICustomToolUi
             }
 
             progress.Report(new ToolProgress(loc.Get("copy.progress.created"),
-                ItemKey: "create", ItemStatus: ToolItemStatus.Done));
+                ItemKey: "create", ItemStatus: ToolItemStatus.Done,
+                Detail: dropExisting ? loc.Get("copy.detail.replaced") : loc.Get("copy.detail.created")));
         }
 
         if (copyData && data is not null)
         {
-            var inserts = InsertScripter.Build(quotedTarget, data.Columns, data.Rows, dialect, literalDialect);
-            progress.Report(new ToolProgress(loc.Get("copy.progress.copyingRows", data.Rows.Count),
-                ItemKey: "rows", ItemStatus: ToolItemStatus.Running));
+            var total = data.Rows.Count;
+            progress.Report(new ToolProgress(loc.Get("copy.progress.copyingRows", total),
+                ItemKey: "rows", ItemStatus: ToolItemStatus.Running, Fraction: total == 0 ? 1 : 0,
+                Detail: loc.Get("copy.detail.rowsOf", 0, total)));
+
+            // Insert in batches rather than one giant script: the dialog can show real progress, and a huge
+            // table doesn't have to be serialised into a single statement blob first.
+            var copied = 0;
             try
             {
-                if (data.Rows.Count > 0)
+                while (copied < total)
                 {
+                    ct.ThrowIfCancellationRequested();
+                    var batch = data.Rows.Skip(copied).Take(BatchRows).ToList();
+                    var inserts = InsertScripter.Build(quotedTarget, data.Columns, batch, dialect, literalDialect);
                     await target.Provider.ExecuteScriptAsync(target.Profile, inserts, ct);
+                    copied += batch.Count;
+                    progress.Report(new ToolProgress(loc.Get("copy.progress.copyingRows", total),
+                        ItemKey: "rows", ItemStatus: ToolItemStatus.Running, Fraction: (double)copied / total,
+                        Detail: loc.Get("copy.detail.rowsOf", copied, total)));
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                progress.Report(new ToolProgress(loc.Get("copy.progress.copiedRows", copied),
+                    ItemKey: "rows", ItemStatus: ToolItemStatus.Error,
+                    Detail: loc.Get("copy.detail.rowsOf", copied, total)));
+                throw;
             }
             catch (Exception ex)
             {
-                progress.Report(new ToolProgress(ex.Message, ItemKey: "rows", ItemStatus: ToolItemStatus.Error));
+                progress.Report(new ToolProgress(ex.Message, ItemKey: "rows", ItemStatus: ToolItemStatus.Error,
+                    Detail: loc.Get("copy.detail.rowsOf", copied, total)));
                 throw;
             }
 
-            progress.Report(new ToolProgress(loc.Get("copy.progress.copiedRows", data.Rows.Count),
-                ItemKey: "rows", ItemStatus: ToolItemStatus.Done));
+            progress.Report(new ToolProgress(loc.Get("copy.progress.copiedRows", copied),
+                ItemKey: "rows", ItemStatus: ToolItemStatus.Done,
+                Detail: loc.Get("copy.detail.rowsCopied", copied)));
         }
 
         progress.Report(new ToolProgress(loc.Get("copy.result.ran", model.Name, toDatabase),
@@ -250,6 +313,8 @@ public sealed class CopyTableTool : IToolPlugin, ICustomToolUi
         }
 
         context.Host.OpenQueryEditorOn(toConnection, toDatabase, string.Join("\n\n", parts));
-        progress.Report(new ToolProgress(loc.Get("copy.result.opened", toDatabase, data?.Rows.Count ?? 0)));
+        progress.Report(new ToolProgress(loc.Get("copy.result.opened", toDatabase, data?.Rows.Count ?? 0),
+            ItemKey: "script", ItemStatus: ToolItemStatus.Done,
+            Detail: loc.Get("copy.detail.rowsCopied", data?.Rows.Count ?? 0)));
     }
 }
