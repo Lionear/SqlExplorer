@@ -15,20 +15,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   `DROP INDEX` work it used to silently skip, and SQLite databases can be compared at all (read through
   `sqlite_master` and PRAGMA rather than `information_schema`). Indexes an engine creates behind a primary
   key or unique constraint are left out, so they aren't dropped twice.
-- **Copy Table (store-only tool plugin) — right-click a table and copy it to another connection and database.
-  Choose structure + data, structure only or data only, all rows or the first N, and whether to keep the
-  source's identity/sequence values. Either **run the copy** — creating and filling the table on the target
-  with a live checklist — or **open it as a script** on the target to review the SQL first; the tool remembers
-  which you used last. Same-engine (Postgres, MySQL, SQL Server) in this first cut; indexes/foreign keys,
-  SQLite and cross-engine copy are planned follow-ups. Rows are copied in batches, so a large table shows
-  real progress instead of one long wait.
+- **Copy Table — right-click a table and copy it to another connection and database.** A store-only tool
+  plugin. Choose structure + data, structure only or data only, all rows or the first N, whether to keep the
+  source's identity/sequence values, and whether to bring the table's indexes and foreign keys along. Either
+  *run the copy* — creating and filling the table on the target, with a live checklist that shows which step
+  failed if one does — or *open it as a script* on the target to review the SQL first; the tool remembers
+  which you used last. Rows are copied in batches, so a large table shows real progress instead of one long
+  wait, and indexes and foreign keys are created once the rows are in: a foreign key pointing at a table the
+  copy didn't bring along is reported as skipped rather than failing a copy that otherwise landed. Postgres,
+  MySQL, SQL Server and SQLite, with source and target on the same engine — copying between different engines
+  needs type mapping between dialects and is not attempted.
 - **Tools can own their whole dialog** — a tool plugin's own view may now render the run's progress and result
   itself (stepped checklist with per-step detail and progress, and its own footer buttons) instead of the
   generic checklist and action bar. Copy Table is the first tool to use it; every other tool is unchanged.
-- **Copy Table brings the table's indexes and foreign keys along**, behind an "Include indexes & foreign
-  keys" switch, and now works on **SQLite** as well as Postgres, MySQL and SQL Server. Indexes and keys are
-  created once the rows are in; a foreign key pointing at a table the copy didn't bring along is reported
-  as skipped rather than failing a copy that otherwise landed.
 
 ### Fixed
 
@@ -38,10 +37,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   or binary data would be truncated". `varchar(max)`, `nvarchar(max)` and `varbinary(max)` now come across
   intact, and types whose name already fixes their length (`text`, `longtext`, `mediumblob`, …) no longer get
   an invalid length appended.
-- **A failed copy no longer buries its own checklist.** A batched insert returns one complaint per offending
-  row, so hundreds of identical lines pushed the step list and the buttons off the dialog, with no way to
-  scroll. Repeated lines now collapse to one carrying a count (`… (×412)`), and the message area is capped and
-  scrolls inside itself.
 - **A migration no longer drops a table's auto-numbering.** Recreating a table on the target lost its
   MySQL `AUTO_INCREMENT` or SQL Server `IDENTITY` — the script ran, but the table was subtly wrong and the
   next insert failed or wrote an empty key. Auto-numbered columns are now read and recreated on every
@@ -52,9 +47,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   (`UQ__customer__AB6E6164DF5AECAE`), so every one of them was dropped and recreated — correct, but it
   buried the real changes. Constraints left unmatched by name are now paired up by what they actually
   describe, which also reads a deliberately renamed constraint as no structural change.
-- **A failed copy keeps its checklist.** Copy Table replaced the progress steps with a red banner, throwing
-  away the more useful half — which step broke. The banner now sits above the list, with the failing step
-  marked.
 - **A script no longer dumps every row of every table — and every result tab gets its own Previous/Next.**
   `SELECT * FROM a; SELECT * FROM b;` returned both tables in full, because paging only ever applied to a
   single SELECT. When a script is nothing but SELECTs, each result tab now pages independently: the tab shows
